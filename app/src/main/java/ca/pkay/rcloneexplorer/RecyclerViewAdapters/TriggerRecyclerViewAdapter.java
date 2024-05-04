@@ -148,7 +148,7 @@ public class TriggerRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVie
 
     private void copyTrigger(Trigger trigger){
         trigger.setTitle(trigger.getTitle() + context.getString(R.string.trigger_copy_suffix));
-        Trigger newTrigger = (new DatabaseHandler(context)).createTrigger(trigger);
+        Trigger newTrigger = (new DatabaseHandler(context)).createTrigger(trigger, false);
         triggers.add(newTrigger);
         notifyItemInserted(triggers.size() - 1);
     }

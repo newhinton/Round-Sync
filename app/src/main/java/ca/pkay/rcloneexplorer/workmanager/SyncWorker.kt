@@ -156,12 +156,16 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
             mTitle = mTask.remotePath
         }
         if(arePreconditionsMet()) {
+            val taskFilter = if(mTask.filterId != null ) mDatabase.getFilter(mTask.filterId!!) else null;
+            val taskFilterList = taskFilter?.getFilters() ?: ArrayList()
             sRcloneProcess = mRclone.sync(
                 remoteItem,
                 mTask.localPath,
                 mTask.remotePath,
                 mTask.direction,
-                mTask.md5sum
+                mTask.md5sum,
+                taskFilterList,
+                mTask.deleteExcluded
             )
             handleSync(mTitle)
             sendUploadFinishedBroadcast(remoteItem.name, mTask.remotePath)

@@ -9,6 +9,7 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 
 import ca.pkay.rcloneexplorer.Database.DatabaseHandler;
+import ca.pkay.rcloneexplorer.Items.Filter;
 import ca.pkay.rcloneexplorer.Items.Task;
 import ca.pkay.rcloneexplorer.Items.Trigger;
 
@@ -19,10 +20,13 @@ public class Importer {
         DatabaseHandler dbHandler = new DatabaseHandler(context);
         dbHandler.deleteEveryting();
         for(Trigger trigger : createTriggerlist(json)){
-            dbHandler.createTrigger(trigger);
+            dbHandler.createTrigger(trigger, true);
+        }
+        for(Filter filter : createFilterList(json)){
+            dbHandler.createFilter(filter, true);
         }
         for(Task task : createTasklist(json)){
-            dbHandler.createTask(task);
+            dbHandler.createTask(task, true);
         }
     }
 
@@ -44,6 +48,16 @@ public class Importer {
         for (int i = 0; i < array.length(); i++) {
             JSONObject taskObject = array.getJSONObject(i);
             result.add(Task.Companion.fromString(taskObject.toString()));
+        }
+        return result;
+    }
+    public static ArrayList<Filter> createFilterList(String content) throws JSONException {
+        ArrayList<Filter> result = new ArrayList<>();
+        JSONObject reader = new JSONObject(content);
+        JSONArray array = reader.getJSONArray("filters");
+        for (int i = 0; i < array.length(); i++) {
+            JSONObject filterObject = array.getJSONObject(i);
+            result.add(Filter.Companion.fromString(filterObject.toString()));
         }
         return result;
     }

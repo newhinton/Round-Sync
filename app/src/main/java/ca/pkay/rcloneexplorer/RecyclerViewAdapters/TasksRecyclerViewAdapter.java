@@ -143,7 +143,7 @@ public class TasksRecyclerViewAdapter extends RecyclerView.Adapter<TasksRecycler
 
     private void copyTask(Task task) {
         task.setTitle(task.getTitle() + context.getString(R.string.task_copy_suffix));
-        Task newTask = (new DatabaseHandler(context)).createTask(task);
+        Task newTask = (new DatabaseHandler(context)).createTask(task, false);
         tasks.add(newTask);
         notifyItemInserted(tasks.size() - 1);
     }
