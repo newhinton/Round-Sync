@@ -98,8 +98,8 @@ public class SharedPreferencesBackup {
         // The type changed. So we try to use boolean first, and if it fails we use the proper int
         Object darkTheme = jsonObject.get("isDarkTheme");
         int valueForTheme;
-        if (darkTheme instanceof Integer) {
-            valueForTheme = (Integer) darkTheme;
+        if (darkTheme instanceof String) {
+            valueForTheme = Integer.parseInt((String) darkTheme);
         } else {
            if((boolean) darkTheme) {
                valueForTheme = DARK;
