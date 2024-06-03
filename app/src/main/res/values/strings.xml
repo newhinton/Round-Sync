@@ -588,7 +588,7 @@
     <string name="attachment_summary_on">Automatically download attachments for incoming emails
     </string>
     <string name="attachment_summary_off">Only download attachments when manually requested</string>
-    <string name="wrap_filenames_summary">Filenames will be trunkated in the middle if they are too long. Otherwise they are shown in multiple lines.</string>
+    <string name="wrap_filenames_summary">Filenames will be truncated in the middle if they are too long. Otherwise they are shown in multiple lines.</string>
     <string name="pref_send_sigquit_button">Kill!</string>
     <string name="app_update_title">Updates</string>
     <string name="preference_dialog_filesize_label">Filesize</string>
