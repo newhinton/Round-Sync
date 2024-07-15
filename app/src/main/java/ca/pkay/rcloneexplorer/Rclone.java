@@ -38,6 +38,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -46,6 +47,7 @@ import java.util.zip.ZipOutputStream;
 import ca.pkay.rcloneexplorer.Database.json.Exporter;
 import ca.pkay.rcloneexplorer.Database.json.SharedPreferencesBackup;
 import ca.pkay.rcloneexplorer.Items.FileItem;
+import ca.pkay.rcloneexplorer.Items.FilterEntry;
 import ca.pkay.rcloneexplorer.Items.RemoteItem;
 import ca.pkay.rcloneexplorer.Items.SyncDirectionObject;
 import ca.pkay.rcloneexplorer.rclone.Provider;
@@ -669,10 +671,10 @@ public class Rclone {
      */
     @Deprecated
     public Process sync(RemoteItem remoteItem, String localPath, String remotePath, int syncDirection) {
-        return sync(remoteItem, localPath, remotePath, syncDirection, false);
+        return sync(remoteItem, localPath, remotePath, syncDirection, false, new ArrayList<>(0), false);
     }
 
-    public Process sync(RemoteItem remoteItem, String localPath, String remotePath, int syncDirection, boolean useMD5Sum) {
+    public Process sync(RemoteItem remoteItem, String localPath, String remotePath, int syncDirection, boolean useMD5Sum, ArrayList<FilterEntry> filters, boolean deleteExcluded) {
         String[] command;
         String remoteName = remoteItem.getName();
         String localRemotePath = (remoteItem.isRemoteType(RemoteItem.LOCAL)) ? getLocalRemotePathPrefix(remoteItem, context)  + "/" : "";
@@ -683,6 +685,14 @@ public class Rclone {
 
         if(useMD5Sum){
             defaultParameter.add("--checksum");
+        }
+        if(deleteExcluded){
+            defaultParameter.add("--delete-excluded");
+        }
+
+        for (FilterEntry filter : filters) {
+            defaultParameter.add("--filter");
+            defaultParameter.add((filter.filterType == FilterEntry.FILTER_INCLUDE ? "+ " : "- ") + filter.filter);
         }
 
         if (syncDirection == SyncDirectionObject.SYNC_LOCAL_TO_REMOTE) {

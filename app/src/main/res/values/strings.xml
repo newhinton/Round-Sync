@@ -348,6 +348,7 @@
     <string name="operation_report_fail_short_content">%d Tasks failed</string>
     <string name="pin_to_dektop">Pin to Home</string>
     <string name="title_activity_task">Create a new Task</string>
+    <string name="title_activity_filter">Create a new Filter</string>
     <!-- Strings used for fragments for navigation -->
 
     <string name="task_edit_label_name">General Information</string>
@@ -357,6 +358,20 @@
     <string name="task_edit_hint_title">Title</string>
     <string name="task_edit_hint_local">Local Path</string>
     <string name="task_edit_hint_remote">Remote Path</string>
+    <string name="task_edit_label_filter">Filter</string>
+    <string name="task_edit_hint_filter">**/.thumbnails/**</string>
+    <string name="task_edit_filter_nofilter">No filter</string>
+    <string name="task_edit_description_filter">Select a filter to filter file/folder patterns.</string>
+    <string name="task_edit_exclude_delete_toggle_text">Delete excluded files from destination</string>
+    <string name="task_edit_filter_options_button">Filter Options</string>
+    <string name="filter_edit_label_name">General Information</string>
+    <string name="filter_edit_label_filters">Filters</string>
+    <string name="filter_edit_hint_title">Title</string>
+    <string name="filter_edit_add_filter_button">Add filter</string>
+    <string name="filter_data_validation_error_no_title">Please give your filter a name</string>
+    <string name="filter_entry_filter_text">**/.thumbnails/**</string>
+    <string name="filter_entry_filtertype_include">Include</string>
+    <string name="filter_entry_filtertype_exclude">Exclude</string>
     <string name="rcd_service_notification_running_in_background">Rclone runs in the background</string>
     <string name="rcd_service_notification_no_active_jobs">No active jobs.</string>
     <string name="rcd_service_notification_btn_stop_all">Stop All</string>
@@ -442,6 +457,7 @@
     <string name="trigger_task_label">Task:</string>
     <string name="trigger_save_notasks">There are no tasks!</string>
     <string name="taskactivity_task_not_found">The specified task could not be found.</string>
+    <string name="filteractivity_filter_not_found">The specified filter could not be found.</string>
     <string name="triggeractivity_trigger_not_found">Trigger not found.</string>
     <string name="task_item_label_from">From:</string>
     <string name="task_item_label_to">To:</string>
@@ -451,6 +467,7 @@
     <string name="no_trigger_warning">There are no triggers.</string>
     <string name="add_trigger">Add a Trigger</string>
     <string name="add_task">Add a Task</string>
+    <string name="add_filter">Add a Filter</string>
     <string name="retry_failed_sync">Retry</string>
     <string name="taskfragment_no_tasks_warning">There are no tasks. Add one here!</string>
     <string name="auto_theme">Follow System Theme</string>
@@ -469,6 +486,8 @@
     <string name="description_sync_direction_copy_toremote">Copy new or modified files from local storage to remote storage. No files are deleted, existing files on the remote may be overwritten.</string>
     <string name="description_sync_direction_copy_tolocal">Copy new or modified files from remote storage to local storage. No files are deleted, existing files on the local storage may be overwritten.</string>
     <string name="description_sync_direction_sync_bidirectional">Make sure local and remote storage have the same files by transferring, downloading, and deleting files as needed to maintain an identical folder structure.</string>
+    <string name="filter_type_include">Include</string>
+    <string name="filter_type_exclude">Exclude</string>
     <string name="intro_success">Success!</string>
     <string name="intro_successful_setup">You are now ready to start!</string>
     <string name="status_offendingfile">"The offending File: "</string>

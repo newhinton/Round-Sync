@@ -7,6 +7,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import ca.pkay.rcloneexplorer.Database.DatabaseHandler;
+import ca.pkay.rcloneexplorer.Items.Filter;
 import ca.pkay.rcloneexplorer.Items.Task;
 import ca.pkay.rcloneexplorer.Items.Trigger;
 
@@ -28,6 +29,14 @@ public class Exporter {
             triggers.put(trigger.asJSON());
         }
         main.put("trigger", triggers);
+
+        JSONArray filters = new JSONArray();
+        for(Filter filter : dbHandler.getAllFilters()){
+            filters.put(filter.asJSON());
+        }
+        main.put("filters", filters);
+
+
         return main.toString();
     }
 }

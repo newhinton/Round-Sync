@@ -3,27 +3,39 @@ package ca.pkay.rcloneexplorer.Activities
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.MenuItem
 import android.view.View
-import android.widget.*
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
+import android.widget.Button
+import android.widget.EditText
+import android.widget.ImageButton
+import android.widget.Spinner
+import android.widget.Switch
+import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.PopupMenu
 import androidx.appcompat.widget.Toolbar
 import androidx.fragment.app.Fragment
 import ca.pkay.rcloneexplorer.Database.DatabaseHandler
 import ca.pkay.rcloneexplorer.FilePicker
 import ca.pkay.rcloneexplorer.Fragments.FolderSelectorCallback
 import ca.pkay.rcloneexplorer.Fragments.RemoteFolderPickerFragment
+import ca.pkay.rcloneexplorer.Items.Filter
 import ca.pkay.rcloneexplorer.Items.RemoteItem
 import ca.pkay.rcloneexplorer.Items.SyncDirectionObject
 import ca.pkay.rcloneexplorer.Items.Task
 import ca.pkay.rcloneexplorer.R
 import ca.pkay.rcloneexplorer.Rclone
+import ca.pkay.rcloneexplorer.SpinnerAdapters.FilterSpinnerAdapter
 import ca.pkay.rcloneexplorer.util.ActivityHelper
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import es.dmoral.toasty.Toasty
 import java.io.UnsupportedEncodingException
 import java.net.URLDecoder
 
-class TaskActivity : AppCompatActivity(), FolderSelectorCallback {
+class TaskActivity : AppCompatActivity(), FolderSelectorCallback{
 
 
     private lateinit var rcloneInstance: Rclone
@@ -40,8 +52,18 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback {
     private lateinit var switchMD5sum: Switch
 
 
+    private lateinit var filterDropdown: Spinner
+    private lateinit var createNewFilterButton: Button
+    private lateinit var switchDeleteExcluded: Switch
+
+
+    private lateinit var filterOptionsButton: ImageButton
+
+
     private var existingTask: Task? = null
     private var remotePathHolder = ""
+    private var selectedFilter: Filter? = null
+
 
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -77,6 +99,12 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback {
                     Toasty.error(this, "This Remote is not a RCX-Remote.").show()
                 }
             }
+            REQUEST_CODE_FILTER -> if (data != null) {
+                val filterId = data.getLongExtra(FilterActivity.SAVED_FILTER_ID_EXTRA, -1)
+                if(filterId >= 0) {
+                    selectFilter(filterId)
+                }
+            }
         }
         fab.visibility = View.VISIBLE
     }
@@ -95,6 +123,8 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback {
         remoteDropdown = findViewById(R.id.task_remote_spinner)
         syncDirection = findViewById(R.id.task_direction_spinner)
         syncDescription = findViewById(R.id.descriptionSyncDirection)
+        filterDropdown = findViewById(R.id.task_filter_spinner)
+        switchDeleteExcluded = findViewById(R.id.task_exclude_delete_toggle)
         fab = findViewById(R.id.saveButton)
         switchWifi = findViewById(R.id.task_wifionly)
         switchMD5sum = findViewById(R.id.task_md5sum)
@@ -126,13 +156,24 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback {
             }
         }
 
+        filterOptionsButton = findViewById(R.id.task_edit_filter_options_button)
+        filterOptionsButton.setOnClickListener {
+            val filter = if(filterDropdown.selectedItemPosition > 0 && filterDropdown.selectedItemPosition < filterDropdown.count) filterItems[filterDropdown.selectedItemPosition - 1] else null
+            showFilterMenu(filterOptionsButton, filter)
+        }
+        createNewFilterButton = findViewById<Button>(R.id.task_edit_filter_add_button)
+        createNewFilterButton.setOnClickListener {
+            openFilterActivity()
+        }
+
         findViewById<TextView>(R.id.task_title_textfield).text = existingTask?.title
         switchWifi.isChecked = existingTask?.wifionly ?: false
         switchMD5sum.isChecked = existingTask?.md5sum ?: false
+        switchDeleteExcluded.isChecked = existingTask?.deleteExcluded ?: false
         prepareSyncDirectionDropdown()
         prepareLocal()
         prepareRemote()
-
+        prepareFilterDropdown()
     }
 
     private val remoteItems: Array<String?>
@@ -142,6 +183,10 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback {
                 remotes[i] = rcloneInstance.remotes[i].name
             }
             return remotes
+        }
+    private val filterItems: List<Filter>
+        get() {
+            return dbHandler.allFilters
         }
 
 
@@ -183,6 +228,8 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback {
 
         taskToPopulate.wifionly = switchWifi.isChecked
         taskToPopulate.md5sum = switchMD5sum.isChecked
+        taskToPopulate.deleteExcluded = switchDeleteExcluded.isChecked
+        taskToPopulate.filterId = if(filterDropdown.selectedItemPosition == 0) null else filterItems[filterDropdown.selectedItemPosition - 1].id
 
         // Verify if data is completed
         if (localPath.text.toString() == "") {
@@ -219,6 +266,15 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback {
         remotePathHolder = path
         remotePath.setText(remotePathHolder)
         fab.visibility = View.VISIBLE
+    }
+    private fun selectFilter(filterId: Long) {
+        prepareFilterDropdown()
+
+        for ((i, filter) in filterItems.withIndex()) {
+            if (filter.id == filterId) {
+                filterDropdown.setSelection(i + 1)
+            }
+        }
     }
 
     private fun prepareLocal() {
@@ -271,6 +327,78 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback {
             }
         }
     }
+    private fun prepareFilterDropdown() {
+        val filterList = filterItems.toMutableList()
+
+        if(filterList.isEmpty()) {
+            createNewFilterButton.visibility = View.VISIBLE
+            filterDropdown.visibility = View.INVISIBLE
+        }
+        else {
+            val titles = mutableListOf<String?>().apply {
+                add(getString(R.string.task_edit_filter_nofilter))
+                addAll(filterList.map { it.title })
+            }
+
+            val adapter = FilterSpinnerAdapter(this, android.R.layout.simple_spinner_dropdown_item, titles)
+            filterDropdown.adapter = adapter
+            createNewFilterButton.visibility = View.INVISIBLE
+            filterDropdown.visibility = View.VISIBLE
+
+            if (existingTask != null) {
+                for ((i, filter) in filterList.withIndex()) {
+                    if (filter.id == existingTask!!.filterId) {
+                        filterDropdown.setSelection(i + 1)
+                    }
+                }
+            }
+
+            filterDropdown.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(parentView: AdapterView<*>?, selectedItemView: View, position: Int, id: Long) {
+                    selectedFilter = if (position > 0 && position < titles.size) filterItems[position - 1] else null
+                }
+                override fun onNothingSelected(parentView: AdapterView<*>?) {}
+            }
+        }
+    }
+
+    private fun showFilterMenu(view: View, filter: Filter?) {
+        val popupMenu = PopupMenu(this, view)
+        popupMenu.menuInflater.inflate(R.menu.filter_item_menu, popupMenu.menu)
+        val menu = popupMenu.menu
+        for (i in 0 until menu.size()) {
+            val menuItem = menu.getItem(i)
+            if (menuItem.itemId == R.id.action_edit_filter ||
+                    menuItem.itemId == R.id.action_delete_filter) {
+                menuItem.isVisible = filter != null
+            }
+        }
+        popupMenu.setOnMenuItemClickListener { item: MenuItem ->
+            when (item.itemId) {
+                R.id.action_create_new_filter -> {
+                    openFilterActivity()
+                }
+                R.id.action_edit_filter -> {
+                    openFilterActivity(filter)
+                }
+                R.id.action_delete_filter -> {
+                    dbHandler.deleteFilter(filter!!.id)
+                    filterDropdown.setSelection(0)
+                    prepareFilterDropdown()
+                }
+                else -> return@setOnMenuItemClickListener false
+            }
+            true
+        }
+        popupMenu.show()
+    }
+    private fun openFilterActivity(filter: Filter? = null) {
+        val intent = Intent(this, FilterActivity::class.java)
+        if(filter != null) {
+            intent.putExtra(FilterActivity.ID_EXTRA, filter.id)
+        }
+        startActivityForResult(intent, REQUEST_CODE_FILTER)
+    }
 
     private fun prepareSyncDirectionDropdown() {
         val options = SyncDirectionObject.getOptionsArray(this)
@@ -313,6 +441,7 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback {
         const val ID_EXTRA = "TASK_EDIT_ID"
         const val REQUEST_CODE_FP_LOCAL = 500
         const val REQUEST_CODE_FP_REMOTE = 444
+        const val REQUEST_CODE_FILTER = 333
 
     }
 }

@@ -216,7 +216,13 @@
         <activity
             android:name=".Activities.TriggerActivity"
             android:label="@string/title_activity_trigger"
-            android:theme="@style/AppTheme.NoActionBar" /> <!-- Auto Language Generation -->
+            android:theme="@style/AppTheme.NoActionBar" />
+        <activity
+            android:name=".Activities.FilterActivity"
+            android:label="@string/title_activity_filter"
+            android:theme="@style/AppTheme.NoActionBar" />
+
+        <!-- Auto Language Generation -->
         <service
             android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
             android:enabled="false"
