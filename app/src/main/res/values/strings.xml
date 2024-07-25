@@ -469,6 +469,11 @@
     <string name="description_sync_direction_copy_toremote">Copy new or modified files from local storage to remote storage. No files are deleted, existing files on the remote may be overwritten.</string>
     <string name="description_sync_direction_copy_tolocal">Copy new or modified files from remote storage to local storage. No files are deleted, existing files on the local storage may be overwritten.</string>
     <string name="description_sync_direction_sync_bidirectional">Make sure local and remote storage have the same files by transferring, downloading, and deleting files as needed to maintain an identical folder structure.</string>
+    <string name="sync_option_all_tasks_asc">All tasks (in alphabetical order)</string>
+    <string name="sync_title_all_tasks_asc">All tasks</string>
+    <string name="sync_option_all">All</string>
+    <string name="sync_option_all_tasks_prefixed_asc">… named tasks</string>
+    <string name="sync_title_all_tasks_prefixed_asc">… tasks</string>
     <string name="intro_success">Success!</string>
     <string name="intro_successful_setup">You are now ready to start!</string>
     <string name="status_offendingfile">"The offending File: "</string>

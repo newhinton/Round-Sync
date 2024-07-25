@@ -29,11 +29,14 @@ class TriggerActivity : AppCompatActivity() {
 
     companion object {
         const val ID_EXTRA = "TRIGGER_EDIT_ID"
+        const val ID_ALL_TASKS = -1000L
+        const val UNICODE_CHAR_RANGE = -10_000_000L
     }
 
     private lateinit var mTrigger: Trigger
     private lateinit var dbHandler: DatabaseHandler
     private var mTaskList: List<Task> = ArrayList()
+    private var firstCharOfTasksUnique: List<Char> = ArrayList<Char>()
 
     private lateinit var mCardInterval: CardView
     private lateinit var mCardWeekday: CardView
@@ -86,6 +89,14 @@ class TriggerActivity : AppCompatActivity() {
 
         dbHandler = DatabaseHandler(this)
         mTaskList = dbHandler.allTasks
+
+        if (this.mTaskList.isNotEmpty()) {
+            val firstCharsOfTaskTitles : HashSet<Char> = HashSet<Char>()
+            for (i in this.mTaskList.indices) {
+                firstCharsOfTaskTitles.add(this.mTaskList[i].title.trim().uppercase().first())
+            }
+            firstCharOfTasksUnique = firstCharsOfTaskTitles.toList().sortedBy { it.toString() }
+        }
 
         val extras = intent.extras
         val triggerId: Long
@@ -195,7 +206,14 @@ class TriggerActivity : AppCompatActivity() {
 
         mTargetDropdown.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View, pos: Int, id: Long) {
-                mTrigger.triggerTarget = mTaskList[pos].id
+                if (pos == (mTaskList.size)) {
+                    mTrigger.triggerTarget = ID_ALL_TASKS
+                } else if (pos > (mTaskList.size)) {
+                    val charForGrouping = firstCharOfTasksUnique[pos - mTaskList.size - 1]
+                    mTrigger.triggerTarget = UNICODE_CHAR_RANGE - charForGrouping.code.toLong()
+                } else {
+                    mTrigger.triggerTarget = mTaskList[pos].id
+                }
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) {}
@@ -213,9 +231,13 @@ class TriggerActivity : AppCompatActivity() {
      * Set up Task-Target Dropdown
      */
     private fun setUpTargetsDropdown() {
-        val items = arrayOfNulls<String>(this.mTaskList.size)
+        val items = arrayOfNulls<String>(if (this.mTaskList.size == 0) 0 else (this.mTaskList.size + firstCharOfTasksUnique.size + 1))
         for (i in this.mTaskList.indices) {
             items[i] = this.mTaskList[i].title
+        }
+        if (this.mTaskList.size > 0) items[this.mTaskList.size] = this.resources.getString(R.string.sync_option_all_tasks_asc)
+        for (i in firstCharOfTasksUnique.indices) {
+            items[i + this.mTaskList.size + 1] = this.resources.getString(R.string.sync_option_all) + " " + firstCharOfTasksUnique[i] + this.resources.getString(R.string.sync_option_all_tasks_prefixed_asc)
         }
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, items)
         mTargetDropdown.adapter = adapter
@@ -258,8 +280,15 @@ class TriggerActivity : AppCompatActivity() {
 
         //Todo properly populate the fields
         for (task in mTaskList) {
-            if (task.id == mTrigger.triggerTarget) {
+            if (mTrigger.triggerTarget == ID_ALL_TASKS) {
+                mTargetDropdown.setSelection(mTaskList.size)
+            } else if (task.id == mTrigger.triggerTarget) {
                 mTargetDropdown.setSelection(mTaskList.indexOf(task))
+            } else if (UNICODE_CHAR_RANGE - mTrigger.triggerTarget >= 0) {
+                val firstChar = (UNICODE_CHAR_RANGE - mTrigger.triggerTarget).toInt().toChar()
+                if (firstCharOfTasksUnique.contains(firstChar)) {
+                    mTargetDropdown.setSelection(mTaskList.size + firstCharOfTasksUnique.indexOf(firstChar) + 1)
+                }
             }
         }
     }
