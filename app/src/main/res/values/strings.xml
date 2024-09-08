@@ -1,7 +1,7 @@
 <resources>
-    <string name="app_name">Round Sync</string>
+    <string name="app_name" translatable="false">Round Sync</string>
     <string name="app_description">Rclone for Android</string>
-    <string name="app_short_name">Round Sync</string>
+    <string name="app_short_name" translatable="false">Round Sync</string>
 
     <string name="title_activity_about">About</string>
     <string name="title_activity_changelog">Changelog</string>
@@ -33,7 +33,7 @@
     <string name="old_maintainer">Old Maintainer</string>
     <string name="old_maintainer_name" translatable="false">x0b &lt;github.com/x0b&gt;</string>
     <string name="empty_folder">The folder is empty</string>
-    <string name="ooops">Ooops!</string>
+    <string name="ooops">Oops!</string>
     <string name="no_config_found">No configuration found, please import or add remote</string>
     <string name="import_configuration">Import configuration</string>
     <string name="empty_state_icon">Empty state icon</string>
@@ -180,10 +180,10 @@
     <string name="remote_name_hint">Name (a–z, 0-9 only)</string>
     <string name="waiting_for_code">Waiting for code</string>
     <string name="open_browser">Open browser</string>
-    <string name="provider_ftp">FTP</string>
-    <string name="provider_http">HTTP</string>
-    <string name="serve_dlna">DLNA</string>
-    <string name="provider_webdav">Webdav</string>
+    <string name="provider_ftp" translatable="false">FTP</string>
+    <string name="provider_http" translatable="false">HTTP</string>
+    <string name="serve_dlna" translatable="false">DLNA</string>
+    <string name="provider_webdav" translatable="false">Webdav</string>
     <string name="error_creating_remote">Error creating remote</string>
     <string name="remote_creation_success">Remote created successfully</string>
     <string name="next">Next</string>
@@ -487,7 +487,7 @@
     <string name="sync_service_notification_channel_fail_description">Notification for failed syncs</string>
     <string name="sync_service_notification_channel_report_title">Sync service reports</string>
     <string name="sync_service_notification_channel_report_description">Notification for sync-reports</string>
-    <string name="dynamic_config_unknown_error">This Prodvider is unknown!</string>
+    <string name="dynamic_config_unknown_error">This Provider is unknown!</string>
     <string name="toggle_advanced_options">Toggle Advanced Options</string>
     <string name="trigger_type_schedule">Scheduled</string>
     <string name="trigger_type_interval">Interval</string>
@@ -499,7 +499,7 @@
     <string name="save_trigger_button_description">Save Trigger</string>
     <string name="trigger_save_notitle">You need to set a title</string>
     <string name="intro_notifications_title">Get Notified!</string>
-    <string name="intro_notifications_description">We want to show you notifications when we sync your files, so please grant us access to post notifications. We wont spam you!</string>
+    <string name="intro_notifications_description">We want to show you notifications when we sync your files, so please grant us access to post notifications. We won\'t spam you!</string>
     <string name="error_getting_config">We could not load your configuration!</string>
     <string name="notification_reports">Create Reports for Syncs. Replaces singular notifications with a unified one.</string>
     <string name="back">Back</string>
@@ -511,7 +511,7 @@
     <string name="intro_permission_changed_title">Permissions required!</string>
     <string name="intro_permission_changed_description">Sorry, to disturb you, but we need to quickly update the permissions granted to us. This allows the best possible experience!</string>
     <string name="intro_alarms_title">Alarms!</string>
-    <string name="intro_alarms_description">We need to be able to set alarms to schedule sync\'s. Dont worry, we will never ring your phone!</string>
+    <string name="intro_alarms_description">We need to be able to set alarms to schedule sync\'s. Don\'t worry, we will never ring your phone!</string>
     <string name="operation_start_sync">Started Sync</string>
     <string name="operation_sync_cancelled">Sync was cancelled</string>
     <string name="app_error_notification_channel_name">App Errors</string>
@@ -520,12 +520,12 @@
     <string name="permissions_notifications_label">Notifications</string>
     <string name="permissions_notifications_description">Notifications are useful in conveying errors and the state of the app. You should consider enabling them, so that we can inform you about any issues.</string>
     <string name="permissions_alarms_label">Alarms</string>
-    <string name="permissions_alarms_description">We need to schedule alarms so that your synchronizations are running on time. If this permission is not granted, your syncs wont start at all.</string>
+    <string name="permissions_alarms_description">We need to schedule alarms so that your synchronizations are running on time. If this permission is not granted, your syncs won\'t start at all.</string>
     <string name="permissions_storage_label">Storage</string>
     <string name="permissions_storage_description">This permission is required to access your local device. While you can still access remotes, it is highly recommended to allow access to your device.</string>
     <string name="permissions_button_request">Request!</string>
     <string name="app_error_notification_alarmpermission_missing">Alarm Scheduling Permission missing</string>
-    <string name="app_error_notification_alarmpermission_missing_description">Please grant this permission to allow schedules to be started. Without it, syncs wont run!</string>
+    <string name="app_error_notification_alarmpermission_missing_description">Please grant this permission to allow schedules to be started. Without it, syncs won\'t run!</string>
     <string name="breadcrumb_home_description">Remote-Root</string>
     <string name="breadcrumb_next_description">Next breadcrumb arrow indicator</string>
     <string name="remote_creation_next_step">Next Step</string>
