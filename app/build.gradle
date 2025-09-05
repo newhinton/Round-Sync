@@ -15,10 +15,10 @@ android {
         vectorDrawables.generatedDensities = []
         applicationId 'de.felixnuesse.extract'
         minSdkVersion 23
-        compileSdk 34
-        targetSdkVersion 34
+        compileSdk 35
+        targetSdkVersion 35
         versionCode 410 // last digit is reserved for ABI, only ever end on 0!
-        versionName '2.5.6'
+        versionName '2.5.7'
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField "java.lang.String", "CLI", System.getenv('RCX_BUILD_CLI') ? System.getenv('RCX_BUILD_CLI') : "\"c03129b6-b09f-9cb4-8fcd-7f143b8f94ef\""
         buildConfigField "java.lang.String", "VCP_AUTHORITY", "\"" + applicationId + ".vcp\"";
@@ -26,7 +26,7 @@ android {
 
         externalNativeBuild {
             ndkBuild {
-                arguments "LOCAL_LDFLAGS += -Wl,--build-id=none"
+                arguments "LOCAL_LDFLAGS += -Wl,-z,max-page-size=16384,--build-id=none"
             }
         }
     }
