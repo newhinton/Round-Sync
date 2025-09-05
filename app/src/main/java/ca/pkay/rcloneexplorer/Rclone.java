@@ -52,6 +52,7 @@ import ca.pkay.rcloneexplorer.Items.RemoteItem;
 import ca.pkay.rcloneexplorer.Items.SyncDirectionObject;
 import ca.pkay.rcloneexplorer.rclone.Provider;
 import ca.pkay.rcloneexplorer.util.FLog;
+import ca.pkay.rcloneexplorer.util.SyncLog;
 import es.dmoral.toasty.Toasty;
 import io.github.x0b.safdav.SafAccessProvider;
 import io.github.x0b.safdav.SafDAVServer;
@@ -226,7 +227,9 @@ public class Rclone {
             }
             return;
         }
-        log2File.log(stringBuilder.toString());
+        String logOutput = stringBuilder.toString();
+        log2File.log(logOutput);
+        SyncLog.error(context, "Rclone operation", logOutput);
     }
 
     @Nullable
@@ -262,7 +265,7 @@ public class Rclone {
         }
         String[] env = getRcloneEnv();
         JSONArray results;
-        Process process;
+        Process process = null;
         try {
             FLog.d(TAG, "getDirectoryContent[ENV]: %s", Arrays.toString(env));
             process = getRuntimeProcess(command, env);
@@ -285,9 +288,11 @@ public class Rclone {
             results = new JSONArray(outputStr);
 
         } catch (InterruptedException e) {
+            logErrorOutput(process);
             FLog.d(TAG, "getDirectoryContent: Aborted refreshing folder");
             return null;
         } catch (IOException | JSONException e) {
+            logErrorOutput(process);
             FLog.e(TAG, "getDirectoryContent: Could not get folder content", e);
             return null;
         }
@@ -315,6 +320,7 @@ public class Rclone {
                 FileItem fileItem = new FileItem(remote, filePath, fileName, fileSize, fileModTime, mimeType, fileIsDir, startAtRoot);
                 fileItemList.add(fileItem);
             } catch (JSONException e) {
+                logErrorOutput(process);
                 FLog.e(TAG, "getDirectoryContent: Could not decode JSON", e);
                 return null;
             }
@@ -325,7 +331,7 @@ public class Rclone {
     public List<RemoteItem> getRemotes() {
         String[] command = createCommand("config", "dump");
         StringBuilder output = new StringBuilder();
-        Process process;
+        Process process = null;
         JSONObject remotesJSON;
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
         Set<String> pinnedRemotes = sharedPreferences.getStringSet(context.getString(R.string.shared_preferences_pinned_remotes), new HashSet<>());
@@ -348,6 +354,7 @@ public class Rclone {
 
             remotesJSON = new JSONObject(output.toString());
         } catch (IOException | InterruptedException | JSONException e) {
+            logErrorOutput(process);
             FLog.e(TAG, "getRemotes: error retrieving remotes", e);
             return new ArrayList<>();
         }
@@ -389,6 +396,7 @@ public class Rclone {
 
                 remoteItemList.add(newRemote);
             } catch (JSONException e) {
+                logErrorOutput(process);
                 FLog.e(TAG, "getRemotes: error decoding remotes", e);
                 return new ArrayList<>();
             }
