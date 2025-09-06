@@ -18,8 +18,6 @@
 //  - Either Android SDK command-line tools, or the expected NDK version (see gradle.properties).
 
 
-import groovy.json.JsonSlurper
-
 import java.nio.file.Paths
 
 ext {
@@ -148,7 +146,7 @@ def buildRclone(abi) {
                 environment 'CC_FOR_TARGET', crossCompiler
                 environment 'GOOS', 'android'
                 environment 'CGO_ENABLED', '1'
-                environment 'CGO_LDFLAGS', '-fuse-ld=lld -Wl,--hash-style=both -s'
+                environment 'CGO_LDFLAGS', '-fuse-ld=lld -Wl,-z,max-page-size=16384,--hash-style=both -s'
                 abiToEnv[abi].each {entry -> environment entry.key, entry.value}
                 workingDir CACHE_PATH
                 def ldflags = "-buildid= -X github.com/rclone/rclone/fs.Version=${RCLONE_VERSION}${RCLONE_CUSTOM_VERSION_SUFFIX}"
@@ -186,7 +184,7 @@ task checkoutRclone(type: Exec, dependsOn: createRcloneModule) {
     def goVersionOutput = new ByteArrayOutputStream()
     exec{
         commandLine 'go', 'version'
-        standardOutput = goVersionOutput;
+        standardOutput = goVersionOutput
     }
 
     if (goVersionOutput.toString().contains(GO_REQ_VERSION)) {

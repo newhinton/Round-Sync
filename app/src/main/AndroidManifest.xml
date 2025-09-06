@@ -34,7 +34,7 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         tools:ignore="GoogleAppIndexingWarning,MissingTvBanner"
-        tools:targetApi="33">
+        tools:targetApi="35">
         <receiver
             android:name="de.felixnuesse.extract.updates.UpdateUserchoiceReceiver"
             android:enabled="true"
