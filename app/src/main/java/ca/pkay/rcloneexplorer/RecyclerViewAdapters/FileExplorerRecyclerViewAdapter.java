@@ -107,6 +107,9 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
             boolean localLoad = item.getRemote().getType() == RemoteItem.SAFW;
             String mimeType = item.getMimeType();
             if ((mimeType.startsWith("image/") || mimeType.startsWith("video/")) && item.getSize() <= sizeLimit) {
+                // Tint is applied across the board in the theme, so we want to disable it for thumbnails.
+                holder.fileIcon.setImageTintList(null);
+
                 RequestOptions glideOption = new RequestOptions()
                         .centerCrop()
                         .diskCacheStrategy(DiskCacheStrategy.ALL)
