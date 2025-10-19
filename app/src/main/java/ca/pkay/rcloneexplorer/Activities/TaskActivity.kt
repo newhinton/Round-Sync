@@ -238,7 +238,15 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback{
         taskToPopulate.title = findViewById<EditText>(R.id.task_title_textfield).text.toString()
         val remotename = remoteDropdown.selectedItem.toString()
         taskToPopulate.remoteId = remotename
-        val direction = syncDirection.selectedItemPosition + 1
+        // Map spinner position to internal SyncDirection constants explicitly
+        val directionMap = arrayOf(
+            SyncDirectionObject.SYNC_LOCAL_TO_REMOTE,
+            SyncDirectionObject.SYNC_REMOTE_TO_LOCAL,
+            SyncDirectionObject.COPY_LOCAL_TO_REMOTE,
+            SyncDirectionObject.COPY_REMOTE_TO_LOCAL,
+            SyncDirectionObject.MOVE_LOCAL_TO_REMOTE
+        )
+        val direction = if (syncDirection.selectedItemPosition >= 0 && syncDirection.selectedItemPosition < directionMap.size) directionMap[syncDirection.selectedItemPosition] else SyncDirectionObject.SYNC_LOCAL_TO_REMOTE
         for (ri in rcloneInstance.remotes) {
             if (ri.name == taskToPopulate.remoteId) {
                 taskToPopulate.remoteType = ri.type
@@ -246,7 +254,7 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback{
         }
         taskToPopulate.remotePath = remotePath.text.toString()
         taskToPopulate.localPath = localPath.text.toString()
-        taskToPopulate.direction = direction
+    taskToPopulate.direction = direction
 
         taskToPopulate.wifionly = switchWifi.isChecked
         taskToPopulate.md5sum = switchMD5sum.isChecked
@@ -491,7 +499,17 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback{
 
             override fun onNothingSelected(adapterView: AdapterView<*>?) {}
         }
-        syncDirection.setSelection((((existingTask?.direction?.minus(1)) ?: 0)) )
+        // Ensure spinner selection reflects existing task direction by mapping stored constant to index
+        val directionMap = arrayOf(
+            SyncDirectionObject.SYNC_LOCAL_TO_REMOTE,
+            SyncDirectionObject.SYNC_REMOTE_TO_LOCAL,
+            SyncDirectionObject.COPY_LOCAL_TO_REMOTE,
+            SyncDirectionObject.COPY_REMOTE_TO_LOCAL,
+            SyncDirectionObject.MOVE_LOCAL_TO_REMOTE
+        )
+        val currentDirection = existingTask?.direction ?: SyncDirectionObject.SYNC_LOCAL_TO_REMOTE
+        val selectionIndex = directionMap.indexOf(currentDirection).let { if (it >= 0) it else 0 }
+        syncDirection.setSelection(selectionIndex)
     }
 
     private fun updateSpinnerDescription(value: Int) {
@@ -503,6 +521,8 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback{
                 getString(R.string.description_sync_direction_sync_tolocal)
             SyncDirectionObject.COPY_LOCAL_TO_REMOTE -> text =
                 getString(R.string.description_sync_direction_copy_toremote)
+            SyncDirectionObject.MOVE_LOCAL_TO_REMOTE -> text =
+                getString(R.string.description_sync_direction_move_toremote)
             SyncDirectionObject.COPY_REMOTE_TO_LOCAL -> text =
                 getString(R.string.description_sync_direction_copy_tolocal)
             SyncDirectionObject.SYNC_BIDIRECTIONAL -> text =

@@ -36,6 +36,9 @@ public class SyncDirectionObject {
     public static final int SYNC_BIDIRECTIONAL_INITIAL = 5;
     public static final int SYNC_BIDIRECTIONAL = 6;
 
+    // Move local to remote (use rclone move)
+    public static final int MOVE_LOCAL_TO_REMOTE = 7;
+
 
     public static String[] getOptionsArray(Context context) {
         return context.getResources().getStringArray(R.array.sync_direction_array);

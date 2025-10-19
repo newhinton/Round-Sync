@@ -5,6 +5,7 @@
         <item>@string/sync_direction_remote_local</item>
         <item>@string/sync_direction_copy_local_remote</item>
         <item>@string/sync_direction_copy_remote_local</item>
+        <item>@string/sync_direction_move_local_remote</item>
         <!--<item>@string/sync_direction_bidirectional</item>-->
     </string-array>
 </resources>

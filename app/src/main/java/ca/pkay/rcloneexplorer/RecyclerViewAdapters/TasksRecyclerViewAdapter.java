@@ -105,6 +105,9 @@ public class TasksRecyclerViewAdapter extends RecyclerView.Adapter<TasksRecycler
             case SyncDirectionObject.COPY_REMOTE_TO_LOCAL:
                 holder.taskSyncDirection.setText(view.getResources().getString(R.string.copy));
                 break;
+            case SyncDirectionObject.MOVE_LOCAL_TO_REMOTE:
+                holder.taskSyncDirection.setText(view.getResources().getString(R.string.move));
+                break;
             case SyncDirectionObject.SYNC_BIDIRECTIONAL_INITIAL:
             case SyncDirectionObject.SYNC_BIDIRECTIONAL:
                 holder.taskSyncDirection.setText(view.getResources().getString(R.string.bisync));

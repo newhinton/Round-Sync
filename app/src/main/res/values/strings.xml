@@ -15,7 +15,6 @@
     <string name="select_all">Select all</string>
     <string name="serve">Serve…</string>
     <string name="download">Download</string>
-    <string name="move">Move</string>
     <string name="rename">Rename</string>
     <string name="delete">Delete</string>
     <string name="app_version">App Version</string>
@@ -333,6 +332,8 @@
     <string name="task_copied_id_to_clipboard">Copied ID "%s" to clipboard!</string>
     <string name="importer_unknown_error">Unknown error importing task!</string>
     <string name="sync_direction_copy_local_remote">Copy local to remote</string>
+    <string name="sync_direction_move_local_remote">Move local to remote</string>
+    <string name="move">Move</string>
     <string name="sync_direction_copy_remote_local">Copy remote to local</string>
     <string name="copy">Copy</string>
     <string name="operation_success">%s sync successful</string>
@@ -486,6 +487,7 @@
     <string name="description_sync_direction_copy_toremote">Copy new or modified files from local storage to remote storage. No files are deleted, existing files on the remote may be overwritten.</string>
     <string name="description_sync_direction_copy_tolocal">Copy new or modified files from remote storage to local storage. No files are deleted, existing files on the local storage may be overwritten.</string>
     <string name="description_sync_direction_sync_bidirectional">Make sure local and remote storage have the same files by transferring, downloading, and deleting files as needed to maintain an identical folder structure.</string>
+    <string name="description_sync_direction_move_toremote">Move files from local storage to remote storage. Files will be removed from the local source after successful transfer.</string>
     <string name="filter_type_include">Include</string>
     <string name="filter_type_exclude">Exclude</string>
     <string name="intro_success">Success!</string>
