@@ -25,6 +25,8 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Round Sync 2"
+rootProject.name = "Round Sync"
+
 include(":app")
+include(":librclone")
 include(":rclone")
