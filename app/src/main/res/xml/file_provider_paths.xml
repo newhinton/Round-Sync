@@ -1,5 +1,0 @@
-<paths
-    xmlns:android="http://schemas.android.com/apk/res/android">
-    <external-cache-path name="cache" path="/"/>
-    <cache-path name="internal-cache" path="report/" />
-</paths>
