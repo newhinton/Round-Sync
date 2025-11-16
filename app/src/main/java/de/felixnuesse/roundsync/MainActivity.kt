@@ -1,6 +1,9 @@
 package de.felixnuesse.roundsync
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -18,8 +21,24 @@ class MainActivity : AppCompatActivity() {
             insets
         }
 
+        /*
+
+
+
+        val uri = Uri.parse("package:${BuildConfig.APPLICATION_ID}")
+
+        startActivity(
+            Intent(
+                Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                uri
+            )
+        )
+
+         */
+
         RcloneLib(this)
-        Rclone()
+
+
 
 
     }
