@@ -2,7 +2,7 @@ package de.felixnuesse.rclone.result
 
 import de.felixnuesse.rclone.log.LogError
 
-class ResultType<T>() {
+open class ResultType<T>() {
 
     private var data: T? = null
     private var success: Boolean? = null

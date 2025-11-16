@@ -1,12 +1,12 @@
 package de.felixnuesse.rclone.commands
 
 import de.felixnuesse.rclone.RemoteObject
-import de.felixnuesse.rclone.command.SyncCommand
+import de.felixnuesse.rclone.command.Command
 import de.felixnuesse.rclone.result.LsJsonResult
 import de.felixnuesse.rclone.result.ResultType
 
 
-class LsJson(var source: RemoteObject): SyncCommand<LsJsonResult>("lsjson") {
+class LsJson(var source: RemoteObject): Command<LsJsonResult>("lsjson") {
 
     companion object {
         fun from(name: String, path: String): LsJson {
@@ -22,7 +22,7 @@ class LsJson(var source: RemoteObject): SyncCommand<LsJsonResult>("lsjson") {
         params.add(this.command)
         params.add(source.toString())
         params.add("--use-json-log")
-        params.add("--log-level=INFO")
+        params.add("--log-level=ERROR")
         return params
     }
 
@@ -30,6 +30,7 @@ class LsJson(var source: RemoteObject): SyncCommand<LsJsonResult>("lsjson") {
         try {
             return ResultType.success(LsJsonResult.fromResultRowList(result))
         } catch (e: Exception) {
+            e.printStackTrace()
         }
         return ResultType.failure(tryToGetError(result))
     }

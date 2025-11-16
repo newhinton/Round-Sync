@@ -5,8 +5,10 @@ import android.os.Environment
 import android.util.Log
 import de.felixnuesse.rclone.Rclone
 import de.felixnuesse.rclone.RemoteObject
+import de.felixnuesse.rclone.commands.Copy
 import de.felixnuesse.rclone.commands.LsJson
 import de.felixnuesse.rclone.commands.Version
+import de.felixnuesse.rclone.rFile.rFile
 import java.io.BufferedReader
 import java.io.File
 import java.io.IOException
@@ -26,16 +28,12 @@ class RcloneLib(var context: Context) {
 
 
 
-        var remote = RemoteObject.from("/storage/emulated/0")
-        var lsdir = LsJson(remote).exec()
+        var remote = RemoteObject.from("/storage/emulated/0/")
+        var file = rFile(remote)
+        var files = file.listFiles()
 
+        files.get(6).listFiles().forEach { Log.e("TAG", it.isDirectory().toString()) }
+        files.get(7).listFiles().forEach { Log.e("TAG", it.isDirectory().toString()) }
 
-
-
-        if(lsdir.isSuccessful()) {
-            Log.e("TAG", lsdir.getData().toString())
-        } else {
-            Log.e("TAG", lsdir.getError().toString())
-        }
     }
 }

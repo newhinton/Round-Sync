@@ -2,10 +2,11 @@ package de.felixnuesse.rclone.commands
 
 import de.felixnuesse.rclone.RemoteObject
 import de.felixnuesse.rclone.command.AsyncCallback
-import de.felixnuesse.rclone.command.AsyncCommand
+import de.felixnuesse.rclone.command.Command
+import de.felixnuesse.rclone.result.AsyncResult
 
 
-class Copy(var source: RemoteObject, var target: RemoteObject, private var callback: AsyncCallback?): AsyncCommand<String>("copy", callback) {
+class Copy(var source: RemoteObject, var target: RemoteObject, private var callback: AsyncCallback?): Command<String>("copy") {
 
     companion object {
         private var bwlimit = ""
@@ -39,8 +40,8 @@ class Copy(var source: RemoteObject, var target: RemoteObject, private var callb
         return super.isValidLine(line)
     }
 
-    override fun parse(result: String): String {
-        return result
+    override fun parse(result: String): AsyncResult {
+        return AsyncResult()
     }
 
 }

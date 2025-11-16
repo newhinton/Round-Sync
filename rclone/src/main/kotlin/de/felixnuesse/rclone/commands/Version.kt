@@ -1,10 +1,10 @@
 package de.felixnuesse.rclone.commands
 
-import de.felixnuesse.rclone.command.SyncCommand
+import de.felixnuesse.rclone.command.Command
 import de.felixnuesse.rclone.result.ResultType
 
 
-class Version: SyncCommand<String>("version") {
+class Version: Command<String>("version") {
 
 
 
