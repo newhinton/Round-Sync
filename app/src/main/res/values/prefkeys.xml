@@ -32,4 +32,5 @@
     <string name="pref_key_renamed_remote_prefix" translatable="false">remote_name_%1$s</string>
     <string name="pref_key_local_alias_remotes" translatable="false">local_alias_remotes</string>
     <string name="pref_key_refresh_local_aliases" translatable="false">refresh_local_aliases</string>
+    <string name="pref_key_show_hidden_files" translatable="false">pref_key_show_hidden_files</string>
 </resources>

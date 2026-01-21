@@ -35,6 +35,12 @@
         app:showAsAction="never" />
 
     <item
+        android:id="@+id/action_show_hidden_files"
+        android:title="@string/show_hidden_files"
+        android:checkable="true"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/action_empty_trash"
         android:title="@string/empty_trash"
         app:showAsAction="never" />
