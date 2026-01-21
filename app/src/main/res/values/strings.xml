@@ -199,6 +199,7 @@
     <string name="delete_remote_title">Delete remote?</string>
     <string name="rename_remote">Rename Remote</string>
     <string name="empty_trash">Empty trash</string>
+    <string name="show_hidden_files">Show hidden files</string>
     <string name="trash_emptied">Trash emptied</string>
     <string name="error_emptying_trash">Error emptying trash</string>
     <string name="file_options_content_description">File options</string>
