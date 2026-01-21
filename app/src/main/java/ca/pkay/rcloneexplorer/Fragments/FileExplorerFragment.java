@@ -171,6 +171,8 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
     private String thumbnailServerAuth;
     private int thumbnailServerPort;
     private boolean wrapFilenames;
+    private boolean showHiddenFiles;
+    private MenuItem menuShowHiddenFiles;
     private SharedPreferences.OnSharedPreferenceChangeListener prefChangeListener;
 
     /**
@@ -247,6 +249,7 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
         };
         sharedPreferences.registerOnSharedPreferenceChangeListener(prefChangeListener);
         wrapFilenames = sharedPreferences.getBoolean(getString(R.string.pref_key_wrap_filenames), true);
+        showHiddenFiles = sharedPreferences.getBoolean(getString(R.string.pref_key_show_hidden_files), false);
 
         if (goToDefaultSet) {
             startAtRoot = sharedPreferences.getBoolean(getString(R.string.pref_key_start_at_root), false);
@@ -295,7 +298,7 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
                 fetchDirectoryTask = new FetchDirectoryContent().execute();
                 swipeRefreshLayout.setRefreshing(true);
             } else {
-                recyclerViewAdapter.newData(directoryObject.getDirectoryContent());
+                recyclerViewAdapter.newData(filterHiddenFiles(directoryObject.getDirectoryContent()));
             }
         }
 
@@ -587,6 +590,8 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
         menuLink = menu.findItem(R.id.action_link);
         menuHttpServe = menu.findItem(R.id.action_serve);
         menuEmptyTrash = menu.findItem(R.id.action_empty_trash);
+        menuShowHiddenFiles = menu.findItem(R.id.action_show_hidden_files);
+        menuShowHiddenFiles.setChecked(showHiddenFiles);
 
         if (!remote.hasTrashCan()) {
             menu.findItem(R.id.action_empty_trash).setVisible(false);
@@ -654,6 +659,9 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
             case R.id.action_go_to:
                 showSFTPgoToDialog();
                 return true;
+            case R.id.action_show_hidden_files:
+                toggleShowHiddenFiles();
+                return true;
             case android.R.id.home:
                 if (isInMoveMode) {
                     cancelMoveClicked();
@@ -712,6 +720,34 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
                 .setNegativeButton(R.string.cancel, null)
                 .setPositiveButton(R.string.ok, (dialog, which) -> new EmptyTrashTask().execute())
                 .show();
+    }
+
+    private void toggleShowHiddenFiles() {
+        showHiddenFiles = !showHiddenFiles;
+        menuShowHiddenFiles.setChecked(showHiddenFiles);
+
+        // Save the preference
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+        sharedPreferences.edit().putBoolean(getString(R.string.pref_key_show_hidden_files), showHiddenFiles).apply();
+
+        // Refresh the current directory view
+        if (fetchDirectoryTask != null) {
+            fetchDirectoryTask.cancel(true);
+        }
+        fetchDirectoryTask = new FetchDirectoryContent(true).execute();
+    }
+
+    private List<FileItem> filterHiddenFiles(List<FileItem> fileItems) {
+        if (showHiddenFiles || fileItems == null) {
+            return fileItems;
+        }
+        List<FileItem> filteredList = new ArrayList<>();
+        for (FileItem item : fileItems) {
+            if (!item.getName().startsWith(".")) {
+                filteredList.add(item);
+            }
+        }
+        return filteredList;
     }
 
     private void showSFTPgoToDialog() {
@@ -865,7 +901,7 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
     }
 
     private void searchDirContent(String search) {
-        List<FileItem> content = directoryObject.getDirectoryContent();
+        List<FileItem> content = filterHiddenFiles(directoryObject.getDirectoryContent());
         List<FileItem> currentShown = recyclerViewAdapter.getCurrentContent();
         List<FileItem> results = new ArrayList<>();
 
@@ -910,7 +946,7 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
             }
             if (directoryObject.isPathInCache(moveStartPath)) {
                 directoryObject.restoreFromCache(moveStartPath);
-                recyclerViewAdapter.newData(directoryObject.getDirectoryContent());
+                recyclerViewAdapter.newData(filterHiddenFiles(directoryObject.getDirectoryContent()));
             } else {
                 directoryObject.setPath(moveStartPath);
                 recyclerViewAdapter.clear();
@@ -1039,7 +1075,7 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
             }
             recyclerViewAdapter.updateSortedData(sortedSearch);
         } else {
-            recyclerViewAdapter.updateSortedData(directoryContent);
+            recyclerViewAdapter.updateSortedData(filterHiddenFiles(directoryContent));
         }
         if (sortOrder > 0) {
             SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
@@ -1152,7 +1188,7 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
             swipeRefreshLayout.setRefreshing(true);
             directoryObject.restoreFromCache(path);
             sortDirectory();
-            recyclerViewAdapter.newData(directoryObject.getDirectoryContent());
+            recyclerViewAdapter.newData(filterHiddenFiles(directoryObject.getDirectoryContent()));
             if (directoryPosition.containsKey(directoryObject.getCurrentPath())) {
                 int position = directoryPosition.get(directoryObject.getCurrentPath());
                 recyclerViewLinearLayoutManager.scrollToPositionWithOffset(position, 10);
@@ -1161,7 +1197,7 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
         } else if (directoryObject.isPathInCache(path)) {
             directoryObject.restoreFromCache(path);
             sortDirectory();
-            recyclerViewAdapter.newData(directoryObject.getDirectoryContent());
+            recyclerViewAdapter.newData(filterHiddenFiles(directoryObject.getDirectoryContent()));
             if (directoryPosition.containsKey(directoryObject.getCurrentPath())) {
                 int position = directoryPosition.get(directoryObject.getCurrentPath());
                 recyclerViewLinearLayoutManager.scrollToPositionWithOffset(position, 10);
@@ -1207,12 +1243,12 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
             swipeRefreshLayout.setRefreshing(true);
             directoryObject.restoreFromCache(fileItem.getPath());
             sortDirectory();
-            recyclerViewAdapter.newData(directoryObject.getDirectoryContent());
+            recyclerViewAdapter.newData(filterHiddenFiles(directoryObject.getDirectoryContent()));
             fetchDirectoryTask = new FetchDirectoryContent(true).execute();
         } else if (directoryObject.isPathInCache(fileItem.getPath())) {
             directoryObject.restoreFromCache(fileItem.getPath());
             sortDirectory();
-            recyclerViewAdapter.newData(directoryObject.getDirectoryContent());
+            recyclerViewAdapter.newData(filterHiddenFiles(directoryObject.getDirectoryContent()));
             swipeRefreshLayout.setRefreshing(false);
         } else {
             directoryObject.setPath(fileItem.getPath());
@@ -1386,7 +1422,7 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
             swipeRefreshLayout.setRefreshing(true);
             directoryObject.restoreFromCache(path);
             sortDirectory();
-            recyclerViewAdapter.newData(directoryObject.getDirectoryContent());
+            recyclerViewAdapter.newData(filterHiddenFiles(directoryObject.getDirectoryContent()));
             if (directoryPosition.containsKey(directoryObject.getCurrentPath())) {
                 int position = directoryPosition.get(directoryObject.getCurrentPath());
                 recyclerViewLinearLayoutManager.scrollToPositionWithOffset(position, 10);
@@ -1395,7 +1431,7 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
         } else if (directoryObject.isPathInCache(path)) {
             directoryObject.restoreFromCache(path);
             sortDirectory();
-            recyclerViewAdapter.newData(directoryObject.getDirectoryContent());
+            recyclerViewAdapter.newData(filterHiddenFiles(directoryObject.getDirectoryContent()));
             if (directoryPosition.containsKey(directoryObject.getCurrentPath())) {
                 int position = directoryPosition.get(directoryObject.getCurrentPath());
                 recyclerViewLinearLayoutManager.scrollToPositionWithOffset(position, 10);
@@ -1667,10 +1703,11 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
                 searchDirContent(searchString);
             } else {
                 if (recyclerViewAdapter != null) {
+                    List<FileItem> displayContent = filterHiddenFiles(directoryObject.getDirectoryContent());
                     if (silentFetch) {
-                        recyclerViewAdapter.updateData(directoryObject.getDirectoryContent());
+                        recyclerViewAdapter.updateData(displayContent);
                     } else {
-                        recyclerViewAdapter.newData(directoryObject.getDirectoryContent());
+                        recyclerViewAdapter.newData(displayContent);
                     }
                 }
             }
