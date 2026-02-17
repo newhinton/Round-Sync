@@ -61,6 +61,8 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback{
     private lateinit var onSuccessDropdown: Spinner
 
 
+    private lateinit var localPathPickerButton: ImageButton
+    private lateinit var remotePathPickerButton: ImageButton
     private lateinit var filterOptionsButton: ImageButton
 
 
@@ -162,6 +164,8 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback{
             }
         }
 
+        localPathPickerButton = findViewById(R.id.task_local_path_picker_button)
+        remotePathPickerButton = findViewById(R.id.task_remote_path_picker_button)
         filterOptionsButton = findViewById(R.id.task_edit_filter_options_button)
         filterOptionsButton.setOnClickListener {
             val filter = if(filterDropdown.selectedItemPosition > 0 && filterDropdown.selectedItemPosition < filterDropdown.count) filterItems[filterDropdown.selectedItemPosition - 1] else null
@@ -306,14 +310,11 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback{
         existingTask.let {
             localPath.setText(it?.localPath ?: "")
         }
-        localPath.onFocusChangeListener =
-            View.OnFocusChangeListener { v: View?, hasFocus: Boolean ->
-                if (hasFocus) {
-                    val intent = Intent(this.applicationContext, FilePicker::class.java)
-                    intent.putExtra(FilePicker.FILE_PICKER_PICK_DESTINATION_TYPE, true)
-                    startActivityForResult(intent, REQUEST_CODE_FP_LOCAL)
-                }
-            }
+        localPathPickerButton.setOnClickListener {
+            val intent = Intent(this.applicationContext, FilePicker::class.java)
+            intent.putExtra(FilePicker.FILE_PICKER_PICK_DESTINATION_TYPE, true)
+            startActivityForResult(intent, REQUEST_CODE_FP_LOCAL)
+        }
     }
 
     private fun prepareRemote() {
@@ -342,15 +343,10 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback{
             override fun onNothingSelected(parentView: AdapterView<*>?) {}
         }
 
-        // Todo: This will break if the remote changed, but the path did not.
-        //       Catch this issue by forcing the path to be emtpy
-        remotePath.onFocusChangeListener = object : View.OnFocusChangeListener {
-            override fun onFocusChange(p0: View?, p1: Boolean) {
-                startRemotePicker(
-                    rcloneInstance.getRemoteItemFromName(remoteDropdown.selectedItem.toString()), "/"
-                )
-                remotePath.clearFocus()
-            }
+        remotePathPickerButton.setOnClickListener {
+            startRemotePicker(
+                rcloneInstance.getRemoteItemFromName(remoteDropdown.selectedItem.toString()), "/"
+            )
         }
     }
 
