@@ -44,6 +44,7 @@ Visit [https://roundsync.com](https://roundsync.com) for more information!
 ## Installation
 
 Grab the [latest version](https://github.com/newhinton/Round-Sync/releases/latest) of the signed APK and install it on your phone.
+If you are using this fork, use the fork releases here: [Sam4000der2/Round-Sync Releases](https://github.com/Sam4000der2/Round-Sync/releases).
 | CPU architecture | Where to find | APK identifier |
 |:---|:--|:---:|
 |ARM 32 Bit | older devices | ```armeabi-v7a``` |
