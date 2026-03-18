@@ -385,10 +385,14 @@
     </plurals>
     <plurals name="worker_deleting_success_message">
         <item quantity="zero">No s\'ha suprimit res.</item>
+        <item quantity="one">%s s\'ha suprimit!</item>
+        <item quantity="many">%s s\'han suprimit!</item>
         <item quantity="other">%s s\'ha suprimit!</item>
     </plurals>
     <plurals name="worker_move_success_message">
         <item quantity="zero">No s\'ha mogut res.</item>
+        <item quantity="one">%s s\'ha mogut!</item>
+        <item quantity="many">%s s\'han mogut!</item>
         <item quantity="other">%s s\'ha mogut!</item>
     </plurals>
     <plurals name="worker_download_success_message">

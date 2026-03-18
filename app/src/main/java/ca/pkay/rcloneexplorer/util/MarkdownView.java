@@ -50,23 +50,24 @@ public class MarkdownView extends WebView {
     }
 
     public void loadAsset(String path) {
-        new LoadMarkdownAsset(path, this).execute();
+        new LoadMarkdownAsset(path, getContext(), this).execute();
     }
 
     private static class LoadMarkdownAsset extends AsyncTask<Void, Void, String> {
 
         private static final String TAG = "LoadMarkdownAsset";
         private final String assetName;
+        private final Context context;
         private final WebView webView;
 
-        public LoadMarkdownAsset(String assetName, WebView webView) {
+        public LoadMarkdownAsset(String assetName, Context context, WebView webView) {
             this.assetName = assetName;
+            this.context = context.getApplicationContext();
             this.webView = webView;
         }
 
         @Override
         protected String doInBackground(Void... voids) {
-            Context context = webView.getContext();
             AssetManager assetManager = context.getAssets();
             try (BufferedReader br = new BufferedReader(new InputStreamReader(assetManager.open(assetName)))) {
                 StringBuilder markdown = new StringBuilder(4096);
