@@ -6,23 +6,26 @@ on:
     tags:
       - '*'
 
+permissions:
+  contents: write
+
 jobs:
   createArtifacts:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
     - name: Read Go version from project
-      run: echo "GO_VERSION=$(grep -E "^de\.felixnuesse\.extract\.goVersion=" gradle.properties | cut -d'=' -f2)"
+      run: echo "GO_VERSION=$(grep -E "^de\.felixnuesse\.extract\.goVersion=" gradle.properties | cut -d'=' -f2)" >> "$GITHUB_ENV"
     - name: Set up JDK 17
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
         cache: gradle
     - name: Set up Go from gradle.properties
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
-        go-version: '${{env.GO_VERSION}}'
+        go-version: ${{ env.GO_VERSION }}
       id: go
     - name: Setup Android SDK/NDK
       uses: android-actions/setup-android@v3
@@ -47,7 +50,7 @@ jobs:
       with:
         name: nightly-x86.apk
         path: ${{ github.workspace }}/app/build/outputs/apk/oss/debug/*-oss-x86-debug.apk
-    - name: Upload APK (arm)
+    - name: Upload APK (x64)
       uses: actions/upload-artifact@v4
       with:
         name: nightly-x64.apk
@@ -58,3 +61,13 @@ jobs:
         name: nightly-universal.apk
         path: ${{ github.workspace }}/app/build/outputs/apk/oss/debug/*-oss-universal-debug.apk
         retention-days: 14
+    - name: Publish APKs to GitHub Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v2
+      with:
+        generate_release_notes: true
+        files: |
+          app/build/outputs/apk/oss/debug/*-oss-armeabi-v7a-debug.apk
+          app/build/outputs/apk/oss/debug/*-oss-arm64-v8a-debug.apk
+          app/build/outputs/apk/oss/debug/*-oss-x86-debug.apk
+          app/build/outputs/apk/oss/debug/*-oss-x86_64-debug.apk
