@@ -68,6 +68,15 @@ public class LogRecyclerViewAdapter extends RecyclerView.Adapter<LogRecyclerView
             holder.log_item_frame.setOnClickListener(v -> {
                 Toasty.info(v.getContext(), timeFormattedFullFinal).show();
             });
+            holder.log_item_frame.setOnLongClickListener(v -> {
+                android.content.ClipboardManager clipboard = (android.content.ClipboardManager) v.getContext().getSystemService(Context.CLIPBOARD_SERVICE);
+                android.content.ClipData clip = android.content.ClipData.newPlainText("Log Entry", timeFormattedFullFinal + "\n" + text + "\n" + selectedTrigger.optString(SyncLog.CONTENT));
+                if (clipboard != null) {
+                    clipboard.setPrimaryClip(clip);
+                    Toasty.success(v.getContext(), "Log entry copied to clipboard", android.widget.Toast.LENGTH_SHORT, true).show();
+                }
+                return true;
+            });
 
 
             Context c = holder.view.getContext();

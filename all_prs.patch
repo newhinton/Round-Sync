@@ -1,0 +1,103 @@
+diff --git a/app/src/main/java/ca/pkay/rcloneexplorer/VirtualContentProvider.java b/app/src/main/java/ca/pkay/rcloneexplorer/VirtualContentProvider.java
+index 17c2679a..25cd35fa 100644
+--- a/app/src/main/java/ca/pkay/rcloneexplorer/VirtualContentProvider.java
++++ b/app/src/main/java/ca/pkay/rcloneexplorer/VirtualContentProvider.java
+@@ -979,15 +979,11 @@ public class VirtualContentProvider extends SingleRootProvider {
+     @VisibleForTesting
+     static String getRemoteName(@NonNull String documentId) {
+         int nameEnd = documentId.indexOf(':');
+-<<<<<<< HEAD
+-        // 0 if there is no path separator, or the index of the first path name
+-        // character
+-=======
+         if (nameEnd == -1) {
+             return "";
+         }
+-        // 0 if there is no path separator, or the index of the first path name character
+->>>>>>> jules-validate-remote-name-2050564320315738442
++        // 0 if there is no path separator, or the index of the first path name
++        // character
+         int nameStart = documentId.lastIndexOf('/') + 1;
+         if (nameStart > nameEnd) {
+             nameStart = 0;
+@@ -1281,9 +1277,9 @@ public class VirtualContentProvider extends SingleRootProvider {
+                 extras.putString(DocumentsContract.EXTRA_INFO,
+                         context.getString(R.string.virtual_content_provider_no_remotes));
+                 FLog.d(TAG, "getRemotesAsCursor: No remotes, returning empty cursor");
+-                MatrixCursor cursor = new MatrixCursor(projection);
+-                cursor.setExtras(extras);
+-                return cursor;
++                MatrixCursor emptyCursor = new MatrixCursor(projection);
++                emptyCursor.setExtras(extras);
++                return emptyCursor;
+             }
+             for (RemoteItem item : remotes.values()) {
+                 // Exclude from results - no need to loop back
+diff --git a/app/src/test/java/ca/pkay/rcloneexplorer/RcloneRcdTest.java b/app/src/test/java/ca/pkay/rcloneexplorer/RcloneRcdTest.java
+index f291b21c..f07e0acc 100644
+--- a/app/src/test/java/ca/pkay/rcloneexplorer/RcloneRcdTest.java
++++ b/app/src/test/java/ca/pkay/rcloneexplorer/RcloneRcdTest.java
+@@ -3,12 +3,14 @@ package ca.pkay.rcloneexplorer;
+ import org.junit.Test;
+ import static org.junit.Assert.assertEquals;
+ 
++import ca.pkay.rcloneexplorer.util.RemoteNameUtil;
++
+ public class RcloneRcdTest {
+ 
+     @Test
+     public void testRemoteNameAsFs() {
+-        assertEquals("remote:", RcloneRcd.remoteNameAsFs("remote"));
+-        assertEquals("remote::", RcloneRcd.remoteNameAsFs("remote:"));
+-        assertEquals(":", RcloneRcd.remoteNameAsFs(""));
++        assertEquals("remote:", RemoteNameUtil.remoteNameAsFs("remote"));
++        assertEquals("remote::", RemoteNameUtil.remoteNameAsFs("remote:"));
++        assertEquals(":", RemoteNameUtil.remoteNameAsFs(""));
+     }
+ }
+diff --git a/app/src/test/java/ca/pkay/rcloneexplorer/util/FileUtilTest.java b/app/src/test/java/ca/pkay/rcloneexplorer/util/FileUtilTest.java
+index 58c6ca07..14cac0db 100644
+--- a/app/src/test/java/ca/pkay/rcloneexplorer/util/FileUtilTest.java
++++ b/app/src/test/java/ca/pkay/rcloneexplorer/util/FileUtilTest.java
+@@ -32,22 +32,26 @@ public class FileUtilTest {
+ 
+     @Test
+     public void createSafeFile_absolutePath() throws IOException {
+-         File parent = folder.newFolder("cache");
+-         File grandParent = parent.getParentFile();
+-         String fileName = grandParent.getAbsolutePath() + File.separator + "escaped.txt";
++        File parent = folder.newFolder("cache");
++        File grandParent = parent.getParentFile();
++        String fileName = grandParent.getAbsolutePath() + File.separator + "escaped.txt";
+ 
+-         try {
+-             File result = FileUtil.createSafeFile(parent, fileName);
+-             // If it didn't throw, verify it is indeed safe (nested inside parent)
+-             // This handles environments where File(parent, absPath) creates a nested file.
+-             String canonicalPath = result.getCanonicalPath();
+-             String canonicalParent = parent.getCanonicalPath();
+-             if (!canonicalPath.startsWith(canonicalParent + File.separator)) {
+-                 fail("File created outside parent: " + canonicalPath);
+-             }
+-         } catch (SecurityException e) {
+-             // This is also acceptable (and expected on systems where absolute path ignores parent)
+-         }
++        try {
++            File result = FileUtil.createSafeFile(parent, fileName);
++            // If it didn't throw, verify it is indeed safe (nested inside parent)
++            // This handles environments where File(parent, absPath) creates a nested file.
++            String canonicalPath = result.getCanonicalPath();
++            String canonicalParent = parent.getCanonicalPath();
++            if (!canonicalPath.startsWith(canonicalParent + File.separator)) {
++                fail("File created outside parent: " + canonicalPath);
++            }
++        } catch (SecurityException | IOException e) {
++            // This is also acceptable (and expected on systems where absolute path ignores
++            // parent)
++            // On Windows, new File(parent, absolutePath) can result in a path with a colon
++            // in the middle,
++            // which throws an IOException from getCanonicalPath().
++        }
+     }
+ 
+     @Test(expected = SecurityException.class)

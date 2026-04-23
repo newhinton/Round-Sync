@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <string name="app_name">Round Sync</string>
+    <string name="app_name">CloudBridge</string>
     <string name="app_description">Rclone für Android</string>
-    <string name="app_short_name">Round Sync</string>
+    <string name="app_short_name">CloudBridge</string>
     <string name="title_activity_about">Info</string>
     <string name="title_activity_changelog">Versionsprotokoll</string>
     <string name="title_activity_contributors">Lizenz</string>
@@ -120,7 +120,7 @@
     <string name="pref_locale_dlg_title">Sprache auswählen</string>
     <string name="pref_locale_restart_notice">Sprache wird beim nächsten neustart der App geändert.</string>
     <string name="use_logs">Rclone-Fehler protokollieren</string>
-    <string name="use_logs_summary">Fehler werden in einer lokalen Datei protokolliert (Android/data/de.felixnuesse.extract/files/logs)</string>
+    <string name="use_logs_summary">Fehler werden in einer lokalen Datei protokolliert (Android/data/de.schuelken.cloudbridge/files/logs)</string>
     <string name="notifications_pref_title">Benachrichtigungen</string>
     <string name="content_description_circle">Kreis</string>
     <string name="loading">Lade</string>
@@ -259,13 +259,13 @@
     <string name="pref_open_all_files_setting_label">MANAGE_EXTERNAL_STORAGE-Berechtigung erteilen</string>
     <string name="pref_open_all_files_setting_summary">EXPERIMENTELL: Funktioniert nur auf Android R (Android 11)</string>
     <string name="pref_saf_vcp_local_pretend_enable">Als “local” deklarieren</string>
-    <string name="pref_saf_vcp_local_pretend_summary">Einige Apps (z.B. Google Docs) zeigen Round Sync sonst nicht an.</string>
+    <string name="pref_saf_vcp_local_pretend_summary">Einige Apps (z.B. Google Docs) zeigen CloudBridge sonst nicht an.</string>
     <string name="pref_saf_vcp_grant_all_enable">Jeder App Zugriff auf Remotes geben</string>
     <string name="pref_saf_vcp_grant_all_summary">GEFÄHRLICH: Jede App kann damit jeden Pfad deiner Remotes lesen und schreiben.</string>
     <string name="virtual_content_provider_exception_advice">Prüfe die Netzwerkverbindung</string>
     <string name="virtual_content_provider_exception_error">Technische Info: %1$s</string>
     <string name="virtual_content_provider_service_error">Verbindungsfehler zum Hintergrunddienst. Beenden erzwingen und erneut versuchen.</string>
-    <string name="virtual_content_provider_no_remotes">Keine Remotes konfiguriert. Öffne Round Sync und füge Remotes hinzu.</string>
+    <string name="virtual_content_provider_no_remotes">Keine Remotes konfiguriert. Öffne CloudBridge und füge Remotes hinzu.</string>
     <string name="no_app_found_for_this_link">Keine App für diesen Link gefunden</string>
     <string name="documentsui_missing">Systemkomponente für Dateien (com.android.documentsui) fehlt</string>
     <string name="rcd_service_notification_running_in_background">Rclone wird im Hintergrund ausgeführt</string>
@@ -281,10 +281,10 @@
     <string name="pref_bugreport_start_title">Lokalen Fehlerbericht erfassen</string>
     <string name="pref_bugreport_start_summary">Auswählen, um Fehlererfassung zu starten. Anschließend Fehler nachvollziehen und Erfassung beenden.</string>
     <string name="intro_welcome_title">Hallo!</string>
-    <string name="intro_welcome_description">Round Sync verwaltet deine Dateien, egal ob sie auf deinem Smartphone in der Cloud gespeichert sind. Bei Fragen besuche uns auf github.com/newhinton/Round-Sync!</string>
+    <string name="intro_welcome_description">CloudBridge verwaltet deine Dateien, egal ob sie auf deinem Smartphone in der Cloud gespeichert sind. Bei Fragen besuche uns auf github.com/thies2005/CloudBridge!</string>
     <string name="intro_storage_title">Speicherzugriff</string>
     <string name="intro_community_title">Community</string>
-    <string name="intro_community_description">Round Sync wird von und für seine Community entwickelt. Hilf mit, indem du automatisch Fehlerberichte sendest. Auf felixnuesse.de/privacy-roundsync erfährst du mehr.</string>
+    <string name="intro_community_description">CloudBridge wird von und für seine Community entwickelt. Hilf mit, indem du automatisch Fehlerberichte sendest. Auf cloudbridge.schuelken.uk erfährst du mehr.</string>
     <string name="pref_send_sigquit_title">Debug: Mit SIGQUIT beenden</string>
     <string name="pref_send_sigquit_summary">Alle rclone-Prozesse mit kill -SIGQUIT beenden. Rclone-Protokollierung muss aktiviert sein.</string>
     <string name="sync_direction_local_remote">Synchronisiere Lokal zu entferntem Speicher</string>
@@ -350,9 +350,9 @@
     <string name="triggeractivity_trigger_not_found">Auslöser nicht gefunden!</string>
     <string name="task_item_label_from">Von:</string>
     <string name="task_item_label_to">Zu:</string>
-    <string name="abi_not_supported_arm_downgrade">Diese Round Sync-Version wird nicht unterstützt. Eventuell funktioniert die armeabi-v7a-APK von github.com/newhinton/Round-Sync."</string>
-    <string name="abi_not_supported">Diese Round Sync-Version wird auf dem Gerät nicht unterstützt.</string>
-    <string name="sync_notification_transferred">%s von %s übertragen</string>
+    <string name="abi_not_supported_arm_downgrade">Diese CloudBridge-Version wird nicht unterstützt. Eventuell funktioniert die armeabi-v7a-APK von github.com/thies2005/CloudBridge."</string>
+    <string name="abi_not_supported">Diese CloudBridge-Version wird auf dem Gerät nicht unterstützt.</string>
+    <string name="sync_notification_transferred">%1$s von %2$s übertragen</string>
     <string name="sync_notification_speed">"Geschwindigkeit:   %s"</string>
     <string name="sync_notification_remaining">"Verbleibend:         %s"</string>
     <string name="sync_notification_errors">"Fehler:              %d"</string>
@@ -360,7 +360,7 @@
     <string name="sync_notification_deletions">Löschungen: %d</string>
     <string name="sync_notification_file_syncing">"Datei:               %s"</string>
     <string name="sync_notification_file_checking">"Checking:            %s"</string>
-    <string name="sync_notification_short">%s von %s, %s verbleibend</string>
+    <string name="sync_notification_short">%1$s von %2$s, %3$s verbleibend</string>
     <plurals name="modern_prettyprint_duration_d">
         <item quantity="one">%s Tag</item>
         <item quantity="other">%s Tage</item>
@@ -428,7 +428,7 @@
     <string name="import_configuration_fail_rclone">Import fehlgeschlagen. Deine rclone.conf enthält Fehler!</string>
     <string name="import_configuration_fail_zip_json_missing">Import fehlgeschlagen. Die Zip-Datei enthält keine Auslöser und Aufgaben!</string>
     <string name="import_configuration_fail_zip_conf_missing">Import fehlgeschlagen. Die Zip-Datei enthält keine rclone.conf!</string>
-    <string name="intro_storage_description">"Round Sync benötigt deine Erlaubnis um auf alle Dateien zuzugreifen. Bitte erlaube dies sobald die Anfrage kommt, sonst kann es sein das Round Sync nicht korrekt funktioniert. "</string>
+    <string name="intro_storage_description">"CloudBridge benötigt deine Erlaubnis um auf alle Dateien zuzugreifen. Bitte erlaube dies sobald die Anfrage kommt, sonst kann es sein das CloudBridge nicht korrekt funktioniert. "</string>
     <string name="task_item_label_from_bisync">Pfad 1:</string>
     <string name="task_item_label_to_bisync">Pfad 2:</string>
     <string name="description_sync_direction_sync_tolocal">Synchronisieren Sie Dateien vom entfernten Speicher zum lokalen Speicher. Es können auch Dateien aus dem lokalen Speicher gelöscht werden, wenn sie im entfernten Speicher nicht vorhanden sind. Nur der lokale Speicher wird mit den Änderungen aktualisiert.</string>

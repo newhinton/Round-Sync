@@ -8,10 +8,10 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import ca.pkay.rcloneexplorer.Items.FileItem
 import ca.pkay.rcloneexplorer.Items.RemoteItem
-import de.felixnuesse.extract.notifications.implementations.DeleteWorkerNotification
-import de.felixnuesse.extract.notifications.implementations.DownloadWorkerNotification
-import de.felixnuesse.extract.notifications.implementations.MoveWorkerNotification
-import de.felixnuesse.extract.notifications.implementations.UploadWorkerNotification
+import de.schuelken.cloudbridge.notifications.implementations.DeleteWorkerNotification
+import de.schuelken.cloudbridge.notifications.implementations.DownloadWorkerNotification
+import de.schuelken.cloudbridge.notifications.implementations.MoveWorkerNotification
+import de.schuelken.cloudbridge.notifications.implementations.UploadWorkerNotification
 
 class EphemeralTaskManager(private var mContext: Context) {
 

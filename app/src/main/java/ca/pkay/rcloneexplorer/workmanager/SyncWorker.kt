@@ -155,6 +155,7 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
         if (mTask.title == "") {
             mTitle = mTask.remotePath
         }
+        statusObject.syncDirection = mTask.direction
         if(arePreconditionsMet()) {
             val taskFilter = if(mTask.filterId != null ) mDatabase.getFilter(mTask.filterId!!) else null;
             val taskFilterList = taskFilter?.getFilters() ?: ArrayList()
@@ -188,18 +189,22 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
                             if (sIsLoggingEnabled) {
                                 log2File?.log(line)
                             }
-                            statusObject.parseLoglineToStatusObject(logline)
-                        } else if (logline.getString("level") == "warning") {
-                            statusObject.parseLoglineToStatusObject(logline)
                         }
+                        
+                        // Process all log lines for stats/progress updates, not just error/warning
+                        // This fixes the notification being stuck on "starting sync"
+                        statusObject.parseLoglineToStatusObject(logline)
 
-                        updateForegroundNotification(mNotificationManager.updateSyncNotification(
-                            title,
-                            statusObject.notificationContent,
-                            statusObject.notificationBigText,
-                            statusObject.notificationPercent,
-                            ongoingNotificationID
-                        ))
+                        // Only update notification if we have content to show
+                        if (statusObject.notificationContent.isNotEmpty()) {
+                            updateForegroundNotification(mNotificationManager.updateSyncNotification(
+                                title,
+                                statusObject.notificationContent,
+                                statusObject.notificationBigText,
+                                statusObject.notificationPercent,
+                                ongoingNotificationID
+                            ))
+                        }
                     } catch (e: JSONException) {
                         FLog.e(TAG, "SyncService-Error: the offending line: $line")
                         //FLog.e(TAG, "onHandleIntent: error reading json", e)

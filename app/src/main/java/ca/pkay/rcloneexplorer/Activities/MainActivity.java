@@ -58,6 +58,7 @@ import java.util.UUID;
 import ca.pkay.rcloneexplorer.AppShortcutsHelper;
 import ca.pkay.rcloneexplorer.BuildConfig;
 import ca.pkay.rcloneexplorer.Database.json.Importer;
+import ca.pkay.rcloneexplorer.workmanager.SessionGuardianScheduler;
 import ca.pkay.rcloneexplorer.Database.json.SharedPreferencesBackup;
 import ca.pkay.rcloneexplorer.Dialogs.Dialogs;
 import ca.pkay.rcloneexplorer.Dialogs.InputDialog;
@@ -79,7 +80,7 @@ import ca.pkay.rcloneexplorer.util.ActivityHelper;
 import ca.pkay.rcloneexplorer.util.FLog;
 import ca.pkay.rcloneexplorer.util.PermissionManager;
 import ca.pkay.rcloneexplorer.util.SharedPreferencesUtil;
-import de.felixnuesse.extract.updates.UpdateChecker;
+import de.schuelken.cloudbridge.updates.UpdateChecker;
 import es.dmoral.toasty.Toasty;
 import java9.util.stream.Stream;
 
@@ -215,6 +216,9 @@ public class MainActivity extends AppCompatActivity
         updatePermissionFragmentVisibility();
         TriggerService triggerService = new TriggerService(context);
         triggerService.queueTrigger();
+
+        // Schedule Session Guardian Worker for proactive session health monitoring
+        ca.pkay.rcloneexplorer.workmanager.SessionGuardianScheduler.schedule(this);
 
         (new UpdateChecker(this)).schedule();
     }

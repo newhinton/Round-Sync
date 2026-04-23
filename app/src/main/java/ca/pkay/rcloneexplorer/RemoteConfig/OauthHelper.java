@@ -225,4 +225,107 @@ public class OauthHelper {
             return 5 * 60 * 1000L;
         }
     }
+
+    /**
+     * An action that shows a dialog promp for Internxt 2FA code.
+     * Uses a CountDownLatch to block until user enters the code.
+     */
+    public static class InternxtTwoFactorAction implements InteractiveRunner.Action {
+        private final Context context;
+        private String twoFactorCode = "";
+        private final java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+
+        public InternxtTwoFactorAction(Context context) {
+            this.context = context;
+        }
+
+        @Override
+        public void onTrigger(String cliBuffer) {
+            // Show dialog on UI thread and wait for input
+            android.os.Handler mainHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+            mainHandler.post(() -> showTwoFactorDialog());
+
+            // Wait for user to enter the code (timeout after 5 minutes)
+            try {
+                latch.await(5, java.util.concurrent.TimeUnit.MINUTES);
+            } catch (InterruptedException e) {
+                FLog.e(TAG, "2FA wait interrupted", e);
+            }
+        }
+
+        private void showTwoFactorDialog() {
+            androidx.appcompat.app.AlertDialog.Builder builder = 
+                new androidx.appcompat.app.AlertDialog.Builder(context);
+            builder.setTitle("Internxt Two-Factor Authentication");
+            builder.setMessage("Enter your 2FA code from your authenticator app:");
+
+            final android.widget.EditText input = new android.widget.EditText(context);
+            input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+            input.setHint("6-digit code");
+            
+            android.widget.LinearLayout layout = new android.widget.LinearLayout(context);
+            layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+            int padding = (int) (16 * context.getResources().getDisplayMetrics().density);
+            layout.setPadding(padding, padding, padding, 0);
+            layout.addView(input);
+            builder.setView(layout);
+
+            builder.setPositiveButton("Submit", (dialog, which) -> {
+                twoFactorCode = input.getText().toString().trim();
+                latch.countDown();
+            });
+            
+            builder.setNegativeButton("Cancel", (dialog, which) -> {
+                twoFactorCode = "";
+                latch.countDown();
+            });
+            
+            builder.setCancelable(false);
+            builder.show();
+        }
+
+        @Override
+        public String getInput() {
+            return twoFactorCode;
+        }
+    }
+
+    /**
+     * A step that triggers on Internxt 2FA prompt and shows a dialog for code input.
+     * Trigger pattern matches exact text from rclone internxt.go source.
+     */
+    public static class InternxtTwoFactorStep extends InteractiveRunner.Step {
+        // Exact prompt from rclone internxt.go: fs.ConfigInput("2fa", "config_2fa", "Two-factor authentication code")
+        private static final String TRIGGER = "Two-factor authentication code";
+
+        public InternxtTwoFactorStep(Context context) {
+            super(TRIGGER, InteractiveRunner.Step.CONTAINS, InteractiveRunner.Step.INTERLEAVED,
+                    new InternxtTwoFactorAction(context));
+        }
+
+        @Override
+        public long getTimeout() {
+            // Wait up to 2 minutes for the 2FA prompt to appear
+            return 2 * 60 * 1000L;
+        }
+    }
+
+    /**
+     * A step for Internxt that just waits for the config to complete.
+     * Triggers when we see successful completion indicators.
+     */
+    public static class InternxtFinishStep extends InteractiveRunner.Step {
+        private static final String TRIGGER = "Keep this";
+
+        public InternxtFinishStep() {
+            super(TRIGGER, InteractiveRunner.Step.CONTAINS, InteractiveRunner.Step.INTERLEAVED,
+                    new InteractiveRunner.StringAction("y"));
+        }
+
+        @Override
+        public long getTimeout() {
+            // Wait up to 2 minutes for login to complete
+            return 2 * 60 * 1000L;
+        }
+    }
 }

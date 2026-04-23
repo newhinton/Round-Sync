@@ -13,7 +13,7 @@
 
     <PreferenceCategory android:title="@string/preference_category_header_rclone">
 
-        <de.felixnuesse.extract.settings.preferences.ButtonPreference
+        <de.schuelken.cloudbridge.settings.preferences.ButtonPreference
             android:title="@string/pref_send_sigquit_title"
             app:summary="@string/pref_send_sigquit_summary"
             android:key="TempKeySigquit" />

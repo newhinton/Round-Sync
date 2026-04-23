@@ -7,22 +7,24 @@ android {
         release {
             keyAlias 'fdroid'
             storeFile file('.config/android/roundsync.keystore')
+            storePassword 'android'
+            keyPassword 'android'
         }
     }
-    ndkVersion project.properties['de.felixnuesse.extract.ndkVersion']
+    ndkVersion project.properties['de.schuelken.cloudbridge.ndkVersion']
     defaultConfig {
         generatedDensities = []
         vectorDrawables.generatedDensities = []
-        applicationId 'de.felixnuesse.extract'
+        applicationId 'de.schuelken.cloudbridge'
         minSdkVersion 23
         compileSdk 34
         targetSdkVersion 34
-        versionCode 410 // last digit is reserved for ABI, only ever end on 0!
-        versionName '2.5.6'
+        versionCode 10 // last digit is reserved for ABI, only ever end on 0!
+        versionName '1.0.0'
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField "java.lang.String", "CLI", System.getenv('RCX_BUILD_CLI') ? System.getenv('RCX_BUILD_CLI') : "\"c03129b6-b09f-9cb4-8fcd-7f143b8f94ef\""
         buildConfigField "java.lang.String", "VCP_AUTHORITY", "\"" + applicationId + ".vcp\"";
-        setProperty("archivesBaseName",  "roundsync_v"+versionName)
+        setProperty("archivesBaseName",  "cloudbridge_v"+versionName)
 
         externalNativeBuild {
             ndkBuild {
@@ -120,8 +122,8 @@ android {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-DEBUG"
             buildConfigField "java.lang.String", "VCP_AUTHORITY", "\"" + defaultConfig.applicationId + ".debug.vcp\"";
-            resValue("string", "app_name", "RS Debug")
-            resValue("string", "app_short_name", "RS Debug")
+            resValue("string", "app_name", "CB Debug")
+            resValue("string", "app_short_name", "CB Debug")
         }
     }
 

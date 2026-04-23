@@ -33,7 +33,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Read Go version from project
-        run: echo "GO_VERSION=$(grep -E "^de\.felixnuesse\.extract\.goVersion=" gradle.properties | cut -d'=' -f2)"
+        run: |
+          GO_VERSION=$(grep -E "^de\.felixnuesse\.extract\.goVersion=" gradle.properties | cut -d'=' -f2)
+          echo "GO_VERSION=$GO_VERSION" >> $GITHUB_ENV
+          echo "Go version: $GO_VERSION"
       - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
@@ -41,7 +44,7 @@ jobs:
           distribution: 'temurin'
           cache: gradle
       - name: Set up Go from gradle.properties
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: '${{env.GO_VERSION}}'
         id: go

@@ -20,7 +20,7 @@
             android:title="Switch preference"
             app:summary="@string/notification_reports" />
 
-        <de.felixnuesse.extract.settings.preferences.ButtonPreference
+        <de.schuelken.cloudbridge.settings.preferences.ButtonPreference
             android:key="TempKeyNotificationSettings"
             app:title="@string/open_notification_settings_title"
             app:summary="@string/open_notification_settings_summary" />

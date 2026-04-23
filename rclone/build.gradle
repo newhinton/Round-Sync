@@ -14,21 +14,25 @@
 //  - windows x64
 //
 // Prerequisites:
-//  - go 1.20+
+//  - go 1.25+
 //  - Either Android SDK command-line tools, or the expected NDK version (see gradle.properties).
+//
+// rclone source:
+//  Cloned from the URL and ref specified in gradle.properties
+//  (de.schuelken.cloudbridge.rCloneRepoUrl and rCloneRef).
+//  To upgrade: change rCloneRef (or rCloneRepoUrl) and rebuild.
 
-
-import groovy.json.JsonSlurper
 
 import java.nio.file.Paths
 
 ext {
-    NDK_VERSION = project.properties['de.felixnuesse.extract.ndkVersion']
-    NDK_TOOLCHAIN_VERSION = project.properties['de.felixnuesse.extract.ndkToolchainVersion']
-    RCLONE_VERSION = project.properties['de.felixnuesse.extract.rCloneVersion']
-    GO_REQ_VERSION = project.properties['de.felixnuesse.extract.goVersion']
-    RCLONE_MODULE = 'github.com/rclone/rclone'
-    RCLONE_CUSTOM_VERSION_SUFFIX = '-extract'
+    NDK_VERSION = project.properties['de.schuelken.cloudbridge.ndkVersion']
+    NDK_TOOLCHAIN_VERSION = project.properties['de.schuelken.cloudbridge.ndkToolchainVersion']
+    RCLONE_VERSION = project.properties['de.schuelken.cloudbridge.rCloneVersion']
+    GO_REQ_VERSION = project.properties['de.schuelken.cloudbridge.goVersion']
+
+    RCLONE_REPO_URL = project.findProperty('de.schuelken.cloudbridge.rCloneRepoUrl') ?: 'https://github.com/rclone/rclone.git'
+    RCLONE_REF = project.findProperty('de.schuelken.cloudbridge.rCloneRef') ?: "v${RCLONE_VERSION}"
 
     PROJECT_DIR = projectDir.absolutePath
     CACHE_PATH = Paths.get(PROJECT_DIR, 'cache').toString()
@@ -63,7 +67,6 @@ def findNdkDir() {
     def sdkDir = findSdkDir()
     def ndkPath = Paths.get(sdkDir, 'ndk', NDK_VERSION).toAbsolutePath()
     if (!ndkPath.toFile().exists()) {
-        // NDK not found. Let's try to install it.
         def sdkManagerPath = Paths.get(
             sdkDir,
             'cmdline-tools',
@@ -80,7 +83,6 @@ def findNdkDir() {
             }
         } catch (exc) {
             logger.error(exc.toString())
-            // NDK installation failed. Just raise an error.
             throw new GradleException(
                 "Couldn't find a ndk bundle in ${ndkPath.toString()}. Make sure that you have the"
                 + " proper version installed in Android Studio's SDK Manager or run"
@@ -93,16 +95,14 @@ def findNdkDir() {
 
 def getCrossCompiler(abi) {
     def osName = System.properties['os.name']
-    def osArch = System.properties['os.arch']
+    def osArch = System.getProperty('os.arch')
     def os = null
-    if (osName.startsWith('Windows') && osArch == 'amd64') {
+    def isWindows = osName.startsWith('Windows')
+    if (isWindows && osArch == 'amd64') {
         os = 'windows-x86_64'
-    } else if (osName.startsWith('Linux') && osArch == 'amd64') {
+    } else if (osName.startsWith('Linux') && (osArch == 'amd64' || osArch == 'aarch64' || osArch == 'arm64')) {
         os = 'linux-x86_64'
     } else if (osName.startsWith('Mac') && ['aarch64', 'amd64'].contains(osArch)) {
-        // Note that despite what the name suggests, the clang binary shipped
-        // with the NDK is a universal object file which should work on both
-        // x86_64 and arm64 (Silicon-based) architectures.
         os = 'darwin-x86_64'
     }
     if (os == null) {
@@ -116,6 +116,11 @@ def getCrossCompiler(abi) {
         'x86_64': "x86_64-linux-android${NDK_TOOLCHAIN_VERSION}-clang",
     ]
 
+    def compilerName = abiToCompiler[abi]
+    if (isWindows) {
+        compilerName += '.cmd'
+    }
+
     return Paths.get(
         findNdkDir(),
         'toolchains',
@@ -123,12 +128,28 @@ def getCrossCompiler(abi) {
         'prebuilt',
         os,
         'bin',
-        abiToCompiler[abi],
-    )
+        compilerName,
+    ).toString()
+}
+
+def getCC(abi) {
+    def osName = System.properties['os.name']
+    if (osName.startsWith('Windows')) {
+        return null
+    }
+    return getCrossCompiler(abi)
 }
 
 def getOutputPath(abi) {
     return Paths.get(OUTPUT_BASE_PATH, abi, 'librclone.so').toString()
+}
+
+def getSourceVersion() {
+    def versionFile = Paths.get(CACHE_PATH, 'rclone-src', 'VERSION').toFile()
+    if (versionFile.exists()) {
+        return versionFile.text.trim()
+    }
+    return RCLONE_VERSION
 }
 
 def buildRclone(abi) {
@@ -141,63 +162,91 @@ def buildRclone(abi) {
 
     return {
         doLast {
+            def commonEnv = [
+                'GOPATH'      : GOPATH,
+                'GOOS'        : 'linux',
+                'CGO_ENABLED' : '0',
+            ] + abiToEnv[abi]
+
             exec {
-                environment 'GOPATH', GOPATH
-                def crossCompiler = getCrossCompiler(abi)
-                environment 'CC', crossCompiler
-                environment 'CC_FOR_TARGET', crossCompiler
-                environment 'GOOS', 'android'
-                environment 'CGO_ENABLED', '1'
-                environment 'CGO_LDFLAGS', '-fuse-ld=lld -Wl,--hash-style=both -s'
-                abiToEnv[abi].each {entry -> environment entry.key, entry.value}
-                workingDir CACHE_PATH
-                def ldflags = "-buildid= -X github.com/rclone/rclone/fs.Version=${RCLONE_VERSION}${RCLONE_CUSTOM_VERSION_SUFFIX}"
+                commonEnv.each { k, v -> environment k, v }
+                workingDir Paths.get(CACHE_PATH, 'rclone-src').toString()
+                def ldflags = "-s -w -X github.com/rclone/rclone/fs.Version=${getSourceVersion()}"
                 commandLine (
                     'go',
                     'build',
                     '-tags',
-                    'android noselfupdate',
+                    'noselfupdate',
                     '-trimpath',
                     '-ldflags',
                     ldflags,
                     '-o',
                     getOutputPath(abi),
-                    RCLONE_MODULE
+                    '.'
                 )
             }
         }
     }
 }
 
-task createRcloneModule(type: Exec) {
-    // We create a dummy go module to be able to checkout our specific rclone
-    // version later on.
+task createRcloneModule {
     onlyIf { !Paths.get(CACHE_PATH, 'go.mod').toFile().exists() }
-    Paths.get(CACHE_PATH).toFile().mkdirs()
-    workingDir CACHE_PATH
-    environment 'GOPATH', GOPATH
-    commandLine 'go', 'mod', 'init', 'rclone'
+    doLast {
+        Paths.get(CACHE_PATH).toFile().mkdirs()
+        exec {
+            workingDir CACHE_PATH
+            environment 'GOPATH', GOPATH
+            commandLine 'go', 'mod', 'init', 'rclone'
+        }
+    }
 }
 
-task checkoutRclone(type: Exec, dependsOn: createRcloneModule) {
-    workingDir CACHE_PATH
-    environment 'GOPATH', GOPATH
+task checkoutRclone(dependsOn: createRcloneModule) {
+    doLast {
+        def goVersionOutput = new ByteArrayOutputStream()
+        exec {
+            commandLine 'go', 'version'
+            standardOutput = goVersionOutput
+        }
 
-    def goVersionOutput = new ByteArrayOutputStream()
-    exec{
-        commandLine 'go', 'version'
-        standardOutput = goVersionOutput;
+        if (goVersionOutput.toString().contains(GO_REQ_VERSION)) {
+            println "You are running the required go version."
+        } else {
+            logger.error("The required go version is: ${GO_REQ_VERSION}")
+            logger.error("You are running: ${goVersionOutput}")
+        }
+
+        def srcDir = Paths.get(CACHE_PATH, 'rclone-src').toFile()
+
+        if (!srcDir.exists()) {
+            println "Cloning rclone from ${RCLONE_REPO_URL} (ref: ${RCLONE_REF}) ..."
+            exec {
+                workingDir CACHE_PATH
+                commandLine 'git', 'clone', '--no-tags', RCLONE_REPO_URL, 'rclone-src'
+            }
+        }
+
+        // Always sync to the requested ref so upgrades work without manual cache clears
+        println "Syncing rclone source to ref: ${RCLONE_REF}"
+        exec {
+            workingDir srcDir.absolutePath
+            commandLine 'git', 'fetch', 'origin'
+        }
+        exec {
+            workingDir srcDir.absolutePath
+            commandLine 'git', 'checkout', RCLONE_REF
+        }
+
+        // Print resolved commit and version for traceability
+        def commitOut = new ByteArrayOutputStream()
+        exec {
+            workingDir srcDir.absolutePath
+            commandLine 'git', 'rev-parse', '--short', 'HEAD'
+            standardOutput = commitOut
+        }
+        def version = getSourceVersion()
+        println "rclone source: commit=${commitOut.toString().trim()} version=${version} (from ${RCLONE_REPO_URL})"
     }
-
-    if (goVersionOutput.toString().contains(GO_REQ_VERSION)) {
-        println "You are running the required go version."
-    } else {
-        logger.error("The requred go version is: ${GO_REQ_VERSION}")
-        logger.error( "You are running: ${goVersionOutput}")
-    }
-    println "You are building rclone v${RCLONE_VERSION}"
-
-    commandLine 'go', 'get', '-v', '-d', "${RCLONE_MODULE}@v${RCLONE_VERSION}"
 }
 
 task buildArm(dependsOn: checkoutRclone) {

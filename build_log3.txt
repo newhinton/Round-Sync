@@ -1,0 +1,139 @@
+
+> Configure project :app
+WARNING: The option setting 'android.defaults.buildfeatures.buildconfig=true' is deprecated.
+The current default is 'false'.
+It will be removed in version 10.0 of the Android Gradle plugin.
+To keep using this feature, add the following to your module-level build.gradle files:
+    android.buildFeatures.buildConfig = true
+or from Android Studio, click: `Refactor` > `Migrate BuildConfig to Gradle Build Files`.
+
+> Configure project :rclone
+The requred go version is: 1.24
+You are running: go version go1.25.6 windows/amd64
+
+You are building rclone v1.73.2
+
+> Task :rclone:checkoutRclone SKIPPED
+> Task :rclone:patchRclone UP-TO-DATE
+> Task :rclone:buildArm
+> Task :rclone:buildArm64
+> Task :rclone:buildx64
+> Task :rclone:buildx86
+> Task :rclone:buildAll
+> Task :app:preBuild
+> Task :app:preOssReleaseBuild
+> Task :app:mergeOssReleaseJniLibFolders UP-TO-DATE
+> Task :safdav:preBuild UP-TO-DATE
+> Task :safdav:preReleaseBuild UP-TO-DATE
+> Task :safdav:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :safdav:mergeReleaseNativeLibs NO-SOURCE
+> Task :safdav:copyReleaseJniLibsProjectOnly UP-TO-DATE
+> Task :app:mergeOssReleaseNativeLibs UP-TO-DATE
+> Task :app:stripOssReleaseDebugSymbols UP-TO-DATE
+> Task :app:extractOssReleaseNativeSymbolTables UP-TO-DATE
+> Task :app:mergeOssReleaseNativeDebugMetadata NO-SOURCE
+> Task :safdav:generateReleaseBuildConfig UP-TO-DATE
+> Task :safdav:generateReleaseResValues UP-TO-DATE
+> Task :safdav:generateReleaseResources UP-TO-DATE
+> Task :safdav:packageReleaseResources UP-TO-DATE
+> Task :safdav:processReleaseNavigationResources UP-TO-DATE
+> Task :safdav:parseReleaseLocalResources UP-TO-DATE
+> Task :safdav:generateReleaseRFile UP-TO-DATE
+> Task :safdav:javaPreCompileRelease UP-TO-DATE
+> Task :safdav:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :safdav:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :safdav:exportReleaseConsumerProguardFiles UP-TO-DATE
+> Task :app:buildKotlinToolingMetadata UP-TO-DATE
+> Task :app:checkOssReleaseDuplicateClasses UP-TO-DATE
+> Task :app:checkKotlinGradlePluginConfigurationErrors
+> Task :app:dataBindingMergeDependencyArtifactsOssRelease UP-TO-DATE
+> Task :app:generateOssReleaseResValues UP-TO-DATE
+> Task :app:extractOssReleaseSupportedLocales UP-TO-DATE
+> Task :safdav:extractReleaseSupportedLocales UP-TO-DATE
+> Task :app:generateOssReleaseLocaleConfig UP-TO-DATE
+> Task :app:generateOssReleaseResources UP-TO-DATE
+> Task :app:mergeOssReleaseResources UP-TO-DATE
+> Task :app:dataBindingGenBaseClassesOssRelease UP-TO-DATE
+> Task :app:generateOssReleaseBuildConfig UP-TO-DATE
+> Task :safdav:writeReleaseAarMetadata UP-TO-DATE
+> Task :app:checkOssReleaseAarMetadata UP-TO-DATE
+> Task :app:processOssReleaseNavigationResources UP-TO-DATE
+> Task :app:compileOssReleaseNavigationResources UP-TO-DATE
+> Task :app:mapOssReleaseSourceSetPaths UP-TO-DATE
+> Task :app:createOssReleaseCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksOssRelease UP-TO-DATE
+> Task :safdav:extractDeepLinksRelease UP-TO-DATE
+> Task :safdav:processReleaseManifest UP-TO-DATE
+> Task :app:processOssReleaseMainManifest UP-TO-DATE
+> Task :app:processOssReleaseManifest UP-TO-DATE
+> Task :app:processOssReleaseManifestForPackage UP-TO-DATE
+> Task :app:processOssReleaseResources UP-TO-DATE
+> Task :safdav:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :app:compileOssReleaseKotlin UP-TO-DATE
+> Task :app:javaPreCompileOssRelease UP-TO-DATE
+
+> Task :app:compileOssReleaseJavaWithJavac
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :safdav:prepareReleaseArtProfile UP-TO-DATE
+> Task :app:mergeOssReleaseArtProfile UP-TO-DATE
+> Task :safdav:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :app:extractProguardFiles UP-TO-DATE
+> Task :app:mergeOssReleaseGeneratedProguardFiles
+> Task :app:processOssReleaseJavaRes UP-TO-DATE
+> Task :safdav:processReleaseJavaRes NO-SOURCE
+> Task :app:mergeOssReleaseStartupProfile UP-TO-DATE
+> Task :app:mergeOssReleaseShaders UP-TO-DATE
+> Task :app:compileOssReleaseShaders NO-SOURCE
+> Task :app:generateOssReleaseAssets UP-TO-DATE
+> Task :safdav:mergeReleaseShaders UP-TO-DATE
+> Task :safdav:compileReleaseShaders NO-SOURCE
+> Task :safdav:generateReleaseAssets UP-TO-DATE
+> Task :safdav:mergeReleaseAssets UP-TO-DATE
+> Task :app:mergeOssReleaseAssets UP-TO-DATE
+> Task :app:compressOssReleaseAssets UP-TO-DATE
+> Task :app:extractOssReleaseVersionControlInfo UP-TO-DATE
+> Task :safdav:createFullJarRelease UP-TO-DATE
+> Task :safdav:extractProguardFiles UP-TO-DATE
+> Task :safdav:generateReleaseLintModel UP-TO-DATE
+> Task :safdav:prepareLintJarForPublish UP-TO-DATE
+> Task :app:generateOssReleaseLintVitalReportModel
+> Task :safdav:checkReleaseAarMetadata UP-TO-DATE
+> Task :safdav:stripReleaseDebugSymbols NO-SOURCE
+> Task :safdav:copyReleaseJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :safdav:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :safdav:extractReleaseAnnotations UP-TO-DATE
+> Task :safdav:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :safdav:mergeReleaseJavaResource UP-TO-DATE
+> Task :safdav:syncReleaseLibJars
+> Task :safdav:bundleReleaseLocalLintAar
+> Task :safdav:lintVitalAnalyzeRelease UP-TO-DATE
+> Task :safdav:writeReleaseLintModelMetadata UP-TO-DATE
+> Task :safdav:generateReleaseLintVitalModel UP-TO-DATE
+> Task :app:validateSigningOssRelease FAILED
+> Task :app:expandOssReleaseArtProfileWildcards
+> Task :app:mergeOssReleaseJavaResource
+
+[Incubating] Problems report is available at: file:///C:/Users/thies/Antigravity/Roundsync/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:validateSigningOssRelease'.
+> Keystore file 'C:\Users\thies\Antigravity\Roundsync\app\.config\android\roundsync.keystore' not found for signing config 'release'.
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.13/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 10s
+83 actionable tasks: 13 executed, 70 up-to-date

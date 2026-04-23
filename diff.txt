@@ -1,0 +1,211 @@
+diff --cc app/src/test/java/ca/pkay/rcloneexplorer/Items/TriggerTest.kt
+index a0125661,a6c56749..00000000
+--- a/app/src/test/java/ca/pkay/rcloneexplorer/Items/TriggerTest.kt
++++ b/app/src/test/java/ca/pkay/rcloneexplorer/Items/TriggerTest.kt
+@@@ -9,113 -9,102 +9,206 @@@ class TriggerTest 
+  
+      @Test
+      fun testDefaultState() {
+++<<<<<<< HEAD
+ +        val trigger = Trigger(1L)
+ +        // By default, Trigger initializes weekdays to 0b01111111 (127), so days 0-6 should be enabled.
+ +        for (i in 0..6) {
+ +            assertTrue("Day $i should be enabled by default", trigger.isEnabledAtDay(i))
+++=======
++         val trigger = Trigger(1)
++         // Default: 0b01111111 (all days enabled)
++         // 0=Mon, 6=Sun
++         for (day in 0..6) {
++             assertTrue("Day $day should be enabled by default", trigger.isEnabledAtDay(day))
+++>>>>>>> test/trigger-bitwise-logic-18357298864195108755
+          }
+      }
+  
+      @Test
+      fun testDisableDay() {
+++<<<<<<< HEAD
+ +        val trigger = Trigger(1L)
+ +        trigger.setEnabledAtDay(Trigger.TRIGGER_DAY_MON, false)
+ +        assertFalse("Monday should be disabled", trigger.isEnabledAtDay(Trigger.TRIGGER_DAY_MON))
+ +
+ +        // Other days should remain enabled
+ +        for (i in 1..6) {
+ +            assertTrue("Day $i should remain enabled", trigger.isEnabledAtDay(i))
+++=======
++         val trigger = Trigger(1)
++         trigger.setEnabledAtDay(Trigger.TRIGGER_DAY_MON, false)
++         assertFalse("Monday should be disabled", trigger.isEnabledAtDay(Trigger.TRIGGER_DAY_MON))
++ 
++         // Check other days are still enabled
++         for (day in 1..6) {
++             assertTrue("Day $day should still be enabled", trigger.isEnabledAtDay(day))
+++>>>>>>> test/trigger-bitwise-logic-18357298864195108755
+          }
+      }
+  
+      @Test
+      fun testEnableDay() {
+++<<<<<<< HEAD
+ +        val trigger = Trigger(1L)
+ +        trigger.setEnabledAtDay(Trigger.TRIGGER_DAY_WED, false)
+ +        assertFalse("Wednesday should be disabled", trigger.isEnabledAtDay(Trigger.TRIGGER_DAY_WED))
+ +
+ +        trigger.setEnabledAtDay(Trigger.TRIGGER_DAY_WED, true)
+ +        assertTrue("Wednesday should be enabled", trigger.isEnabledAtDay(Trigger.TRIGGER_DAY_WED))
+++=======
++         val trigger = Trigger(1)
++         trigger.setWeekdays(0) // Disable all
++ 
++         trigger.setEnabledAtDay(Trigger.TRIGGER_DAY_SUN, true)
++         assertTrue("Sunday should be enabled", trigger.isEnabledAtDay(Trigger.TRIGGER_DAY_SUN))
++ 
++         // Check other days are still disabled
++         for (day in 0..5) {
++             assertFalse("Day $day should still be disabled", trigger.isEnabledAtDay(day))
++         }
++     }
++ 
++     @Test
++     fun testToggleDay() {
++         val trigger = Trigger(1)
++ 
++         // Disable Monday
++         trigger.setEnabledAtDay(Trigger.TRIGGER_DAY_MON, false)
++         assertFalse(trigger.isEnabledAtDay(Trigger.TRIGGER_DAY_MON))
++ 
++         // Enable Monday
++         trigger.setEnabledAtDay(Trigger.TRIGGER_DAY_MON, true)
++         assertTrue(trigger.isEnabledAtDay(Trigger.TRIGGER_DAY_MON))
+++>>>>>>> test/trigger-bitwise-logic-18357298864195108755
+      }
+  
+      @Test
+      fun testMultipleDays() {
+++<<<<<<< HEAD
+ +        val trigger = Trigger(1L)
+ +
+ +        // Disable Mon, Wed, Fri
+ +        trigger.setEnabledAtDay(Trigger.TRIGGER_DAY_MON, false)
+ +        trigger.setEnabledAtDay(Trigger.TRIGGER_DAY_WED, false)
+ +        trigger.setEnabledAtDay(Trigger.TRIGGER_DAY_FRI, false)
+ +
+ +        assertFalse(trigger.isEnabledAtDay(Trigger.TRIGGER_DAY_MON))
+ +        assertTrue(trigger.isEnabledAtDay(Trigger.TRIGGER_DAY_TUE))
+ +        assertFalse(trigger.isEnabledAtDay(Trigger.TRIGGER_DAY_WED))
+ +        assertTrue(trigger.isEnabledAtDay(Trigger.TRIGGER_DAY_THU))
+ +        assertFalse(trigger.isEnabledAtDay(Trigger.TRIGGER_DAY_FRI))
+ +        assertTrue(trigger.isEnabledAtDay(Trigger.TRIGGER_DAY_SAT))
+ +        assertTrue(trigger.isEnabledAtDay(Trigger.TRIGGER_DAY_SUN))
+++=======
++         val trigger = Trigger(1)
++         trigger.setWeekdays(0)
++ 
++         trigger.setEnabledAtDay(Trigger.TRIGGER_DAY_MON, true)
++         trigger.setEnabledAtDay(Trigger.TRIGGER_DAY_WED, true)
++         trigger.setEnabledAtDay(Trigger.TRIGGER_DAY_FRI, true)
++ 
++         assertTrue(trigger.isEnabledAtDay(Trigger.TRIGGER_DAY_MON))
++         assertFalse(trigger.isEnabledAtDay(Trigger.TRIGGER_DAY_TUE))
++         assertTrue(trigger.isEnabledAtDay(Trigger.TRIGGER_DAY_WED))
++         assertFalse(trigger.isEnabledAtDay(Trigger.TRIGGER_DAY_THU))
++         assertTrue(trigger.isEnabledAtDay(Trigger.TRIGGER_DAY_FRI))
++         assertFalse(trigger.isEnabledAtDay(Trigger.TRIGGER_DAY_SAT))
++         assertFalse(trigger.isEnabledAtDay(Trigger.TRIGGER_DAY_SUN))
+++>>>>>>> test/trigger-bitwise-logic-18357298864195108755
+      }
+  
+      @Test
+      fun testBoundaryConditions() {
+++<<<<<<< HEAD
+ +        val trigger = Trigger(1L)
+ +
+ +        // Disable Monday (0)
+ +        trigger.setEnabledAtDay(Trigger.TRIGGER_DAY_MON, false)
+ +        assertFalse(trigger.isEnabledAtDay(Trigger.TRIGGER_DAY_MON))
+ +
+ +        // Disable Sunday (6)
+ +        trigger.setEnabledAtDay(Trigger.TRIGGER_DAY_SUN, false)
+ +        assertFalse(trigger.isEnabledAtDay(Trigger.TRIGGER_DAY_SUN))
+ +
+ +        // Check middle days are still enabled
+ +        for (i in 1..5) {
+ +            assertTrue("Day $i should be enabled", trigger.isEnabledAtDay(i))
+ +        }
+++=======
++         val trigger = Trigger(1)
++         trigger.setWeekdays(0)
++ 
++         // Test boundary 0 (Monday)
++         trigger.setEnabledAtDay(0, true)
++         assertEquals(1, trigger.getWeekdays())
++         assertTrue(trigger.isEnabledAtDay(0))
++ 
++         // Test boundary 6 (Sunday)
++         trigger.setEnabledAtDay(6, true)
++         // 1 | 64 = 65
++         assertEquals(65, trigger.getWeekdays())
++         assertTrue(trigger.isEnabledAtDay(6))
+++>>>>>>> test/trigger-bitwise-logic-18357298864195108755
+      }
+  
+      @Test
+      fun testSetWeekdays() {
+++<<<<<<< HEAD
+ +        val trigger = Trigger(1L)
+ +        // Set to 0 (all disabled)
+ +        trigger.setWeekdays(0.toByte())
+ +        for (i in 0..6) {
+ +            assertFalse("Day $i should be disabled", trigger.isEnabledAtDay(i))
+ +        }
+ +
+ +        // Set to 1 (Monday enabled)
+ +        trigger.setWeekdays(1.toByte())
+ +        assertTrue(trigger.isEnabledAtDay(Trigger.TRIGGER_DAY_MON))
+ +        for (i in 1..6) {
+ +            assertFalse("Day $i should be disabled", trigger.isEnabledAtDay(i))
+ +        }
+ +
+ +        // Set to 64 (Sunday enabled) -> 1 << 6
+ +        trigger.setWeekdays(64.toByte())
+ +        assertTrue(trigger.isEnabledAtDay(Trigger.TRIGGER_DAY_SUN))
+ +        for (i in 0..5) {
+ +            assertFalse("Day $i should be disabled", trigger.isEnabledAtDay(i))
+ +        }
+ +
+ +        // Set to 127 (all enabled)
+ +        trigger.setWeekdays(127.toByte())
+ +        for (i in 0..6) {
+ +            assertTrue("Day $i should be enabled", trigger.isEnabledAtDay(i))
+ +        }
+ +    }
+ +
+ +    @Test
+ +    fun testGetWeekdays() {
+ +        val trigger = Trigger(1L)
+ +        // Default is 127
+ +        assertEquals(127, trigger.getWeekdays())
+ +
+ +        trigger.setEnabledAtDay(Trigger.TRIGGER_DAY_MON, false)
+ +        // 127 - 1 = 126
+ +        assertEquals(126, trigger.getWeekdays())
+ +
+ +        trigger.setEnabledAtDay(Trigger.TRIGGER_DAY_SUN, false)
+ +        // 126 - 64 = 62
+ +        assertEquals(62, trigger.getWeekdays())
+++=======
++         val trigger = Trigger(1)
++         // Set specific pattern: Mon, Wed, Fri (1 + 4 + 16 = 21)
++         // Mon=0 (1), Tue=1 (2), Wed=2 (4), Thu=3 (8), Fri=4 (16), Sat=5 (32), Sun=6 (64)
++         val pattern = (1 or 4 or 16).toByte()
++         trigger.setWeekdays(pattern)
++ 
++         assertTrue(trigger.isEnabledAtDay(0))
++         assertFalse(trigger.isEnabledAtDay(1))
++         assertTrue(trigger.isEnabledAtDay(2))
++         assertFalse(trigger.isEnabledAtDay(3))
++         assertTrue(trigger.isEnabledAtDay(4))
++         assertFalse(trigger.isEnabledAtDay(5))
++         assertFalse(trigger.isEnabledAtDay(6))
+++>>>>>>> test/trigger-bitwise-logic-18357298864195108755
+      }
+  }

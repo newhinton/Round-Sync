@@ -1,0 +1,353 @@
+commit 352f13c16228b432017ae90879fa06af016ab0ed
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Fri Feb 20 00:35:26 2026 +0100
+
+    Fix FileUtilTest for Windows absolute paths
+
+diff --git a/app/src/test/java/ca/pkay/rcloneexplorer/util/FileUtilTest.java b/app/src/test/java/ca/pkay/rcloneexplorer/util/FileUtilTest.java
+index 58c6ca07..14cac0db 100644
+--- a/app/src/test/java/ca/pkay/rcloneexplorer/util/FileUtilTest.java
++++ b/app/src/test/java/ca/pkay/rcloneexplorer/util/FileUtilTest.java
+@@ -32,22 +32,26 @@ public class FileUtilTest {
+ 
+     @Test
+     public void createSafeFile_absolutePath() throws IOException {
+-         File parent = folder.newFolder("cache");
+-         File grandParent = parent.getParentFile();
+-         String fileName = grandParent.getAbsolutePath() + File.separator + "escaped.txt";
++        File parent = folder.newFolder("cache");
++        File grandParent = parent.getParentFile();
++        String fileName = grandParent.getAbsolutePath() + File.separator + "escaped.txt";
+ 
+-         try {
+-             File result = FileUtil.createSafeFile(parent, fileName);
+-             // If it didn't throw, verify it is indeed safe (nested inside parent)
+-             // This handles environments where File(parent, absPath) creates a nested file.
+-             String canonicalPath = result.getCanonicalPath();
+-             String canonicalParent = parent.getCanonicalPath();
+-             if (!canonicalPath.startsWith(canonicalParent + File.separator)) {
+-                 fail("File created outside parent: " + canonicalPath);
+-             }
+-         } catch (SecurityException e) {
+-             // This is also acceptable (and expected on systems where absolute path ignores parent)
+-         }
++        try {
++            File result = FileUtil.createSafeFile(parent, fileName);
++            // If it didn't throw, verify it is indeed safe (nested inside parent)
++            // This handles environments where File(parent, absPath) creates a nested file.
++            String canonicalPath = result.getCanonicalPath();
++            String canonicalParent = parent.getCanonicalPath();
++            if (!canonicalPath.startsWith(canonicalParent + File.separator)) {
++                fail("File created outside parent: " + canonicalPath);
++            }
++        } catch (SecurityException | IOException e) {
++            // This is also acceptable (and expected on systems where absolute path ignores
++            // parent)
++            // On Windows, new File(parent, absolutePath) can result in a path with a colon
++            // in the middle,
++            // which throws an IOException from getCanonicalPath().
++        }
+     }
+ 
+     @Test(expected = SecurityException.class)
+
+commit eef556def931c51d0f908640d76d3d3f72e1f2ab
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Fri Feb 20 00:32:48 2026 +0100
+
+    Fix RcloneRcdTest.java to use RemoteNameUtil
+
+diff --git a/app/src/test/java/ca/pkay/rcloneexplorer/RcloneRcdTest.java b/app/src/test/java/ca/pkay/rcloneexplorer/RcloneRcdTest.java
+index f291b21c..f07e0acc 100644
+--- a/app/src/test/java/ca/pkay/rcloneexplorer/RcloneRcdTest.java
++++ b/app/src/test/java/ca/pkay/rcloneexplorer/RcloneRcdTest.java
+@@ -3,12 +3,14 @@ package ca.pkay.rcloneexplorer;
+ import org.junit.Test;
+ import static org.junit.Assert.assertEquals;
+ 
++import ca.pkay.rcloneexplorer.util.RemoteNameUtil;
++
+ public class RcloneRcdTest {
+ 
+     @Test
+     public void testRemoteNameAsFs() {
+-        assertEquals("remote:", RcloneRcd.remoteNameAsFs("remote"));
+-        assertEquals("remote::", RcloneRcd.remoteNameAsFs("remote:"));
+-        assertEquals(":", RcloneRcd.remoteNameAsFs(""));
++        assertEquals("remote:", RemoteNameUtil.remoteNameAsFs("remote"));
++        assertEquals("remote::", RemoteNameUtil.remoteNameAsFs("remote:"));
++        assertEquals(":", RemoteNameUtil.remoteNameAsFs(""));
+     }
+ }
+
+commit 9b7018bb61d59a7d47659231bc24647ebfcffa8c
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Fri Feb 20 00:30:59 2026 +0100
+
+    Fix variable redefinition and merge conflicts
+
+diff --git a/app/src/main/java/ca/pkay/rcloneexplorer/VirtualContentProvider.java b/app/src/main/java/ca/pkay/rcloneexplorer/VirtualContentProvider.java
+index 17c2679a..25cd35fa 100644
+--- a/app/src/main/java/ca/pkay/rcloneexplorer/VirtualContentProvider.java
++++ b/app/src/main/java/ca/pkay/rcloneexplorer/VirtualContentProvider.java
+@@ -979,15 +979,11 @@ public class VirtualContentProvider extends SingleRootProvider {
+     @VisibleForTesting
+     static String getRemoteName(@NonNull String documentId) {
+         int nameEnd = documentId.indexOf(':');
+-<<<<<<< HEAD
+-        // 0 if there is no path separator, or the index of the first path name
+-        // character
+-=======
+         if (nameEnd == -1) {
+             return "";
+         }
+-        // 0 if there is no path separator, or the index of the first path name character
+->>>>>>> jules-validate-remote-name-2050564320315738442
++        // 0 if there is no path separator, or the index of the first path name
++        // character
+         int nameStart = documentId.lastIndexOf('/') + 1;
+         if (nameStart > nameEnd) {
+             nameStart = 0;
+@@ -1281,9 +1277,9 @@ public class VirtualContentProvider extends SingleRootProvider {
+                 extras.putString(DocumentsContract.EXTRA_INFO,
+                         context.getString(R.string.virtual_content_provider_no_remotes));
+                 FLog.d(TAG, "getRemotesAsCursor: No remotes, returning empty cursor");
+-                MatrixCursor cursor = new MatrixCursor(projection);
+-                cursor.setExtras(extras);
+-                return cursor;
++                MatrixCursor emptyCursor = new MatrixCursor(projection);
++                emptyCursor.setExtras(extras);
++                return emptyCursor;
+             }
+             for (RemoteItem item : remotes.values()) {
+                 // Exclude from results - no need to loop back
+
+commit cbacb8d3c3f649ff942f5872f4fa8c341a05d508
+Merge: 45a08f10 69036c89
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Fri Feb 20 00:15:52 2026 +0100
+
+    Merge PR #1
+    
+    # Conflicts:
+    #       app/src/test/java/ca/pkay/rcloneexplorer/Items/TriggerTest.kt
+
+commit 45a08f10d6ac4a752c30bd0c495d1dabe74a8e80
+Merge: b7119f5c 47ce0224
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Fri Feb 20 00:14:28 2026 +0100
+
+    Merge PR #2
+
+commit b7119f5c603f3aa9316d208633c8ea4c461667b3
+Merge: 247254b6 f4a65516
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Fri Feb 20 00:13:17 2026 +0100
+
+    Merge PR #3
+    
+    # Conflicts:
+    #       app/src/main/java/ca/pkay/rcloneexplorer/VirtualContentProvider.java
+
+commit 247254b64f077b2f915a8ba7fd94f9cb386f80f1
+Merge: af6a9950 f76381c6
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Fri Feb 20 00:09:25 2026 +0100
+
+    Merge PR #4
+    
+    # Conflicts:
+    #       app/src/main/java/ca/pkay/rcloneexplorer/VirtualContentProvider.java
+
+commit af6a99503ef419b2bf016b411abb7a3f8dd857a6
+Merge: 7052da07 63c8b931
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Fri Feb 20 00:03:12 2026 +0100
+
+    Merge PR #5
+
+commit 7052da0756fc03f34465efb71180455bc983c9c4
+Merge: ff17095b 0210494f
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Fri Feb 20 00:02:11 2026 +0100
+
+    Merge PR #6
+    
+    # Conflicts:
+    #       app/src/test/java/ca/pkay/rcloneexplorer/Items/TaskTest.kt
+
+commit ff17095b33863d80d67bb5136ca0d27ef5759dac
+Merge: fa01e717 6105294d
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Thu Feb 19 23:51:25 2026 +0100
+
+    Merge PR #7
+    
+    # Conflicts:
+    #       app/build.gradle
+
+commit fa01e7177e324b267af9fb72243f0ab2e3035931
+Merge: 0639438d 6ce7809f
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Thu Feb 19 23:44:50 2026 +0100
+
+    Merge PR #8
+    
+    # Conflicts:
+    #       app/src/main/java/ca/pkay/rcloneexplorer/VirtualContentProvider.java
+
+commit 0639438d7719fb70d6415a1ba4df4aa6b73019a3
+Merge: 6e2abebf 57c6a8de
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Thu Feb 19 23:40:47 2026 +0100
+
+    Merge PR #9
+
+commit 6e2abebf14595f268ffdac15e174f62e660b5c92
+Merge: 0fe2eaca 57d37d66
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Thu Feb 19 23:40:45 2026 +0100
+
+    Merge PR #10
+
+commit 0fe2eaca9d6f6fb5a9d41edb8479eedc49bbdce0
+Merge: 690d6d3a a7f0c0c6
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Thu Feb 19 23:40:44 2026 +0100
+
+    Merge PR #11
+
+commit 690d6d3accda1b86059315b284b0c7344725777c
+Merge: 8a709d95 8a8bbe0d
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Thu Feb 19 23:40:42 2026 +0100
+
+    Merge PR #12
+
+commit 8a709d955be449da0997bb275fadce5d560c8858
+Merge: 8d3c87e9 2b961032
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Thu Feb 19 23:40:41 2026 +0100
+
+    Merge PR #13
+
+commit 8d3c87e9b062fb4e051d8982da2595e229b8138f
+Merge: 91b6ae5f b7c5291e
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Thu Feb 19 23:40:39 2026 +0100
+
+    Merge PR #14
+
+commit 91b6ae5ff769858565363b06ea2dce1395e6eb19
+Merge: 0f7efdbb e1d0134b
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Thu Feb 19 23:40:38 2026 +0100
+
+    Merge PR #15
+
+commit 0f7efdbbd5e1dc2a4746161392c5b55fcc946d8d
+Merge: c8991455 66ac564f
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Thu Feb 19 23:39:59 2026 +0100
+
+    Merge PR #16
+    
+    # Conflicts:
+    #       app/src/main/java/ca/pkay/rcloneexplorer/VirtualContentProvider.java
+
+commit c8991455da913311aafaa755a05dd67a2008d699
+Merge: ff8add38 f4221f5b
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Thu Feb 19 23:37:55 2026 +0100
+
+    Merge PR #17
+
+commit ff8add384a82b6bf6cf8d4bbac0367b84cc74b08
+Merge: dfe9564c a2254aad
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Thu Feb 19 23:37:54 2026 +0100
+
+    Merge PR #18
+
+commit dfe9564c3046f92da02303f63b8efc48c7df5b91
+Merge: b3a90463 7feae5b7
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Thu Feb 19 23:37:19 2026 +0100
+
+    Merge PR #19
+    
+    # Conflicts:
+    #       app/src/main/java/ca/pkay/rcloneexplorer/VirtualContentProvider.java
+
+commit b3a90463601863f988db1be16f944b9081a52c25
+Merge: c09b182b aadc9a4f
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Thu Feb 19 23:32:02 2026 +0100
+
+    Merge PR #20
+
+commit c09b182b7248994b383b90680b74ff9231ca5ea7
+Merge: 6115b2ba d4f8a299
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Thu Feb 19 23:32:01 2026 +0100
+
+    Merge PR #21
+
+commit 6115b2ba56e36f6c4d5ed015a3aa4b3b43a81a81
+Merge: a3069156 2034b961
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Thu Feb 19 23:31:59 2026 +0100
+
+    Merge PR #22
+
+commit a3069156925b68b8d4e6591ce393f04b6a488827
+Merge: 6b92b637 b99aec9e
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Thu Feb 19 23:31:58 2026 +0100
+
+    Merge PR #23
+
+commit 6b92b6372f68b1b91a766f72da697e483713d2d1
+Merge: 60e09d27 a8d4475a
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Thu Feb 19 23:31:56 2026 +0100
+
+    Merge PR #24
+
+commit 60e09d2702b47da63a540e5709849d3513c07fc0
+Merge: d8548b83 6ae621f6
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Thu Feb 19 23:31:54 2026 +0100
+
+    Merge PR #25
+
+commit d8548b83a373f7a0607c05c046bf64de25bd64b1
+Merge: 1201449a 5ea7effa
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Thu Feb 19 23:31:53 2026 +0100
+
+    Merge PR #26
+
+commit 1201449a12d8035207b5d6128d0d0accd791687d
+Merge: 805d0de4 6dce86b3
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Thu Feb 19 23:31:29 2026 +0100
+
+    Merge PR #27
+    
+    # Conflicts:
+    #       app/src/main/java/ca/pkay/rcloneexplorer/RcloneRcd.java
+
+commit 805d0de41360ea7d4ec4cdf89eb30faef67d645e
+Merge: 95af4a80 6b7b2306
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Thu Feb 19 23:28:59 2026 +0100
+
+    Merge PR #28
+
+commit 95af4a801eae8f374723e850b20c6ce9fe3e2f29
+Merge: e286ce7e 7171176a
+Author: Thies <thies.schuelken@gmail.com>
+Date:   Thu Feb 19 23:28:58 2026 +0100
+
+    Merge PR #29

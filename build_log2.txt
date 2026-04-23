@@ -1,0 +1,408 @@
+
+> Configure project :app
+WARNING: The option setting 'android.defaults.buildfeatures.buildconfig=true' is deprecated.
+The current default is 'false'.
+It will be removed in version 10.0 of the Android Gradle plugin.
+To keep using this feature, add the following to your module-level build.gradle files:
+    android.buildFeatures.buildConfig = true
+or from Android Studio, click: `Refactor` > `Migrate BuildConfig to Gradle Build Files`.
+
+> Configure project :rclone
+The requred go version is: 1.24
+You are running: go version go1.25.6 windows/amd64
+
+You are building rclone v1.73.2
+
+> Task :rclone:createRcloneModule SKIPPED
+
+> Task :rclone:checkoutRclone
+go: downloading github.com/rclone/rclone v1.73.2
+go: downloading github.com/Azure/azure-sdk-for-go/sdk/azcore v1.20.0
+go: downloading github.com/Azure/azure-sdk-for-go/sdk/storage/azfile v1.5.3
+go: downloading github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.3
+go: downloading golang.org/x/sync v0.19.0
+go: downloading github.com/prometheus/client_golang v1.23.2
+go: downloading github.com/golang-jwt/jwt/v4 v4.5.2
+go: downloading golang.org/x/time v0.14.0
+go: downloading github.com/patrickmn/go-cache v2.1.0+incompatible
+go: downloading go.etcd.io/bbolt v1.4.3
+go: downloading github.com/spf13/cobra v1.10.1
+go: downloading github.com/spf13/pflag v1.0.10
+go: downloading golang.org/x/net v0.51.0
+go: downloading golang.org/x/text v0.34.0
+go: downloading github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78
+go: downloading github.com/cloudinary/cloudinary-go/v2 v2.13.0
+go: downloading github.com/a1ex3/zstd-seekable-format-go/pkg v0.10.0
+go: downloading github.com/buengese/sgzip v0.1.1
+go: downloading github.com/gabriel-vasile/mimetype v1.4.11
+go: downloading golang.org/x/oauth2 v0.33.0
+go: downloading github.com/zeebo/blake3 v0.2.4
+go: downloading github.com/klauspost/compress v1.18.1
+go: downloading github.com/dropbox/dropbox-sdk-go-unofficial/v6 v6.0.5
+go: downloading google.golang.org/api v0.255.0
+go: downloading github.com/Max-Sum/base32768 v0.0.0-20230304063302-18e6ce5945fd
+go: downloading github.com/FilenCloudDienste/filen-sdk-go v0.0.37
+go: downloading github.com/Files-com/files-sdk-go/v3 v3.2.264
+go: downloading github.com/mholt/archives v0.1.5
+go: downloading github.com/rfjakob/eme v1.1.2
+go: downloading golang.org/x/crypto v0.48.0
+go: downloading github.com/google/uuid v1.6.0
+go: downloading github.com/jlaffaye/ftp v0.2.1-0.20240918233326-1b970516f5d3
+go: downloading github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.13.0
+go: downloading github.com/mitchellh/go-homedir v1.1.0
+go: downloading github.com/peterh/liner v1.2.2
+go: downloading github.com/unknwon/goconfig v1.0.0
+go: downloading github.com/jzelinskie/whirlpool v0.0.0-20201016144138-0675e54bb004
+go: downloading github.com/zeebo/xxh3 v1.0.2
+go: downloading github.com/lanrat/extsort v1.4.2
+go: downloading github.com/colinmarc/hdfs/v2 v2.4.0
+go: downloading github.com/jcmturner/gokrb5/v8 v8.4.4
+go: downloading github.com/ncw/swift/v2 v2.0.5
+go: downloading github.com/golang-jwt/jwt/v5 v5.3.0
+go: downloading github.com/internxt/rclone-adapter v0.0.0-20260220172730-613f4cc8b8fd
+go: downloading github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.2
+go: downloading github.com/koofr/go-koofrclient v0.0.0-20221207135200-cbd7fc9ad6a6
+go: downloading github.com/pkg/xattr v0.4.12
+go: downloading github.com/t3rm1n4l/go-mega v0.0.0-20251031123324-a804aaa87491
+go: downloading golang.org/x/sys v0.41.0
+go: downloading github.com/koofr/go-httpclient v0.0.0-20240520111329-e20f8f203988
+go: downloading github.com/go-darwin/apfs v0.0.0-20211011131704-f84b94dbf348
+go: downloading github.com/oracle/oci-go-sdk/v65 v65.104.0
+go: downloading github.com/winfsp/cgofuse v1.6.1-0.20260126094232-f2c4fccdb286
+go: downloading github.com/coreos/go-systemd/v22 v22.6.0
+go: downloading gopkg.in/natefinch/lumberjack.v2 v2.2.1
+go: downloading github.com/aws/aws-sdk-go-v2 v1.39.6
+go: downloading github.com/aws/aws-sdk-go-v2/config v1.31.17
+go: downloading github.com/aws/aws-sdk-go-v2/credentials v1.18.21
+go: downloading github.com/aws/aws-sdk-go-v2/service/s3 v1.90.0
+go: downloading github.com/diskfs/go-diskfs v1.7.0
+go: downloading github.com/coreos/go-semver v0.3.1
+go: downloading github.com/pquerna/otp v1.5.0
+go: downloading github.com/rclone/Proton-API-Bridge v1.0.1-0.20260127174007-77f974840d11
+go: downloading github.com/rclone/go-proton-api v1.0.1-0.20260127173028-eb465cac3b18
+go: downloading github.com/mattn/go-colorable v0.1.14
+go: downloading golang.org/x/term v0.40.0
+go: downloading github.com/go-chi/chi/v5 v5.2.5
+go: downloading github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
+go: downloading github.com/putdotio/go-putio/putio v0.0.0-20200123120452-16d982cac2b8
+go: downloading github.com/aalpar/deheap v0.0.0-20210914013432-0cc84d79dec3
+go: downloading github.com/yunify/qingstor-sdk-go/v3 v3.2.0
+go: downloading github.com/shirou/gopsutil/v4 v4.25.10
+go: downloading github.com/IBM/go-sdk-core/v5 v5.18.5
+go: downloading github.com/aws/aws-sdk-go-v2/service/sts v1.39.1
+go: downloading github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.20.4
+go: downloading github.com/aws/smithy-go v1.23.2
+go: downloading github.com/wk8/go-ordered-map/v2 v2.1.8
+go: downloading gopkg.in/yaml.v3 v3.0.1
+go: downloading github.com/pkg/sftp v1.13.10
+go: downloading github.com/xanzy/ssh-agent v0.3.3
+go: downloading github.com/beorn7/perks v1.0.1
+go: downloading github.com/cespare/xxhash/v2 v2.3.0
+go: downloading github.com/prometheus/client_model v0.6.2
+go: downloading github.com/prometheus/common v0.67.2
+go: downloading github.com/prometheus/procfs v0.19.2
+go: downloading google.golang.org/protobuf v1.36.10
+go: downloading github.com/inconshreveable/mousetrap v1.1.0
+go: downloading github.com/cloudsoda/go-smb2 v0.0.0-20250228001242-d4c70e6251cc
+go: downloading storj.io/uplink v1.13.1
+go: downloading github.com/google/btree v1.1.3
+go: downloading github.com/Azure/go-ntlmssp v0.0.2-0.20251110135918-10b7b7e7cd26
+go: downloading cloud.google.com/go/compute/metadata v0.9.0
+go: downloading bazil.org/fuse v0.0.0-20230120002735-62a210ff1fd5
+go: downloading github.com/hanwen/go-fuse/v2 v2.9.0
+go: downloading github.com/STARRY-S/zip v0.2.3
+go: downloading github.com/andybalholm/brotli v1.2.0
+go: downloading github.com/bodgit/sevenzip v1.6.1
+go: downloading github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707
+go: downloading github.com/klauspost/pgzip v1.2.6
+go: downloading github.com/minio/minlz v1.0.1
+go: downloading github.com/mikelolasagasti/xz v1.0.1
+go: downloading github.com/nwaples/rardecode/v2 v2.2.1
+go: downloading github.com/pierrec/lz4/v4 v4.1.22
+go: downloading github.com/sorairolake/lzip-go v0.3.8
+go: downloading github.com/ulikunitz/xz v0.5.15
+go: downloading github.com/atotto/clipboard v0.1.4
+go: downloading github.com/gdamore/tcell/v2 v2.9.0
+go: downloading github.com/mattn/go-runewidth v0.0.19
+go: downloading github.com/rivo/uniseg v0.4.7
+go: downloading github.com/hashicorp/go-retryablehttp v0.7.8
+go: downloading github.com/lpar/date v1.0.0
+go: downloading moul.io/http2curl/v2 v2.3.0
+go: downloading github.com/bradfitz/iter v0.0.0-20191230175014-e8f45d346db8
+go: downloading github.com/chilts/sid v0.0.0-20190607042430-660e94789ec9
+go: downloading github.com/panjf2000/ants/v2 v2.11.3
+go: downloading github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
+go: downloading github.com/samber/lo v1.52.0
+go: downloading github.com/ProtonMail/go-crypto v1.3.0
+go: downloading github.com/anacrolix/dms v1.7.2
+go: downloading github.com/anacrolix/log v0.17.0
+go: downloading github.com/go-git/go-billy/v5 v5.6.2
+go: downloading github.com/willscott/go-nfs v0.0.3
+go: downloading goftp.io/server/v2 v2.0.2
+go: downloading github.com/rclone/gofakes3 v0.0.4
+go: downloading github.com/a8m/tree v0.0.0-20240104212747-2c8764a5f17e
+go: downloading github.com/hashicorp/go-multierror v1.1.1
+go: downloading github.com/AzureAD/microsoft-authentication-library-for-go v1.6.0
+go: downloading gopkg.in/validator.v2 v2.0.1
+go: downloading github.com/klauspost/cpuid/v2 v2.3.0
+go: downloading github.com/jcmturner/dnsutils/v2 v2.0.0
+go: downloading github.com/jcmturner/gofork v1.7.6
+go: downloading github.com/hashicorp/go-uuid v1.0.3
+go: downloading github.com/moby/sys/mountinfo v0.7.2
+go: downloading github.com/abbot/go-http-auth v0.4.0
+go: downloading github.com/mattn/go-isatty v0.0.20
+go: downloading github.com/ProtonMail/gluon v0.17.1-0.20230724134000-308be39be96e
+go: downloading github.com/ProtonMail/gopenpgp/v2 v2.9.0
+go: downloading github.com/relvacode/iso8601 v1.7.0
+go: downloading github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.13
+go: downloading github.com/aws/aws-sdk-go-v2/internal/ini v1.8.4
+go: downloading github.com/aws/aws-sdk-go-v2/service/sso v1.30.1
+go: downloading github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.5
+go: downloading github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.3
+go: downloading github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.13
+go: downloading github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.13
+go: downloading github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.3
+go: downloading github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.4
+go: downloading github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.13
+go: downloading github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.13
+go: downloading github.com/ProtonMail/go-srp v0.0.7
+go: downloading github.com/PuerkitoBio/goquery v1.10.3
+go: downloading github.com/bradenaw/juniper v0.15.3
+go: downloading github.com/emersion/go-message v0.18.2
+go: downloading github.com/emersion/go-vcard v0.0.0-20241024213814-c9703dde27ff
+go: downloading github.com/go-resty/resty/v2 v2.16.5
+go: downloading github.com/sirupsen/logrus v1.9.4-0.20230606125235-dd1b4c2e81af
+go: downloading golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546
+go: downloading github.com/go-openapi/strfmt v0.25.0
+go: downloading github.com/go-playground/validator/v10 v10.28.0
+go: downloading github.com/hashicorp/go-cleanhttp v0.5.2
+go: downloading gopkg.in/yaml.v2 v2.4.0
+go: downloading github.com/bahlo/generic-list-go v0.2.0
+go: downloading github.com/buger/jsonparser v1.1.1
+go: downloading github.com/mailru/easyjson v0.9.1
+go: downloading github.com/Microsoft/go-winio v0.6.1
+go: downloading github.com/kr/fs v0.1.0
+go: downloading github.com/cpuguy83/go-md2man/v2 v2.0.7
+go: downloading github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
+go: downloading go.yaml.in/yaml/v2 v2.4.3
+go: downloading github.com/creasty/defaults v1.8.0
+go: downloading github.com/gorilla/schema v1.4.1
+go: downloading github.com/cloudsoda/sddl v0.0.0-20250224235906-926454e91efc
+go: downloading github.com/zeebo/errs v1.4.0
+go: downloading storj.io/common v0.0.0-20251107171817-6221ae45072c
+go: downloading github.com/spacemonkeygo/monkit/v3 v3.0.25-0.20251022131615-eb24eb109368
+go: downloading storj.io/eventkit v0.0.0-20250410172343-61f26d3de156
+go: downloading github.com/stretchr/testify v1.11.1
+go: downloading github.com/appscode/go-querystring v0.0.0-20170504095604-0126cfb3f1dc
+go: downloading go4.org v0.0.0-20230225012048-214862532bf5
+go: downloading github.com/spf13/afero v1.15.0
+go: downloading github.com/dromara/dongle v1.0.1
+go: downloading github.com/bodgit/plumbing v1.3.0
+go: downloading github.com/clipperhouse/uax29/v2 v2.3.0
+go: downloading github.com/bodgit/windows v1.0.1
+go: downloading github.com/gdamore/encoding v1.0.1
+go: downloading github.com/lucasb-eyer/go-colorful v1.3.0
+go: downloading github.com/anacrolix/generics v0.1.0
+go: downloading github.com/hashicorp/golang-lru/v2 v2.0.7
+go: downloading github.com/rasky/go-xdr v0.0.0-20170124162913-1a41d1a06c93
+go: downloading github.com/willscott/go-nfs-client v0.0.0-20251022144359-801f10d98886
+go: downloading github.com/minio/xxml v0.0.3
+go: downloading github.com/ryszard/goskiplist v0.0.0-20150312221310-2dfbae5fcf46
+go: downloading github.com/shabbyrobe/gocovmerge v0.0.0-20230507112040-c3350d9342df
+go: downloading golang.org/x/tools v0.41.0
+go: downloading github.com/hashicorp/errwrap v1.1.0
+go: downloading github.com/kylelemons/godebug v1.1.0
+go: downloading github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
+go: downloading github.com/boombuler/barcode v1.1.0
+go: downloading github.com/anchore/go-lzo v0.1.0
+go: downloading github.com/pkg/errors v0.9.1
+go: downloading github.com/ProtonMail/go-mime v0.0.0-20230322103455-7d82a3887f2f
+go: downloading github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.13
+go: downloading github.com/andybalholm/cascadia v1.3.3
+go: downloading github.com/go-openapi/errors v0.22.4
+go: downloading github.com/go-viper/mapstructure/v2 v2.4.0
+go: downloading github.com/oklog/ulid v1.3.1
+go: downloading go.mongodb.org/mongo-driver v1.17.6
+go: downloading github.com/pengsrc/go-shared v0.2.1-0.20190131101655-1999055a4a14
+go: downloading github.com/ebitengine/purego v0.9.1
+go: downloading github.com/yusufpapurcu/wmi v1.2.4
+go: downloading github.com/tklauser/go-sysconf v0.3.15
+go: downloading github.com/geoffgarside/ber v1.2.0
+go: downloading github.com/russross/blackfriday/v2 v2.1.0
+go: downloading github.com/jcmturner/goidentity/v6 v6.0.1
+go: downloading github.com/go-playground/universal-translator v0.18.1
+go: downloading github.com/leodido/go-urn v1.4.0
+go: downloading github.com/jtolio/noiseconn v0.0.0-20231127013910-f6d9ecbf1de7
+go: downloading github.com/gogo/protobuf v1.3.2
+go: downloading storj.io/drpc v0.0.35-0.20250513201419-f7819ea69b55
+go: downloading storj.io/infectious v0.0.2
+go: downloading storj.io/picobuf v0.0.4
+go: downloading github.com/cloudflare/circl v1.6.3
+go: downloading github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
+go: downloading github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
+go: downloading github.com/clipperhouse/stringish v0.1.1
+go: downloading github.com/jcmturner/aescts/v2 v2.0.0
+go: downloading github.com/jcmturner/rpc/v2 v2.0.3
+go: downloading github.com/lufia/plan9stats v0.0.0-20251013123823-9fd1530e3ec3
+go: downloading github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55
+go: downloading github.com/go-ole/go-ole v1.3.0
+go: downloading github.com/tklauser/numcpus v0.10.0
+go: downloading github.com/go-playground/locales v0.14.1
+go: downloading github.com/flynn/noise v1.1.0
+go: downloading github.com/calebcase/tmpfile v1.0.3
+go: downloading golang.org/x/mod v0.32.0
+go: downloading github.com/ProtonMail/bcrypt v0.0.0-20211005172633-e235017c1baf
+go: downloading github.com/cronokirby/saferith v0.33.0
+go: downloading github.com/sony/gobreaker v1.0.0
+go: downloading github.com/gofrs/flock v0.13.0
+go: github.com/rclone/rclone imports
+	github.com/rclone/rclone/backend/all imports
+	github.com/rclone/rclone/backend/compress imports
+	github.com/klauspost/compress/zstd: github.com/klauspost/compress@v1.18.1: read "https://proxy.golang.org/github.com/klauspost/compress/@v/v1.18.1.zip": read tcp 10.128.154.31:51507->172.217.21.251:443: wsarecv: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.
+go: github.com/rclone/rclone imports
+	github.com/rclone/rclone/backend/all imports
+	github.com/rclone/rclone/backend/drive imports
+	google.golang.org/api/drive/v2: google.golang.org/api@v0.255.0: read "https://proxy.golang.org/google.golang.org/api/@v/v0.255.0.zip": read tcp 10.128.154.31:51507->172.217.21.251:443: wsarecv: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.
+go: github.com/rclone/rclone imports
+	github.com/rclone/rclone/backend/all imports
+	github.com/rclone/rclone/backend/drive imports
+	google.golang.org/api/drive/v3: google.golang.org/api@v0.255.0: read "https://proxy.golang.org/google.golang.org/api/@v/v0.255.0.zip": read tcp 10.128.154.31:51507->172.217.21.251:443: wsarecv: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.
+go: github.com/rclone/rclone imports
+	github.com/rclone/rclone/backend/all imports
+	github.com/rclone/rclone/backend/drive imports
+	google.golang.org/api/googleapi: google.golang.org/api@v0.255.0: read "https://proxy.golang.org/google.golang.org/api/@v/v0.255.0.zip": read tcp 10.128.154.31:51507->172.217.21.251:443: wsarecv: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.
+go: github.com/rclone/rclone imports
+	github.com/rclone/rclone/backend/all imports
+	github.com/rclone/rclone/backend/drive imports
+	google.golang.org/api/option: google.golang.org/api@v0.255.0: read "https://proxy.golang.org/google.golang.org/api/@v/v0.255.0.zip": read tcp 10.128.154.31:51507->172.217.21.251:443: wsarecv: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.
+go: github.com/rclone/rclone imports
+	github.com/rclone/rclone/backend/all imports
+	github.com/rclone/rclone/backend/googlecloudstorage imports
+	google.golang.org/api/storage/v1: google.golang.org/api@v0.255.0: read "https://proxy.golang.org/google.golang.org/api/@v/v0.255.0.zip": read tcp 10.128.154.31:51507->172.217.21.251:443: wsarecv: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.
+go: github.com/rclone/rclone imports
+	github.com/rclone/rclone/backend/all imports
+	github.com/rclone/rclone/backend/hdfs imports
+	github.com/colinmarc/hdfs/v2: github.com/colinmarc/hdfs/v2@v2.4.0: read "https://proxy.golang.org/github.com/colinmarc/hdfs/v2/@v/v2.4.0.zip": read tcp 10.128.154.31:65176->142.251.142.113:443: wsarecv: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.
+go: github.com/rclone/rclone imports
+	github.com/rclone/rclone/backend/all imports
+	github.com/rclone/rclone/backend/internetarchive imports
+	github.com/ncw/swift/v2: github.com/ncw/swift/v2@v2.0.5: Get "https://proxy.golang.org/github.com/ncw/swift/v2/@v/v2.0.5.zip": read tcp 10.128.154.31:65176->142.251.142.113:443: wsarecv: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.
+go: github.com/rclone/rclone imports
+	github.com/rclone/rclone/backend/all imports
+	github.com/rclone/rclone/backend/internxt imports
+	github.com/golang-jwt/jwt/v5: github.com/golang-jwt/jwt/v5@v5.3.0: Get "https://proxy.golang.org/github.com/golang-jwt/jwt/v5/@v/v5.3.0.zip": read tcp 10.128.154.31:65176->142.251.142.113:443: wsarecv: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.
+go: github.com/rclone/rclone imports
+	github.com/rclone/rclone/backend/all imports
+	github.com/rclone/rclone/backend/internxt imports
+	github.com/internxt/rclone-adapter/auth: github.com/internxt/rclone-adapter@v0.0.0-20260220172730-613f4cc8b8fd: Get "https://proxy.golang.org/github.com/internxt/rclone-adapter/@v/v0.0.0-20260220172730-613f4cc8b8fd.zip": read tcp 10.128.154.31:65176->142.251.142.113:443: wsarecv: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.
+go: github.com/rclone/rclone imports
+	github.com/rclone/rclone/backend/all imports
+	github.com/rclone/rclone/backend/internxt imports
+	github.com/internxt/rclone-adapter/buckets: github.com/internxt/rclone-adapter@v0.0.0-20260220172730-613f4cc8b8fd: Get "https://proxy.golang.org/github.com/internxt/rclone-adapter/@v/v0.0.0-20260220172730-613f4cc8b8fd.zip": read tcp 10.128.154.31:65176->142.251.142.113:443: wsarecv: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.
+go: github.com/rclone/rclone imports
+	github.com/rclone/rclone/backend/all imports
+	github.com/rclone/rclone/backend/internxt imports
+	github.com/internxt/rclone-adapter/config: github.com/internxt/rclone-adapter@v0.0.0-20260220172730-613f4cc8b8fd: Get "https://proxy.golang.org/github.com/internxt/rclone-adapter/@v/v0.0.0-20260220172730-613f4cc8b8fd.zip": read tcp 10.128.154.31:65176->142.251.142.113:443: wsarecv: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.
+go: github.com/rclone/rclone imports
+	github.com/rclone/rclone/backend/all imports
+	github.com/rclone/rclone/backend/internxt imports
+	github.com/internxt/rclone-adapter/errors: github.com/internxt/rclone-adapter@v0.0.0-20260220172730-613f4cc8b8fd: Get "https://proxy.golang.org/github.com/internxt/rclone-adapter/@v/v0.0.0-20260220172730-613f4cc8b8fd.zip": read tcp 10.128.154.31:65176->142.251.142.113:443: wsarecv: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.
+go: github.com/rclone/rclone imports
+	github.com/rclone/rclone/backend/all imports
+	github.com/rclone/rclone/backend/internxt imports
+	github.com/internxt/rclone-adapter/files: github.com/internxt/rclone-adapter@v0.0.0-20260220172730-613f4cc8b8fd: Get "https://proxy.golang.org/github.com/internxt/rclone-adapter/@v/v0.0.0-20260220172730-613f4cc8b8fd.zip": read tcp 10.128.154.31:65176->142.251.142.113:443: wsarecv: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.
+go: github.com/rclone/rclone imports
+	github.com/rclone/rclone/backend/all imports
+	github.com/rclone/rclone/backend/internxt imports
+	github.com/internxt/rclone-adapter/folders: github.com/internxt/rclone-adapter@v0.0.0-20260220172730-613f4cc8b8fd: Get "https://proxy.golang.org/github.com/internxt/rclone-adapter/@v/v0.0.0-20260220172730-613f4cc8b8fd.zip": read tcp 10.128.154.31:65176->142.251.142.113:443: wsarecv: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.
+go: github.com/rclone/rclone imports
+	github.com/rclone/rclone/backend/all imports
+	github.com/rclone/rclone/backend/internxt imports
+	github.com/internxt/rclone-adapter/users: github.com/internxt/rclone-adapter@v0.0.0-20260220172730-613f4cc8b8fd: Get "https://proxy.golang.org/github.com/internxt/rclone-adapter/@v/v0.0.0-20260220172730-613f4cc8b8fd.zip": read tcp 10.128.154.31:65176->142.251.142.113:443: wsarecv: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.
+go: github.com/rclone/rclone imports
+	github.com/rclone/rclone/backend/all imports
+	github.com/rclone/rclone/backend/compress imports
+	github.com/buengese/sgzip imports
+	github.com/klauspost/compress/flate: github.com/klauspost/compress@v1.18.1: read "https://proxy.golang.org/github.com/klauspost/compress/@v/v1.18.1.zip": read tcp 10.128.154.31:51507->172.217.21.251:443: wsarecv: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.
+go: github.com/rclone/rclone imports
+	github.com/rclone/rclone/cmd/all imports
+	github.com/rclone/rclone/cmd/archive/create imports
+	github.com/mholt/archives imports
+	github.com/klauspost/compress/gzip: github.com/klauspost/compress@v1.18.1: read "https://proxy.golang.org/github.com/klauspost/compress/@v/v1.18.1.zip": read tcp 10.128.154.31:51507->172.217.21.251:443: wsarecv: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.
+go: github.com/rclone/rclone imports
+	github.com/rclone/rclone/cmd/all imports
+	github.com/rclone/rclone/cmd/archive/create imports
+	github.com/mholt/archives imports
+	github.com/klauspost/compress/s2: github.com/klauspost/compress@v1.18.1: read "https://proxy.golang.org/github.com/klauspost/compress/@v/v1.18.1.zip": read tcp 10.128.154.31:51507->172.217.21.251:443: wsarecv: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.
+go: github.com/rclone/rclone imports
+	github.com/rclone/rclone/cmd/all imports
+	github.com/rclone/rclone/cmd/archive/create imports
+	github.com/mholt/archives imports
+	github.com/klauspost/compress/zip: github.com/klauspost/compress@v1.18.1: read "https://proxy.golang.org/github.com/klauspost/compress/@v/v1.18.1.zip": read tcp 10.128.154.31:51507->172.217.21.251:443: wsarecv: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.
+go: github.com/rclone/rclone imports
+	github.com/rclone/rclone/cmd/all imports
+	github.com/rclone/rclone/cmd/archive/create imports
+	github.com/mholt/archives imports
+	github.com/klauspost/compress/zlib: github.com/klauspost/compress@v1.18.1: read "https://proxy.golang.org/github.com/klauspost/compress/@v/v1.18.1.zip": read tcp 10.128.154.31:51507->172.217.21.251:443: wsarecv: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.
+
+> Task :rclone:patchRclone
+
+> Task :rclone:buildArm
+go: downloading github.com/ncw/swift/v2 v2.0.5
+go: downloading google.golang.org/api v0.255.0
+go: downloading github.com/colinmarc/hdfs/v2 v2.4.0
+go: downloading github.com/golang-jwt/jwt/v5 v5.3.0
+go: downloading github.com/internxt/rclone-adapter v0.0.0-20260220172730-613f4cc8b8fd
+go: downloading github.com/klauspost/compress v1.18.1
+go: downloading github.com/tyler-smith/go-bip39 v1.1.0
+go: downloading golang.org/x/image v0.32.0
+go: downloading github.com/googleapis/gax-go/v2 v2.15.0
+go: downloading google.golang.org/grpc v1.76.0
+go: downloading cloud.google.com/go/auth v0.17.0
+go: downloading cloud.google.com/go/auth/oauth2adapt v0.2.8
+go: downloading github.com/googleapis/enterprise-certificate-proxy v0.3.7
+go: downloading github.com/google/s2a-go v0.1.9
+go: downloading go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.63.0
+go: downloading github.com/felixge/httpsnoop v1.0.4
+go: downloading go.opentelemetry.io/otel v1.38.0
+go: downloading go.opentelemetry.io/otel/metric v1.38.0
+go: downloading go.opentelemetry.io/otel/trace v1.38.0
+go: downloading google.golang.org/genproto/googleapis/rpc v0.0.0-20251103181224-f26f9409b101
+go: downloading go.opentelemetry.io/auto/sdk v1.2.1
+go: downloading github.com/go-logr/stdr v1.2.2
+go: downloading github.com/go-logr/logr v1.4.3
+# github.com/rclone/rclone/backend/internxt
+gopath\pkg\mod\github.com\rclone\rclone@v1.73.2\backend\internxt\auth.go:6:2: could not import crypto/hmac (open : The system cannot find the file specified.)
+gopath\pkg\mod\github.com\rclone\rclone@v1.73.2\backend\internxt\auth.go:7:2: could not import crypto/sha1 (open : The system cannot find the file specified.)
+gopath\pkg\mod\github.com\rclone\rclone@v1.73.2\backend\internxt\auth.go:9:2: could not import encoding/base32 (open : The system cannot find the file specified.)
+gopath\pkg\mod\github.com\rclone\rclone@v1.73.2\backend\internxt\auth.go:11:2: could not import encoding/binary (open : The system cannot find the file specified.)
+gopath\pkg\mod\github.com\rclone\rclone@v1.73.2\backend\internxt\auth.go:15:2: could not import math (open : The system cannot find the file specified.)
+gopath\pkg\mod\github.com\rclone\rclone@v1.73.2\backend\internxt\internxt.go:12:2: could not import path/filepath (open : The system cannot find the file specified.)
+
+> Task :rclone:buildArm FAILED
+
+[Incubating] Problems report is available at: file:///C:/Users/thies/Antigravity/Roundsync/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* Where:
+Build file 'C:\Users\thies\Antigravity\Roundsync\rclone\build.gradle' line: 171
+
+* What went wrong:
+Execution failed for task ':rclone:buildArm'.
+> Process 'command 'go'' finished with non-zero exit value 1
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+
+> Get more help at https://help.gradle.org.
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.13/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 5m 7s
+3 actionable tasks: 3 executed

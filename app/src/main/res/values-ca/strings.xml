@@ -1,7 +1,7 @@
 <resources>
-    <string name="app_name">Round Sync</string>
+    <string name="app_name">CloudBridge</string>
     <string name="app_description">Rclone per a Android</string>
-    <string name="app_short_name">Round Sync</string>
+    <string name="app_short_name">CloudBridge</string>
 
     <string name="title_activity_about">Quant a</string>
     <string name="title_activity_changelog">Registre de canvis</string>
@@ -110,11 +110,11 @@
     <string name="app_icon_made_by">Icona de l\'aplicació feta per</string>
     <string name="from">de</string>
     <string name="intro_welcome_title">Benvinguda!</string>
-    <string name="intro_welcome_description">Round Sync és una eina de gestió de fitxers que pot gestionar fitxers emmagatzemats al teu dispositiu i/o al núvol. Si vols més informació vés a github.com/newhinton/Round-Sync.</string>
+    <string name="intro_welcome_description">CloudBridge és una eina de gestió de fitxers que pot gestionar fitxers emmagatzemats al teu dispositiu i/o al núvol. Si vols més informació vés a github.com/thies2005/CloudBridge.</string>
     <string name="intro_storage_title">Accés a l\'emmagatzematge</string>
-    <string name="intro_storage_description">Round Sync enllaça amb rclone i li cal permís per accedir a tots els fitxers. Concedeix permís d\'accés a l\'emmagatzematge quan t\'ho demani, si no l\'aplicació no funcionarà bé.</string>
+    <string name="intro_storage_description">CloudBridge enllaça amb rclone i li cal permís per accedir a tots els fitxers. Concedeix permís d\'accés a l\'emmagatzematge quan t\'ho demani, si no l\'aplicació no funcionarà bé.</string>
     <string name="intro_community_title">Comunitat</string>
-    <string name="intro_community_description">Round Sync és un projecte desenvolupat per la comunitat. Per contribuir a millorar l\'aplicació pots habilitar els informes anònims sobre els errors. Si vols més informació vés a felixnuesse.de/privacy-roundsync.</string>
+    <string name="intro_community_description">CloudBridge és un projecte desenvolupat per la comunitat. Per contribuir a millorar l\'aplicació pots habilitar els informes anònims sobre els errors. Si vols més informació vés a cloudbridge.schuelken.uk.</string>
 
     <string name="file_access">Accés als fitxers</string>
     <string name="look_and_feel">Aparença i Comportament</string>
@@ -133,14 +133,14 @@
     <string name="pref_locale_dlg_title">Tria l\'idioma</string>
     <string name="pref_locale_restart_notice">El canvi d\'idioma es farà efectiu en reiniciar l\'aplicació</string>
     <string name="use_logs">Registre d\'errors d\'rclone</string>
-    <string name="use_logs_summary">Els registres d\'errors es desaran en un fitxer local a (Android/data/de.felixnuesse.extract/files/logs)</string>
+    <string name="use_logs_summary">Els registres d\'errors es desaran en un fitxer local a (Android/data/de.schuelken.cloudbridge/files/logs)</string>
     <string name="notifications_pref_title">Notificacions</string>
     <string name="open_notification_settings_title">Més paràmetres de notificació</string>
     <string name="open_notification_settings_summary">Obre els paràmetres per configurar com et notiquem!</string>
     <string name="open_notification_settings_button">Obre!</string>
     <string name="content_description_circle">Cercle</string>
     <string name="loading">Carregant</string>
-    <string name="app_not_configured">Round Sync no està configurat</string>
+    <string name="app_not_configured">CloudBridge no està configurat</string>
     <string name="open_app_to_configure">Obre l\'aplicació per habilitar-ho primer</string>
     <string name="error_retrieving_files">Error en recuperar els fitxers</string>
     <string name="sync_service_notification_channel_description">Servei en segon pla de sincronització</string>
@@ -276,7 +276,7 @@
     <string name="virtual_content_provider_exception_error">Informació de suport: \n%1$s</string>
     <string name="virtual_content_provider_null_content">Ha fallat en recuperar el contingut d\'un remot o d\'un directori. Mira\'t el fitxer de registre per veure\'n els detalls.</string>
     <string name="virtual_content_provider_service_error">Ha fallat en connectar-se al servei d\'rclone. Força l\'aturada de l\'aplicació i torna-ho a provar.</string>
-    <string name="virtual_content_provider_no_remotes">No hi ha cap remot configurat. Obre Round Sync per afegir una ubicació d\'emmagatzematge.</string>
+    <string name="virtual_content_provider_no_remotes">No hi ha cap remot configurat. Obre CloudBridge per afegir una ubicació d\'emmagatzematge.</string>
     <string name="remote_properties_remote_name">Nom del remot</string>
     <string name="remote_properties_storage_usage">Ús de l\'emmagatzematge</string>
     <string name="remote_properties_storage_stats">%1$s / %2$s usat (%3$s lliure)</string>
@@ -402,8 +402,8 @@
         <item quantity="other">%s fitxers s\'han pujat!</item>
     </plurals>
 
-    <string name="abi_not_supported_arm_downgrade">Per desgràcia aquesta versió de Round Sync no és compatible amb el teu dispositiu. Intenta-ho amb l\'armeabi-v7a APK de github.com/newhinton/Round-Sync/releases/latest.</string>
-    <string name="abi_not_supported">El teu dispositiu no és compatible amb aquest versió de Round Sync.</string>
+    <string name="abi_not_supported_arm_downgrade">Per desgràcia aquesta versió de CloudBridge no és compatible amb el teu dispositiu. Intenta-ho amb l\'armeabi-v7a APK de github.com/thies2005/CloudBridge/releases/latest.</string>
+    <string name="abi_not_supported">El teu dispositiu no és compatible amb aquest versió de CloudBridge.</string>
     <string name="trigger">Disparadors</string>
     <string name="title_activity_trigger">Disparadors</string>
     <string name="enabled">Habilitat</string>

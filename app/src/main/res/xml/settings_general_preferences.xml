@@ -17,7 +17,7 @@
             app:key="@string/pref_key_show_thumbnails"
             app:title="@string/show_thumbnails" />
 
-        <de.felixnuesse.extract.settings.preferences.FilesizePreference
+        <de.schuelken.cloudbridge.settings.preferences.FilesizePreference
             android:defaultValue="1048576"
             android:key="@string/pref_key_thumbnail_size_limit"
             android:title="@string/pref_thumbnails_dlg_title"
@@ -62,7 +62,7 @@
             app:useSimpleSummaryProvider="true" />
 
 
-        <de.felixnuesse.extract.settings.preferences.EditIntPreference
+        <de.schuelken.cloudbridge.settings.preferences.EditIntPreference
             android:inputType="number"
             android:key="@string/pref_key_proxy_port"
             android:numeric="integer"

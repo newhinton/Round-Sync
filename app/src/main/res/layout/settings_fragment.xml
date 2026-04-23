@@ -415,5 +415,65 @@
             </LinearLayout>
 
         </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/reset_app_settings"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <ImageView
+                android:id="@+id/resetAppIconBackground"
+                android:layout_width="@dimen/settingsIconSize"
+                android:layout_height="@dimen/settingsIconSize"
+                android:layout_margin="@dimen/settingsIconMargin"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:srcCompat="@drawable/shape_circle"
+                app:tint="#D32F2F" />
+
+            <ImageView
+                android:id="@+id/resetAppIcon"
+                android:layout_width="@dimen/settings_icon_image_size"
+                android:layout_height="@dimen/settings_icon_image_size"
+                android:contentDescription="@string/reset_app_icon_content_description"
+                android:src="@drawable/ic_delete_black"
+                app:layout_constraintBottom_toBottomOf="@+id/resetAppIconBackground"
+                app:layout_constraintEnd_toEndOf="@+id/resetAppIconBackground"
+                app:layout_constraintStart_toStartOf="@+id/resetAppIconBackground"
+                app:layout_constraintTop_toTopOf="@+id/resetAppIconBackground"
+                app:tint="@color/iconTint" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/settingsIconMargin"
+                android:layout_marginEnd="@dimen/settingsIconMargin"
+                android:orientation="vertical"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toEndOf="@+id/resetAppIconBackground"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <TextView
+                    android:id="@+id/resetAppTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/reset_app_title"
+                    android:textColor="#D32F2F"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/resetAppDescription"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/reset_app_description" />
+            </LinearLayout>
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
     </LinearLayout>
 </ScrollView>

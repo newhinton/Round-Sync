@@ -1,0 +1,158 @@
+
+> Configure project :app
+WARNING: The option setting 'android.defaults.buildfeatures.buildconfig=true' is deprecated.
+The current default is 'false'.
+It will be removed in version 10.0 of the Android Gradle plugin.
+To keep using this feature, add the following to your module-level build.gradle files:
+    android.buildFeatures.buildConfig = true
+or from Android Studio, click: `Refactor` > `Migrate BuildConfig to Gradle Build Files`.
+
+> Configure project :rclone
+You are building rclone v1.73.1
+The requred go version is: 1.24
+You are running: go version go1.25.6 windows/amd64
+
+
+> Task :safdav:preBuild UP-TO-DATE
+> Task :safdav:preDebugBuild UP-TO-DATE
+> Task :safdav:checkDebugAarMetadata UP-TO-DATE
+> Task :safdav:mergeDebugJniLibFolders UP-TO-DATE
+> Task :safdav:mergeDebugNativeLibs NO-SOURCE
+> Task :safdav:stripDebugDebugSymbols NO-SOURCE
+> Task :safdav:copyDebugJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :safdav:generateDebugBuildConfig UP-TO-DATE
+> Task :safdav:generateDebugResValues UP-TO-DATE
+> Task :safdav:generateDebugResources UP-TO-DATE
+> Task :safdav:packageDebugResources UP-TO-DATE
+> Task :safdav:processDebugNavigationResources UP-TO-DATE
+> Task :safdav:parseDebugLocalResources UP-TO-DATE
+> Task :safdav:generateDebugRFile UP-TO-DATE
+> Task :safdav:extractDebugAnnotations UP-TO-DATE
+> Task :safdav:extractDeepLinksForAarDebug UP-TO-DATE
+> Task :safdav:mergeDebugShaders UP-TO-DATE
+> Task :safdav:compileDebugShaders NO-SOURCE
+> Task :safdav:generateDebugAssets UP-TO-DATE
+> Task :safdav:mergeDebugAssets UP-TO-DATE
+> Task :safdav:javaPreCompileDebug UP-TO-DATE
+> Task :safdav:compileDebugJavaWithJavac UP-TO-DATE
+> Task :safdav:mergeDebugGeneratedProguardFiles UP-TO-DATE
+> Task :safdav:mergeDebugConsumerProguardFiles UP-TO-DATE
+> Task :safdav:prepareDebugArtProfile UP-TO-DATE
+> Task :safdav:prepareLintJarForPublish UP-TO-DATE
+> Task :safdav:processDebugManifest UP-TO-DATE
+> Task :safdav:processDebugJavaRes NO-SOURCE
+> Task :safdav:mergeDebugJavaResource UP-TO-DATE
+> Task :safdav:syncDebugLibJars UP-TO-DATE
+> Task :safdav:writeDebugAarMetadata UP-TO-DATE
+> Task :safdav:bundleDebugLocalLintAar UP-TO-DATE
+> Task :app:checkKotlinGradlePluginConfigurationErrors
+> Task :rclone:createRcloneModule SKIPPED
+
+> Task :rclone:checkoutRclone
+go: warning: github.com/klauspost/compress@v1.18.1: retracted by module author: https://github.com/klauspost/compress/issues/1114
+go: to switch to the latest unretracted version, run:
+	go get github.com/klauspost/compress@latest
+
+> Task :rclone:patchRclone UP-TO-DATE
+> Task :rclone:buildArm
+> Task :rclone:buildArm64
+> Task :rclone:buildx64
+> Task :rclone:buildx86
+> Task :rclone:buildAll
+> Task :app:preBuild
+> Task :app:preOssDebugBuild
+> Task :app:dataBindingMergeDependencyArtifactsOssDebug UP-TO-DATE
+> Task :app:generateOssDebugResValues UP-TO-DATE
+> Task :app:extractOssDebugSupportedLocales UP-TO-DATE
+> Task :safdav:extractDebugSupportedLocales UP-TO-DATE
+> Task :app:generateOssDebugLocaleConfig UP-TO-DATE
+> Task :app:generateOssDebugResources UP-TO-DATE
+> Task :app:mergeOssDebugResources UP-TO-DATE
+> Task :app:dataBindingGenBaseClassesOssDebug UP-TO-DATE
+> Task :app:generateOssDebugBuildConfig UP-TO-DATE
+> Task :app:checkOssDebugAarMetadata UP-TO-DATE
+> Task :app:processOssDebugNavigationResources UP-TO-DATE
+> Task :app:compileOssDebugNavigationResources UP-TO-DATE
+> Task :app:mapOssDebugSourceSetPaths UP-TO-DATE
+> Task :app:createOssDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksOssDebug UP-TO-DATE
+> Task :safdav:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processOssDebugMainManifest UP-TO-DATE
+> Task :app:processOssDebugManifest UP-TO-DATE
+> Task :app:processOssDebugManifestForPackage UP-TO-DATE
+> Task :safdav:compileDebugLibraryResources UP-TO-DATE
+> Task :app:processOssDebugResources UP-TO-DATE
+> Task :safdav:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :app:compileOssDebugKotlin UP-TO-DATE
+> Task :app:javaPreCompileOssDebug UP-TO-DATE
+> Task :app:compileOssDebugJavaWithJavac UP-TO-DATE
+> Task :app:bundleOssDebugClassesToCompileJar UP-TO-DATE
+> Task :app:preOssDebugAndroidTestBuild SKIPPED
+> Task :app:generateOssDebugAndroidTestResValues UP-TO-DATE
+> Task :safdav:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :safdav:createFullJarDebug UP-TO-DATE
+> Task :safdav:writeDebugLintModelMetadata UP-TO-DATE
+> Task :app:generateOssDebugAndroidTestLintModel UP-TO-DATE
+> Task :app:extractProguardFiles UP-TO-DATE
+> Task :safdav:extractProguardFiles UP-TO-DATE
+> Task :safdav:generateDebugLintModel UP-TO-DATE
+> Task :app:generateOssDebugLintReportModel UP-TO-DATE
+> Task :app:preOssDebugUnitTestBuild
+> Task :app:generateOssDebugUnitTestLintModel UP-TO-DATE
+> Task :safdav:lintAnalyzeDebug UP-TO-DATE
+> Task :app:lintAnalyzeOssDebug UP-TO-DATE
+> Task :app:lintAnalyzeOssDebugAndroidTest UP-TO-DATE
+> Task :app:lintAnalyzeOssDebugUnitTest UP-TO-DATE
+> Task :safdav:preDebugAndroidTestBuild UP-TO-DATE
+> Task :safdav:generateDebugAndroidTestResValues UP-TO-DATE
+> Task :safdav:generateDebugAndroidTestLintModel UP-TO-DATE
+> Task :safdav:preDebugUnitTestBuild UP-TO-DATE
+> Task :safdav:generateDebugUnitTestLintModel UP-TO-DATE
+> Task :safdav:lintAnalyzeDebugAndroidTest UP-TO-DATE
+> Task :safdav:lintAnalyzeDebugUnitTest UP-TO-DATE
+> Task :app:lintReportOssDebug UP-TO-DATE
+
+> Task :app:lintOssDebug FAILED
+Lint found 8 errors, 494 warnings, 1 hint. First failure:
+
+C:\Users\thies\Antigravity\Roundsync\app\src\main\java\ca\pkay\rcloneexplorer\RemoteConfig\ConfigCreate.kt:116: Error: Call requires API level 26 (current min is 23): java.lang.Process#waitFor [NewApi]
+            val finished = createProc.waitFor(1, java.util.concurrent.TimeUnit.MINUTES)
+                                      ~~~~~~~
+
+The full lint text report is located at:
+  C:\Users\thies\Antigravity\Roundsync\app\build\intermediates\lint_intermediate_text_report\ossDebug\lintReportOssDebug\lint-results-ossDebug.txt
+
+[Incubating] Problems report is available at: file:///C:/Users/thies/Antigravity/Roundsync/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:lintOssDebug'.
+> Lint found errors in the project; aborting build.
+  
+  Fix the issues identified by lint, or add the issues to the lint baseline via `gradlew updateLintBaseline`.
+  For more details, see https://developer.android.com/studio/write/lint#snapshot
+  
+  Lint found 8 errors, 494 warnings, 1 hint. First failure:
+  
+  C:\Users\thies\Antigravity\Roundsync\app\src\main\java\ca\pkay\rcloneexplorer\RemoteConfig\ConfigCreate.kt:116: Error: Call requires API level 26 (current min is 23): java.lang.Process#waitFor [NewApi]
+              val finished = createProc.waitFor(1, java.util.concurrent.TimeUnit.MINUTES)
+                                        ~~~~~~~
+  
+  The full lint text report is located at:
+    C:\Users\thies\Antigravity\Roundsync\app\build\intermediates\lint_intermediate_text_report\ossDebug\lintReportOssDebug\lint-results-ossDebug.txt
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.13/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+79 actionable tasks: 7 executed, 72 up-to-date
+BUILD FAILED in 8s

@@ -1,11 +1,9 @@
-# Round Sync - Rclone for Android
-[![license: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://github.com/newhinton/Round-Sync/blob/master/LICENSE) [![Latest Downloads](https://img.shields.io/github/downloads/newhinton/round-sync/latest/total
-)](https://github.com/newhinton/Round-Sync/releases) [![GitHub release](https://img.shields.io/github/v/release/newhinton/Round-Sync?include_prereleases)](https://github.com/newhinton/Round-Sync/releases/latest) [![F-Droid](https://img.shields.io/f-droid/v/de.felixnuesse.extract?logo=fdroid&logoColor=white)](https://f-droid.org/packages/de.felixnuesse.extract/) [![IzzyOnDroid](https://img.shields.io/endpoint?url=https://apt.izzysoft.de/fdroid/api/v1/shield/de.felixnuesse.extract&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAMAAABg3Am1AAAA4VBMVEXn9cuv7wDB9iGp4x2k5gKh3B6k3SyAxAGd4ASo6gCv5SCW2gHA7UTB6V+EwiOw3lK36zC+422d1yO78SWs3kfR7JhQiw2751G7+QCz8gCKzgGq3zay5DSm2jrF9jZLfwmNyiC77zXO7oaYzjW37CLj9Lze8LLA43uz3mK19ACR1QBcnRO78R6ExBek1kbE8FLI6nSPu0jH5YJxtQ2b1RiAmz53uwF7pitZkAeX1w7I72TY8KTO8HXD7La+0pKizWBzhExqjytpmR+UzSTA5Ctzy3uv1nOv3gyF3UuCsDRHcEx7M2pHAAAAS3RSTlP//////////////////////////////////////////////////////////////////////////////////////////////////wDLGfCsAAAB9ElEQVRIx72W53biMBCFhY0L7g0bTAktQEwgdMhuerbO+z/Q2sBiY0uKcvacnX8a3Y/R8YyuQPDJQP8KoExcro6ZC6C4TQXQx/oLABV3cfozgBgL/AWY9ScAsR7oBCD2AmSAoD8A+J3cWYECdBEaVm2z+U1hAuDx4fr6a08PGuuf6cmys5QvMEz0c12zhPWaAYBq9emp9/DlTrMUXsBOaw5Yjl5elrG+u9tYAxbAtjeL+Z3Wdl83Ovfr3BQyYAZBoLXbHDfQ2hykTSEAAIu+2LRcl4tD6UCm67jPCvD4/ON5YRhGpzOdrlar74fT5IcvOxDD0Xg0nvU7hjGVttv+0vYyAgyQdNgeey3Hce5DSZqN9GZmvzh8UO0F3thsiY4gqGoUtuL2AeaKpom5brVMryEKvCyXZVX0urd0wOxy4qwh8jxfLlcqZafpYoH0MzQGnNI/6CulOASFc/NWlZ17ADEG3oWjvn5TEvjbfJuyrnFaSfdyrK/f1Gp1tTAHF750aqgUJUCsr5UizFUv3EeQwmOFekmVmABDCiNVlqNwOwEqcM75vp+s/asrKpAmdxM/Gbnfuz0j8OYnPw2v9AqZ5Nt+f7hikwkw2T3Fc2l2jzdcst3DpwGCnvQ+EPUEu8c/STSAqMfZPeX5IQK0J+a//zn5MP4Am7ISN/4mSV8AAAAASUVORK5CYII=)](https://apt.izzysoft.de/packages/de.felixnuesse.extract)
-[![Documentation](https://img.shields.io/badge/Documentation-roundsync.com-4aad4e)](https://roundsync.com) [![supportive flags](https://img.shields.io/badge/support-🇺🇦_🏳️‍⚧_🏳️‍🌈-4aad4e)](https://roundsync.com)
-[![Android Lint](https://github.com/newhinton/Round-Sync/actions/workflows/lint.yml/badge.svg)](https://github.com/newhinton/Round-Sync/actions/workflows/lint.yml)
-
+# CloudBridge - Rclone for Android
+[![license: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://github.com/thies2005/CloudBridge/blob/master/LICENSE) [![Latest Downloads](https://img.shields.io/github/downloads/thies2005/CloudBridge/latest/total)](https://github.com/thies2005/CloudBridge/releases) [![GitHub release](https://img.shields.io/github/v/release/thies2005/CloudBridge?include_prereleases)](https://github.com/thies2005/CloudBridge/releases/latest)
+[![Documentation](https://img.shields.io/badge/Documentation-cloudbridge.schuelken.uk-4aad4e)](https://cloudbridge.schuelken.uk)
+[![Android Lint](https://github.com/thies2005/CloudBridge/actions/workflows/lint.yml/badge.svg)](https://github.com/thies2005/CloudBridge/actions/workflows/lint.yml)
 A cloud file manager, powered by rclone.
-Visit [https://roundsync.com](https://roundsync.com) for more information!
+Visit [https://cloudbridge.schuelken.uk](https://cloudbridge.schuelken.uk) for more information!
 
 
 ## Screenshots
@@ -27,7 +25,7 @@ Visit [https://roundsync.com](https://roundsync.com) for more information!
 ## Features
 |                                                            Cloud Access                                                             |                                    256 Bit Encryption<sup>[1](https://rclone.org/crypt/#file-encryption)</sup>                                     |                                                         Integrated Experience                                                         |
 |:-----------------------------------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------------------------------------------------------------------:|:-------------------------------------------------------------------------------------------------------------------------------------:|
-| <img src="https://github.com/newhinton/Round-Sync/blob/master/docs/cloud-computing.png?raw=true" alt="Cloud Access" width="144" />  | <img src="https://github.com/newhinton/Round-Sync/blob/master/docs/locked-padlock.png?raw=true" alt="256 Bit End-to-End Encryption" width="108" /> | <img src="https://github.com/newhinton/Round-Sync/blob/master/docs/smartphone.png?raw=true" alt="Integrated Experience" width="132"/> |
+| <img src="https://github.com/thies2005/CloudBridge/blob/master/docs/cloud-computing.png?raw=true" alt="Cloud Access" width="144" />  | <img src="https://github.com/thies2005/CloudBridge/blob/master/docs/locked-padlock.png?raw=true" alt="256 Bit End-to-End Encryption" width="108" /> | <img src="https://github.com/thies2005/CloudBridge/blob/master/docs/smartphone.png?raw=true" alt="Integrated Experience" width="132"/> |
 |                                             Use your cloud storage like a local folder.                                             |                                         Keep your files private on any cloud provider with crypt remotes.                                          |                                  Don't give up features or comfort just because it runs on a phone.                                   |
 
 - **File Management** (list, view, download, upload, move, rename, delete files and folders)
@@ -36,14 +34,14 @@ Visit [https://roundsync.com](https://roundsync.com) for more information!
 - **Many cloud storage providers** (all via rclone config import, some without ui-setup)
 - **Material 3 Design** (Dark theme)
 - **All architectures** (runs on ARM, ARM64, x86 and x64 devices, Android 7+)
-- **Storage Access Framework (SAF)** ([see docs](https://roundsync.com/usage/saf.html)) for SD card and USB device access.
+- **Storage Access Framework (SAF)** ([see docs](https://cloudbridge.schuelken.uk/usage/saf.html)) for SD card and USB device access.
 - **Intentservice** to start tasks via third party apps!
 - **Task Management** to allow regular runs of your important tasks!
 
 
 ## Installation
 
-Grab the [latest version](https://github.com/newhinton/Round-Sync/releases/latest) of the signed APK and install it on your phone.
+Grab the [latest version](https://github.com/thies2005/CloudBridge/releases/latest) of the signed APK and install it on your phone.
 | CPU architecture | Where to find | APK identifier |
 |:---|:--|:---:|
 |ARM 32 Bit | older devices | ```armeabi-v7a``` |
@@ -51,17 +49,17 @@ Grab the [latest version](https://github.com/newhinton/Round-Sync/releases/lates
 |Intel/AMD 32 Bit | some TV boxes and tablets | ```x86``` |
 |Intel/AMD 64 Bit | some emulators | ```x86_64``` |
 
-If you don't know which version to pick use ```roundsync-<version>-universal-release.apk```. Most devices run ARM 64 Bit, and 64 Bit devices often can also run the respective 32 bit version at lower performance. The app runs on any phone, tablet or TV with Android 7 or newer, as long as you have a touchscreen or mouse.
+If you don't know which version to pick use ```CloudBridge-<version>-universal-release.apk```. Most devices run ARM 64 Bit, and 64 Bit devices often can also run the respective 32 bit version at lower performance. The app runs on any phone, tablet or TV with Android 7 or newer, as long as you have a touchscreen or mouse.
 
 [<img src="https://f-droid.org/badge/get-it-on.png"
     alt="Get it on F-Droid"
-    height="80">](https://f-droid.org/packages/de.felixnuesse.extract)
+    height="80">](https://f-droid.org/packages/de.schuelken.cloudbridge)
 [<img src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png"
     alt="Get it on IzzyOnDroid"
-    height="80">](https://apt.izzysoft.de/packages/de.felixnuesse.extract)
+    height="80">](https://apt.izzysoft.de/packages/de.schuelken.cloudbridge)
 
 ## Usage
-[See the documentation](https://roundsync.com/).
+[See the documentation](https://cloudbridge.schuelken.uk/).
 
 
 ## Intents
@@ -70,7 +68,7 @@ The intent needs the following:
 
 | Intent          |                   Content                   |                 |
 |:----------------|:-------------------------------------------:|----------------:|
-| packageName     |           de.felixnuesse.extract            |                 |
+| packageName     |           de.schuelken.cloudbridge            |                 |
 | className       | ca.pkay.rcloneexplorer.Services.SyncService |                 |
 | Action          |                 START_TASK                  |                 |
 | Integer Extra   |                    task                     |        idOfTask |
@@ -78,7 +76,7 @@ The intent needs the following:
 
 
 ## Libraries
-- [rclone](https://github.com/rclone/rclone) - Calling this a library is an understatement. Without rclone, there would not be Round Sync. See https://rclone.org/donate/ to support rclone.
+- [rclone](https://github.com/rclone/rclone) - Calling this a library is an understatement. Without rclone, there would not be CloudBridge. See https://rclone.org/donate/ to support rclone.
 - [Jetpack AndroidX](https://developer.android.com/license)
 - [Floating Action Button SpeedDial](https://github.com/leinardi/FloatingActionButtonSpeedDial) - A Floating Action Button Speed Dial implementation for Android that follows the Material Design specification.
 - [Glide](https://github.com/bumptech/glide) - An image loading and caching library for Android focused on smooth scrolling.
@@ -94,7 +92,7 @@ See [CONTRIBUTING](./CONTRIBUTING.md)
 
 Anyone is welcome to contribute and help out. However, hate, discrimination and racism are decidedly unwelcome here. If you feel offended by this, you might belong to the group of people who are not welcome. I will not tolerate hate in any way.
 
-If you want to add more translations, see our [weblate-project](https://hosted.weblate.org/projects/round-sync/round-sync/)!
+If you want to add more translations, see our [weblate-project](https://hosted.weblate.org/projects/CloudBridge/CloudBridge/)!
 
 ## Developing
 
@@ -121,6 +119,14 @@ This app is released under the terms of the [GPLv3 license](https://github.com/n
 
 
 ## About this app
-This is a fork of [**RCX**](https://github.com/x0b/rcx) by **x0b**<sup>[x0b](https://github.com/x0b)</sup> which is itself a fork of [**rcloneExplorer**](https://github.com/patrykcoding/rcloneExplorer) by **Patryk Kaczmarkiewicz**<sup>[patrykcoding](https://github.com/patrykcoding)</sup> .
+This is a fork of [**CloudBridge**](https://github.com/thies2005/CloudBridge) which is a fork of [**RCX**](https://github.com/x0b/rcx) by **x0b**<sup>[x0b](https://github.com/x0b)</sup> which is itself a fork of [**rcloneExplorer**](https://github.com/patrykcoding/rcloneExplorer) by **Patryk Kaczmarkiewicz**<sup>[patrykcoding](https://github.com/patrykcoding)</sup>.
+
+As the upstream CloudBridge project has seen a lack of recent development and updates, CloudBridge was created to provide active maintenance, easy accessibility via releases on Google Play, and critical fixes.
 
 If you want to convey a modified version (fork), we ask you to use a different name, app icon and package id as well as proper attribution to avoid user confusion.
+
+
+## New Features in this Fork
+This fork adds explicit support and fixes for the following providers:
+- **Internxt**: Decentralized cloud storage. Included is a robust integration with automatic token renewal and state persistence to ensure the remote connection does not expire.
+- **Drime**: Cloud storage provider.

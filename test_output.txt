@@ -1,0 +1,224 @@
+
+> Configure project :app
+WARNING: The option setting 'android.defaults.buildfeatures.buildconfig=true' is deprecated.
+The current default is 'false'.
+It will be removed in version 10.0 of the Android Gradle plugin.
+To keep using this feature, add the following to your module-level build.gradle files:
+    android.buildFeatures.buildConfig = true
+or from Android Studio, click: `Refactor` > `Migrate BuildConfig to Gradle Build Files`.
+
+> Configure project :rclone
+The requred go version is: 1.24
+You are running: go version go1.25.6 windows/amd64
+
+You are building rclone v1.73.1
+
+> Task :app:checkKotlinGradlePluginConfigurationErrors
+> Task :rclone:createRcloneModule SKIPPED
+
+> Task :rclone:checkoutRclone
+go: warning: github.com/klauspost/compress@v1.18.1: retracted by module author: https://github.com/klauspost/compress/issues/1114
+go: to switch to the latest unretracted version, run:
+	go get github.com/klauspost/compress@latest
+
+> Task :rclone:patchRclone UP-TO-DATE
+> Task :rclone:buildArm
+> Task :rclone:buildArm64
+> Task :rclone:buildx64
+> Task :rclone:buildx86
+> Task :rclone:buildAll
+> Task :app:preBuild
+> Task :app:preOssDebugBuild
+> Task :app:dataBindingMergeDependencyArtifactsOssDebug UP-TO-DATE
+> Task :app:generateOssDebugResValues UP-TO-DATE
+> Task :app:extractOssDebugSupportedLocales UP-TO-DATE
+> Task :safdav:preBuild UP-TO-DATE
+> Task :safdav:preDebugBuild UP-TO-DATE
+> Task :safdav:generateDebugResValues UP-TO-DATE
+> Task :safdav:extractDebugSupportedLocales UP-TO-DATE
+> Task :app:generateOssDebugLocaleConfig UP-TO-DATE
+> Task :app:generateOssDebugResources UP-TO-DATE
+> Task :safdav:generateDebugResources UP-TO-DATE
+> Task :safdav:packageDebugResources UP-TO-DATE
+> Task :app:mergeOssDebugResources UP-TO-DATE
+> Task :app:dataBindingGenBaseClassesOssDebug UP-TO-DATE
+> Task :app:generateOssDebugBuildConfig UP-TO-DATE
+> Task :safdav:writeDebugAarMetadata UP-TO-DATE
+> Task :app:checkOssDebugAarMetadata UP-TO-DATE
+> Task :safdav:processDebugNavigationResources UP-TO-DATE
+> Task :app:processOssDebugNavigationResources UP-TO-DATE
+> Task :app:compileOssDebugNavigationResources UP-TO-DATE
+> Task :app:mapOssDebugSourceSetPaths UP-TO-DATE
+> Task :app:createOssDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksOssDebug UP-TO-DATE
+> Task :safdav:extractDeepLinksDebug UP-TO-DATE
+> Task :safdav:processDebugManifest UP-TO-DATE
+> Task :app:processOssDebugMainManifest UP-TO-DATE
+> Task :app:processOssDebugManifest UP-TO-DATE
+> Task :app:processOssDebugManifestForPackage UP-TO-DATE
+> Task :safdav:compileDebugLibraryResources UP-TO-DATE
+> Task :safdav:parseDebugLocalResources UP-TO-DATE
+> Task :safdav:generateDebugRFile UP-TO-DATE
+> Task :app:processOssDebugResources UP-TO-DATE
+> Task :safdav:generateDebugBuildConfig UP-TO-DATE
+> Task :safdav:javaPreCompileDebug UP-TO-DATE
+> Task :safdav:compileDebugJavaWithJavac UP-TO-DATE
+> Task :safdav:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :app:compileOssDebugKotlin UP-TO-DATE
+> Task :app:javaPreCompileOssDebug UP-TO-DATE
+> Task :app:compileOssDebugJavaWithJavac UP-TO-DATE
+> Task :app:bundleOssDebugClassesToRuntimeJar UP-TO-DATE
+> Task :app:bundleOssDebugClassesToCompileJar UP-TO-DATE
+> Task :app:preOssDebugUnitTestBuild
+> Task :app:javaPreCompileOssDebugUnitTest UP-TO-DATE
+> Task :app:processOssDebugJavaRes UP-TO-DATE
+> Task :safdav:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :safdav:processDebugJavaRes NO-SOURCE
+> Task :app:buildKotlinToolingMetadata UP-TO-DATE
+> Task :app:preOssReleaseBuild
+> Task :app:dataBindingMergeDependencyArtifactsOssRelease UP-TO-DATE
+> Task :app:generateOssReleaseResValues UP-TO-DATE
+> Task :app:extractOssReleaseSupportedLocales UP-TO-DATE
+> Task :safdav:preReleaseBuild UP-TO-DATE
+> Task :safdav:generateReleaseResValues UP-TO-DATE
+> Task :safdav:extractReleaseSupportedLocales UP-TO-DATE
+> Task :app:generateOssReleaseLocaleConfig UP-TO-DATE
+> Task :app:generateOssReleaseResources UP-TO-DATE
+> Task :safdav:generateReleaseResources UP-TO-DATE
+> Task :safdav:packageReleaseResources UP-TO-DATE
+> Task :app:mergeOssReleaseResources UP-TO-DATE
+> Task :app:dataBindingGenBaseClassesOssRelease UP-TO-DATE
+> Task :app:generateOssReleaseBuildConfig UP-TO-DATE
+> Task :safdav:writeReleaseAarMetadata UP-TO-DATE
+> Task :app:checkOssReleaseAarMetadata UP-TO-DATE
+> Task :safdav:processReleaseNavigationResources UP-TO-DATE
+> Task :app:processOssReleaseNavigationResources UP-TO-DATE
+> Task :app:compileOssReleaseNavigationResources UP-TO-DATE
+> Task :app:mapOssReleaseSourceSetPaths UP-TO-DATE
+> Task :app:createOssReleaseCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksOssRelease UP-TO-DATE
+> Task :safdav:extractDeepLinksRelease UP-TO-DATE
+> Task :safdav:processReleaseManifest UP-TO-DATE
+> Task :app:processOssReleaseMainManifest UP-TO-DATE
+> Task :app:processOssReleaseManifest UP-TO-DATE
+> Task :app:processOssReleaseManifestForPackage UP-TO-DATE
+> Task :safdav:parseReleaseLocalResources UP-TO-DATE
+> Task :safdav:generateReleaseRFile UP-TO-DATE
+> Task :app:processOssReleaseResources UP-TO-DATE
+> Task :safdav:generateReleaseBuildConfig UP-TO-DATE
+> Task :safdav:javaPreCompileRelease UP-TO-DATE
+> Task :safdav:compileReleaseJavaWithJavac UP-TO-DATE
+> Task :safdav:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :app:compileOssReleaseKotlin UP-TO-DATE
+> Task :app:javaPreCompileOssRelease UP-TO-DATE
+> Task :app:compileOssReleaseJavaWithJavac UP-TO-DATE
+> Task :app:bundleOssReleaseClassesToRuntimeJar UP-TO-DATE
+> Task :app:bundleOssReleaseClassesToCompileJar UP-TO-DATE
+> Task :app:preOssReleaseUnitTestBuild
+> Task :app:javaPreCompileOssReleaseUnitTest UP-TO-DATE
+> Task :app:compileOssDebugUnitTestKotlin
+> Task :app:processOssReleaseJavaRes UP-TO-DATE
+> Task :app:compileOssReleaseUnitTestKotlin
+> Task :app:compileOssDebugUnitTestJavaWithJavac
+> Task :app:processOssDebugUnitTestJavaRes UP-TO-DATE
+Java HotSpot(TM) 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :app:testOssDebugUnitTest
+> Task :app:compileOssReleaseUnitTestJavaWithJavac
+> Task :app:processOssReleaseUnitTestJavaRes
+> Task :safdav:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :safdav:processReleaseJavaRes NO-SOURCE
+Java HotSpot(TM) 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :app:testOssReleaseUnitTest
+> Task :app:preRsDebugBuild
+> Task :app:dataBindingMergeDependencyArtifactsRsDebug UP-TO-DATE
+> Task :app:generateRsDebugResValues UP-TO-DATE
+> Task :app:extractRsDebugSupportedLocales UP-TO-DATE
+> Task :app:generateRsDebugLocaleConfig UP-TO-DATE
+> Task :app:generateRsDebugResources UP-TO-DATE
+> Task :app:mergeRsDebugResources UP-TO-DATE
+> Task :app:dataBindingGenBaseClassesRsDebug UP-TO-DATE
+> Task :app:generateRsDebugBuildConfig UP-TO-DATE
+> Task :app:checkRsDebugAarMetadata UP-TO-DATE
+> Task :app:processRsDebugNavigationResources UP-TO-DATE
+> Task :app:compileRsDebugNavigationResources UP-TO-DATE
+> Task :app:mapRsDebugSourceSetPaths UP-TO-DATE
+> Task :app:createRsDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksRsDebug UP-TO-DATE
+> Task :app:processRsDebugMainManifest UP-TO-DATE
+> Task :app:processRsDebugManifest UP-TO-DATE
+> Task :app:processRsDebugManifestForPackage UP-TO-DATE
+> Task :app:processRsDebugResources UP-TO-DATE
+> Task :app:compileRsDebugKotlin UP-TO-DATE
+> Task :app:javaPreCompileRsDebug UP-TO-DATE
+> Task :app:compileRsDebugJavaWithJavac UP-TO-DATE
+> Task :app:preRsDebugUnitTestBuild
+> Task :app:javaPreCompileRsDebugUnitTest UP-TO-DATE
+> Task :app:processRsDebugJavaRes
+> Task :app:preRsReleaseBuild
+> Task :app:dataBindingMergeDependencyArtifactsRsRelease UP-TO-DATE
+> Task :app:generateRsReleaseResValues UP-TO-DATE
+> Task :app:extractRsReleaseSupportedLocales UP-TO-DATE
+> Task :app:generateRsReleaseLocaleConfig UP-TO-DATE
+> Task :app:generateRsReleaseResources UP-TO-DATE
+> Task :app:mergeRsReleaseResources UP-TO-DATE
+> Task :app:dataBindingGenBaseClassesRsRelease UP-TO-DATE
+> Task :app:generateRsReleaseBuildConfig UP-TO-DATE
+> Task :app:checkRsReleaseAarMetadata UP-TO-DATE
+> Task :app:processRsReleaseNavigationResources UP-TO-DATE
+> Task :app:compileRsReleaseNavigationResources UP-TO-DATE
+> Task :app:mapRsReleaseSourceSetPaths UP-TO-DATE
+> Task :app:createRsReleaseCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksRsRelease UP-TO-DATE
+> Task :app:processRsReleaseMainManifest UP-TO-DATE
+> Task :app:processRsReleaseManifest UP-TO-DATE
+> Task :app:processRsReleaseManifestForPackage UP-TO-DATE
+> Task :app:processRsReleaseResources UP-TO-DATE
+> Task :app:compileRsReleaseKotlin UP-TO-DATE
+> Task :app:javaPreCompileRsRelease UP-TO-DATE
+> Task :app:bundleRsDebugClassesToRuntimeJar
+> Task :app:bundleRsDebugClassesToCompileJar
+
+> Task :app:compileRsReleaseJavaWithJavac
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :app:preRsReleaseUnitTestBuild
+> Task :app:javaPreCompileRsReleaseUnitTest UP-TO-DATE
+> Task :app:processRsReleaseJavaRes
+> Task :safdav:preDebugUnitTestBuild UP-TO-DATE
+> Task :safdav:generateDebugUnitTestStubRFile UP-TO-DATE
+> Task :safdav:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :safdav:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :safdav:processDebugUnitTestJavaRes NO-SOURCE
+> Task :safdav:testDebugUnitTest NO-SOURCE
+> Task :safdav:preReleaseUnitTestBuild UP-TO-DATE
+> Task :safdav:generateReleaseUnitTestStubRFile UP-TO-DATE
+> Task :safdav:javaPreCompileReleaseUnitTest UP-TO-DATE
+> Task :safdav:compileReleaseUnitTestJavaWithJavac NO-SOURCE
+> Task :safdav:processReleaseUnitTestJavaRes NO-SOURCE
+> Task :safdav:testReleaseUnitTest NO-SOURCE
+> Task :safdav:test UP-TO-DATE
+> Task :app:bundleRsReleaseClassesToRuntimeJar
+> Task :app:bundleRsReleaseClassesToCompileJar
+> Task :app:compileRsDebugUnitTestKotlin
+> Task :app:compileRsReleaseUnitTestKotlin
+> Task :app:compileRsDebugUnitTestJavaWithJavac
+> Task :app:processRsDebugUnitTestJavaRes
+Java HotSpot(TM) 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :app:testRsDebugUnitTest
+> Task :app:compileRsReleaseUnitTestJavaWithJavac
+> Task :app:processRsReleaseUnitTestJavaRes
+Java HotSpot(TM) 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :app:testRsReleaseUnitTest
+> Task :app:test
+
+[Incubating] Problems report is available at: file:///C:/Users/thies/Antigravity/Roundsync/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.13/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 22s
+159 actionable tasks: 28 executed, 131 up-to-date

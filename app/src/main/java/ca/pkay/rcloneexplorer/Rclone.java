@@ -185,6 +185,10 @@ public class Rclone {
         // ref: https://github.com/rclone/rclone/issues/2446
         environmentValues.add("RCLONE_LOCAL_NO_SET_MODTIME=true");
 
+        // The pre-built linux rclone binaries do not know how to find the Android certificate store.
+        // We set SSL_CERT_DIR to Android's native certificate store path.
+        environmentValues.add("SSL_CERT_DIR=/system/etc/security/cacerts");
+
         // Allow the caller to overwrite any option for special cases
         Iterator<String> envVarIter = environmentValues.iterator();
         while(envVarIter.hasNext()){
@@ -498,6 +502,19 @@ public class Rclone {
         return config("create" , options);
     }
 
+    /**
+     * Like configCreate but passes --non-interactive and --no-output so the backend's Config()
+     * function is invoked but exits immediately returning no JSON questions. Only the
+     * key/value pairs are saved to rclone.conf. Use this when a separate `config reconnect`
+     * step will handle the interactive auth.
+     */
+    public Process configCreateNoInteract(List<String> options) {
+        options.add("--obscure");
+        options.add("--non-interactive");
+        options.add("--no-output");
+        return config("create", options);
+    }
+
     @Nullable
     public Process configUpdate(List<String> options) {
         return configCreate(options);
@@ -512,8 +529,9 @@ public class Rclone {
 
         System.arraycopy(opt, 0, commandWithOptions, command.length, opt.length);
 
+        String[] env = getRcloneEnv();
         try {
-            return getRuntimeProcess(commandWithOptions);
+            return getRuntimeProcess(commandWithOptions, env);
         } catch (IOException e) {
             FLog.e(TAG, "configCreate: error starting rclone", e);
             return null;
@@ -1101,8 +1119,7 @@ public class Rclone {
     }
 
     public Process reconnectRemote(RemoteItem remoteItem) {
-        String remoteName = remoteItem.getName() + ':';
-        String[] command = createCommand("config", "reconnect", remoteName);
+        String[] command = createCommand("config", "update", remoteItem.getName());
 
         try {
             return getRuntimeProcess(command, getRcloneEnv());
@@ -1154,6 +1171,47 @@ public class Rclone {
         }
 
         return stats;
+    }
+
+    public String configDump() {
+        String[] command = createCommand("config", "dump");
+        StringBuilder output = new StringBuilder();
+        Process process;
+
+        try {
+            process = getRuntimeProcess(command);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                output.append(line);
+            }
+
+            process.waitFor();
+            if (process.exitValue() != 0) {
+                FLog.e(TAG, "configDump: rclone error, exit(%d)", process.exitValue());
+                logErrorOutput(process);
+                return null;
+            }
+
+            return output.toString();
+        } catch (IOException | InterruptedException e) {
+            FLog.e(TAG, "configDump: unexpected error", e);
+            return null;
+        }
+    }
+
+    public int listDirectories(String remoteName, int maxDepth) {
+        String[] command = createCommand("lsd", "--max-depth", String.valueOf(maxDepth), remoteName + ":");
+        Process process;
+
+        try {
+            process = getRuntimeProcess(command);
+            process.waitFor();
+            return process.exitValue();
+        } catch (IOException | InterruptedException e) {
+            FLog.e(TAG, "listDirectories: error for remote " + remoteName, e);
+            return -1;
+        }
     }
 
     public class AboutResult {

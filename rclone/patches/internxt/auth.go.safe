@@ -1,0 +1,31 @@
+package internxt
+
+// Safe mode stub - no Session Guardian features
+// This allows building rclone without Go standard library import issues
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+)
+
+// ReLogin attempts to re-login to Internxt
+// In safe mode, just return error
+func (f *Fs) ReLogin(ctx context.Context) error {
+	return errors.New("re-login not available in safe mode")
+}
+
+// generateTOTPWithOffset generates TOTP with time offset
+// Stub implementation for safe mode
+func generateTOTPWithOffset(secret string, offset int32) (string, error) {
+	return "", errors.New("TOTP generation not available in safe mode")
+}
+
+// getBackoffDuration calculates backoff delay
+// Stub implementation for safe mode
+func getBackoffDuration(failCount int) time.Duration {
+	return 5 * time.Minute
+}
