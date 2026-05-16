@@ -5,12 +5,12 @@ import android.content.Context
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
-import android.util.Log
 import ca.pkay.rcloneexplorer.Database.DatabaseInfo.Companion.DATABASE_NAME
 import ca.pkay.rcloneexplorer.Database.DatabaseInfo.Companion.DATABASE_VERSION
 import ca.pkay.rcloneexplorer.Database.DatabaseInfo.Companion.SQL_CREATE_TABLES_TASKS
 import ca.pkay.rcloneexplorer.Database.DatabaseInfo.Companion.SQL_CREATE_TABLE_FILTERS
 import ca.pkay.rcloneexplorer.Database.DatabaseInfo.Companion.SQL_CREATE_TABLE_TRIGGER
+import ca.pkay.rcloneexplorer.Database.DatabaseInfo.Companion.SQL_UPDATE_TASK_ADD_CHARGE
 import ca.pkay.rcloneexplorer.Database.DatabaseInfo.Companion.SQL_UPDATE_TASK_ADD_DELETE_EXCLUDED
 import ca.pkay.rcloneexplorer.Database.DatabaseInfo.Companion.SQL_UPDATE_TASK_ADD_MD5
 import ca.pkay.rcloneexplorer.Database.DatabaseInfo.Companion.SQL_UPDATE_TASK_ADD_WIFI
@@ -37,6 +37,7 @@ class DatabaseHandler(context: Context?) :
         sqLiteDatabase.execSQL(SQL_UPDATE_TASK_ADD_DELETE_EXCLUDED)
         sqLiteDatabase.execSQL(SQL_UPDATE_TASK_ADD_FOLLOWUPS_FAIL)
         sqLiteDatabase.execSQL(SQL_UPDATE_TASK_ADD_FOLLOWUPS_SUCCESS)
+        sqLiteDatabase.execSQL(SQL_UPDATE_TASK_ADD_CHARGE)
     }
 
     override fun onUpgrade(sqLiteDatabase: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -58,6 +59,9 @@ class DatabaseHandler(context: Context?) :
         if (oldVersion < 6) {
             sqLiteDatabase.execSQL(SQL_UPDATE_TASK_ADD_FOLLOWUPS_FAIL)
             sqLiteDatabase.execSQL(SQL_UPDATE_TASK_ADD_FOLLOWUPS_SUCCESS)
+        }
+        if (oldVersion < 7) {
+            sqLiteDatabase.execSQL(SQL_UPDATE_TASK_ADD_CHARGE)
         }
     }
 
@@ -143,7 +147,8 @@ class DatabaseHandler(context: Context?) :
             Task.COLUMN_NAME_FILTER_ID,
             Task.COLUMN_NAME_DELETE_EXCLUDED,
             Task.COLUMN_NAME_ONFAIL_FOLLOWUP,
-            Task.COLUMN_NAME_ONSUCCESS_FOLLOWUP
+            Task.COLUMN_NAME_ONSUCCESS_FOLLOWUP,
+            Task.COLUMN_NAME_CHARGE_ONLY
         )
 
     private fun taskFromCursor(cursor: Cursor): Task {
@@ -160,6 +165,7 @@ class DatabaseHandler(context: Context?) :
         task.deleteExcluded = getBoolean(cursor, 10)
         task.onFailFollowup = cursor.getLong(11)
         task.onSuccessFollowup = cursor.getLong(12)
+        task.chargeonly = getBoolean(cursor, 13)
         return task
     }
 
@@ -192,6 +198,7 @@ class DatabaseHandler(context: Context?) :
         values.put(Task.COLUMN_NAME_DELETE_EXCLUDED, task.deleteExcluded)
         values.put(Task.COLUMN_NAME_ONFAIL_FOLLOWUP, task.onFailFollowup)
         values.put(Task.COLUMN_NAME_ONSUCCESS_FOLLOWUP, task.onSuccessFollowup)
+        values.put(Task.COLUMN_NAME_CHARGE_ONLY, task.chargeonly)
         return values
     }
 

@@ -49,6 +49,7 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback{
     private lateinit var fab: FloatingActionButton
 
     private lateinit var switchWifi: Switch
+    private lateinit var switchCharge: Switch
     private lateinit var switchMD5sum: Switch
 
 
@@ -133,6 +134,7 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback{
         onSuccessDropdown = findViewById(R.id.task_onSuccess_spinner)
         fab = findViewById(R.id.saveButton)
         switchWifi = findViewById(R.id.task_wifionly)
+        switchCharge = findViewById(R.id.task_chargeonly)
         switchMD5sum = findViewById(R.id.task_md5sum)
 
         rcloneInstance = Rclone(this)
@@ -174,6 +176,7 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback{
 
         findViewById<TextView>(R.id.task_title_textfield).text = existingTask?.title
         switchWifi.isChecked = existingTask?.wifionly ?: false
+        switchCharge.isChecked = existingTask?.chargeonly ?: false
         switchMD5sum.isChecked = existingTask?.md5sum ?: false
         switchDeleteExcluded.isChecked = existingTask?.deleteExcluded ?: false
         prepareSyncDirectionDropdown()
@@ -249,6 +252,7 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback{
         taskToPopulate.direction = direction
 
         taskToPopulate.wifionly = switchWifi.isChecked
+        taskToPopulate.chargeonly = switchCharge.isChecked
         taskToPopulate.md5sum = switchMD5sum.isChecked
         taskToPopulate.deleteExcluded = switchDeleteExcluded.isChecked
         taskToPopulate.filterId = if(filterDropdown.selectedItemPosition == 0 || filterDropdown.selectedItemPosition == -1) null else filterItems[filterDropdown.selectedItemPosition - 1].id
