@@ -132,6 +132,7 @@
     <string name="dark_theme">Dark theme</string>
     <string name="transfer_only_on_wifi">Transfer files only over Wi-Fi</string>
     <string name="transfer_only_on_wifi_summary">Require Wi-Fi connection for file transfers</string>
+    <string name="transfer_only_on_charge">Transfer files only when charging</string>
     <string name="pref_use_proxy_title">Use Proxy</string>
     <string name="pref_use_proxy_summary">Use proxy for all supported data transfers (HTTP, HTTPS)</string>
     <string name="pref_proxy_protocol">Proxy Protocol</string>
@@ -164,6 +165,7 @@
     <string name="operation_failed">Sync failed</string>
     <string name="operation_failed_unknown">%1$s could not be synchronized due to an unknown error</string>
     <string name="operation_failed_no_unmetered">Couldn\'t sync %1$s because of no Wi-Fi connection</string>
+    <string name="operation_failed_no_charge">Couldn\'t sync %1$s because device is not charging</string>
     <string name="operation_failed_no_connection">Couldn\'t sync %1$s because network was unavailable</string>
     <string name="operation_failed_data_change">Couldn\'t sync %1$s due to mobile data sync being disabled on your device</string>
     <string name="operation_failed_unknown_rclone_error">%1$s could not be synchronized due to an unknown rclone-error</string>

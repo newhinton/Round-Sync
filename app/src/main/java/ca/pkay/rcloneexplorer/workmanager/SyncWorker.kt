@@ -24,6 +24,7 @@ import ca.pkay.rcloneexplorer.notifications.ReportNotifications
 import ca.pkay.rcloneexplorer.notifications.SyncServiceNotifications
 import ca.pkay.rcloneexplorer.notifications.SyncServiceNotifications.Companion.GROUP_ID
 import ca.pkay.rcloneexplorer.notifications.support.StatusObject
+import ca.pkay.rcloneexplorer.util.ChargeStateUtil
 import ca.pkay.rcloneexplorer.util.FLog
 import ca.pkay.rcloneexplorer.util.SyncLog
 import ca.pkay.rcloneexplorer.util.WifiConnectivitiyUtil
@@ -56,7 +57,7 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
 
 
     internal enum class FAILURE_REASON {
-        NO_FAILURE, NO_UNMETERED, NO_CONNECTION, RCLONE_ERROR, CONNECTIVITY_CHANGED, CANCELLED, NO_TASK
+        NO_FAILURE, NO_UNMETERED, NO_CONNECTION, RCLONE_ERROR, CONNECTIVITY_CHANGED, CANCELLED, NO_TASK, NO_CHARGE
     }
 
     // Objects
@@ -258,6 +259,9 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
             FAILURE_REASON.RCLONE_ERROR -> {
                 content = mContext.getString(R.string.operation_failed_unknown_rclone_error, mTitle)
             }
+            FAILURE_REASON.NO_CHARGE -> {
+                content = mContext.getString(R.string.operation_failed_no_charge, mTitle)
+            }
         }
         followupTask(mTask.onFailFollowup)
         showFailNotification(notificationId, content)
@@ -348,11 +352,16 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
 
     private fun arePreconditionsMet(): Boolean {
         val connection = WifiConnectivitiyUtil.dataConnection(this.applicationContext)
+        val isCharging = ChargeStateUtil.checkIsCharging(this.applicationContext)
+
         if (mTask.wifionly && connection === WifiConnectivitiyUtil.Connection.METERED) {
             failureReason = FAILURE_REASON.NO_UNMETERED
             return false
         } else if (connection === WifiConnectivitiyUtil.Connection.DISCONNECTED || connection === WifiConnectivitiyUtil.Connection.NOT_AVAILABLE) {
             failureReason = FAILURE_REASON.NO_CONNECTION
+            return false
+        } else if (mTask.chargeonly && !isCharging) {
+            failureReason = FAILURE_REASON.NO_CHARGE
             return false
         }
 

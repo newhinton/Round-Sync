@@ -1,11 +1,15 @@
 package ca.pkay.rcloneexplorer.Items
 
+import android.annotation.SuppressLint
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNames
 import org.json.JSONObject
 
+@OptIn(ExperimentalSerializationApi::class)
+@SuppressLint("UnsafeOptInUsageError")
 @Serializable
 data class Task(var id: Long) {
     // Alternatives are kept for backwards compatibility with old, manual parser
@@ -17,6 +21,7 @@ data class Task(var id: Long) {
     @JsonNames("syncDirection") var direction = 0
     var md5sum = TASK_MD5SUM_DEFAULT
     var wifionly = TASK_WIFIONLY_DEFAULT
+    var chargeonly = TASK_CHARGEONLY_DEFAULT
     var filterId: Long? = null
     var deleteExcluded = false
     var onFailFollowup: Long? = null
@@ -37,6 +42,7 @@ data class Task(var id: Long) {
         var COLUMN_NAME_SYNC_DIRECTION = "task_direction"
         var COLUMN_NAME_MD5SUM = "task_use_md5sum"
         var COLUMN_NAME_WIFI_ONLY = "task_use_only_wifi"
+        var COLUMN_NAME_CHARGE_ONLY = "task_use_only_charge"
         var COLUMN_NAME_FILTER_ID = "task_filter_id"
         var COLUMN_NAME_DELETE_EXCLUDED = "task_delete_excluded"
         var COLUMN_NAME_ONFAIL_FOLLOWUP = "task_onFailFollowupTask"
@@ -44,6 +50,7 @@ data class Task(var id: Long) {
 
         const val TASK_MD5SUM_DEFAULT = false
         const val TASK_WIFIONLY_DEFAULT = false
+        const val TASK_CHARGEONLY_DEFAULT = false
 
         fun fromString(json: String): Task {
             return Json.decodeFromString(json)

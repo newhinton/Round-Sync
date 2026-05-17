@@ -84,6 +84,13 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="@string/task_hint_wifi_ignore_defaults" />
+
+                    <Switch
+                        android:id="@+id/task_chargeonly"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="48dp"
+                        android:text="@string/transfer_only_on_charge" />
                 </LinearLayout>
 
             </androidx.cardview.widget.CardView>
