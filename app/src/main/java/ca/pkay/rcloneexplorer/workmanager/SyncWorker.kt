@@ -129,6 +129,7 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
             handleTask()
             postSync()
         } else {
+            failureReason = FAILURE_REASON.NO_TASK
             postSync()
             return Result.failure()
         }
@@ -181,6 +182,7 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
         if (sRcloneProcess != null) {
             val localProcessReference = sRcloneProcess!!
             val infoLines = StringBuilder()
+            var lastStats = ""
             try {
                 val reader = BufferedReader(InputStreamReader(localProcessReference.errorStream))
                 val iterator = reader.lineSequence().iterator()
@@ -205,6 +207,12 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
                                     infoLines.append(msg).append("\n")
                                 }
                             }
+                            "notice" -> {
+                                val msg = logline.optString("msg", "")
+                                if (msg.isNotEmpty()) {
+                                    lastStats = msg
+                                }
+                            }
                         }
 
                         updateForegroundNotification(mNotificationManager.updateSyncNotification(
@@ -224,8 +232,15 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
             } catch (e: IOException) {
                 FLog.e(TAG, "onHandleIntent: error reading stdout", e)
             }
-            if (infoLines.isNotEmpty()) {
-                SyncLog.info(mContext, mTitle, infoLines.toString().trimEnd())
+            val detail = buildString {
+                if (infoLines.isNotEmpty()) append(infoLines.trimEnd())
+                if (lastStats.isNotEmpty()) {
+                    if (isNotEmpty()) append("\n\n")
+                    append(lastStats)
+                }
+            }
+            if (detail.isNotEmpty()) {
+                SyncLog.info(mContext, mTitle, detail)
             }
             try {
                 localProcessReference.waitFor()
@@ -252,7 +267,7 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
         when (failureReason) {
             FAILURE_REASON.NO_FAILURE -> {
                 showSuccessNotification(notificationId)
-                followupTask(mTask.onSuccessFollowup)
+                if (::mTask.isInitialized) followupTask(mTask.onSuccessFollowup)
                 return
             }
             FAILURE_REASON.CANCELLED -> {
@@ -276,7 +291,7 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
                 content = mContext.getString(R.string.operation_failed_unknown_rclone_error, mTitle)
             }
         }
-        followupTask(mTask.onFailFollowup)
+        if (::mTask.isInitialized) followupTask(mTask.onFailFollowup)
         showFailNotification(notificationId, content)
         endNotificationAlreadyPosted = true
         finishWork()
