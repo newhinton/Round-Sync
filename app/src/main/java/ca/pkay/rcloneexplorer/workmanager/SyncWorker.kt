@@ -90,6 +90,10 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
 
     override fun doWork(): Result {
 
+        if (sIsLoggingEnabled) {
+            log2File = Log2File(mContext)
+        }
+
         prepareNotifications()
         registerBroadcastReceivers()
 
