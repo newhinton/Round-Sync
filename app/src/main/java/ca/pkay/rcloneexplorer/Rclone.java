@@ -697,10 +697,19 @@ public class Rclone {
         }
         ArrayList<String> directionParameter = new ArrayList<>();
 
-        if(useMD5Sum){
+        boolean isSftpRemote = remoteItem.isRemoteType(RemoteItem.SFTP);
+        if(useMD5Sum && !isSftpRemote){
             defaultParameter.add("--checksum");
         }
-        if(remoteItem.isRemoteType(RemoteItem.SFTP)){
+        if(isSftpRemote){
+            // Many SFTP servers (e.g. Synology restricted shells) can't run md5sum/sha1sum
+            // over SSH even though the files are reachable via SFTP. Disabling the remote
+            // hash commands avoids "corrupted on transfer: hashes differ" failures, but it
+            // also means no common hash type is left to compare with --checksum. If both
+            // were combined, rclone silently falls back to a size-only comparison and
+            // ignores modification time, so changed files of the same size never get
+            // re-synced. Skip --checksum here and let rclone use its default size+modtime
+            // comparison instead.
             defaultParameter.add("--sftp-md5sum-command");
             defaultParameter.add("none");
             defaultParameter.add("--sftp-sha1sum-command");
