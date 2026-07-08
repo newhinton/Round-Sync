@@ -312,11 +312,23 @@
     <string name="copy">Copia</string>
     <string name="operation_success">%s sincronitzat amb èxit</string>
     <string name="operation_success_description_zero">No hi ha cap operació pendent.</string>
+    <string name="operation_success_description_completed">Sincronització completada.</string>
+    <plurals name="operation_completed_with_errors">
+        <item quantity="one">Sincronització completada amb %d error.</item>
+        <item quantity="other">Sincronització completada amb %d errors.</item>
+    </plurals>
     <plurals name="operation_success_description">
         <item quantity="one">S\'ha sincronitzat amb èxit %2$s al fitxer %3$d.</item>
         <item quantity="other">S\'han sincronitzat amb èxit %2$s als fitxers %3$d.</item>
     </plurals>
-    <string name="operation_success_description_deletions_prefix">S\'han suprimit també %d fitxers i carpetes.</string>
+    <plurals name="operation_success_description_deletions">
+        <item quantity="one">S\'ha suprimit %d fitxer/carpeta.</item>
+        <item quantity="other">S\'han suprimit %d fitxers/carpetes.</item>
+    </plurals>
+    <plurals name="operation_success_description_renames">
+        <item quantity="one">S\'ha canviat el nom de %d fitxer/carpeta.</item>
+        <item quantity="other">S\'ha canviat el nom de %d fitxers/carpetes.</item>
+    </plurals>
     <string name="operation_report_success_title">Informe de les sincronitzacions reeixides</string>
     <string name="operation_report_success_short_content">%d tasques reeixides</string>
     <string name="operation_report_fail_title">Informe de les fallades en les sincronitzacions</string>

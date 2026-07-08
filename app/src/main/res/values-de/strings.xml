@@ -299,13 +299,24 @@
     <string name="sync_direction_copy_remote_local">Kopiere von entferntem Speicher nach lokalem Speicher</string>
     <string name="copy">Kopieren</string>
     <string name="operation_success">%s war erfolgreich</string>
+    <string name="operation_success_description_zero">Es war nichts zu tun.</string>
+    <string name="operation_success_description_completed">Synchronisierung abgeschlossen.</string>
+    <plurals name="operation_completed_with_errors">
+        <item quantity="one">Synchronisierung mit %d Fehler abgeschlossen.</item>
+        <item quantity="other">Synchronisierung mit %d Fehlern abgeschlossen.</item>
+    </plurals>
     <plurals name="operation_success_description">
-        <item quantity="zero">Es gab nichts zu tun.</item>
         <item quantity="one">Es wurden %2$s in %3$d Datei erfolgreich synchronisiert.</item>
         <item quantity="other">Es wurden %2$s in %3$d Dateien erfolgreich synchronisiert.</item>
     </plurals>
-    <string name="operation_success_description_zero">Es war nichts zu tun.</string>
-    <string name="operation_success_description_deletions_prefix">Es wurden ebenfalls %d Dateien und Ordner gelöscht.</string>
+    <plurals name="operation_success_description_deletions">
+        <item quantity="one">%d Datei/Ordner gelöscht.</item>
+        <item quantity="other">%d Dateien/Ordner gelöscht.</item>
+    </plurals>
+    <plurals name="operation_success_description_renames">
+        <item quantity="one">%d Datei/Ordner umbenannt.</item>
+        <item quantity="other">%d Dateien/Ordner umbenannt.</item>
+    </plurals>
     <string name="operation_report_success_title">Sync-Bericht Erfolge</string>
     <string name="operation_report_success_short_content">%d Aufgaben erfolgreich</string>
     <string name="operation_report_fail_title">Sync-Bericht Fehlschläge</string>

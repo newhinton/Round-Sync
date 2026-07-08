@@ -345,14 +345,16 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
                 )
             },
             deletionSummary = { deletions ->
-                mContext.getString(
-                    R.string.operation_success_description_deletions_prefix,
+                mContext.resources.getQuantityString(
+                    R.plurals.operation_success_description_deletions,
+                    deletions,
                     deletions
                 )
             },
             renameSummary = { renames ->
-                mContext.getString(
-                    R.string.operation_success_description_renames_prefix,
+                mContext.resources.getQuantityString(
+                    R.plurals.operation_success_description_renames,
+                    renames,
                     renames
                 )
             }
