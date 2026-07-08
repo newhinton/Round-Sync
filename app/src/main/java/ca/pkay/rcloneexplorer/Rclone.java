@@ -688,7 +688,13 @@ public class Rclone {
         String localRemotePath = (remoteItem.isRemoteType(RemoteItem.LOCAL)) ? getLocalRemotePathPrefix(remoteItem, context)  + "/" : "";
         String remoteSection = (remotePath.compareTo("//" + remoteName) == 0) ? remoteName + ":" + localRemotePath : remoteName + ":" + localRemotePath + remotePath;
 
-        ArrayList<String> defaultParameter = new ArrayList<>(Arrays.asList("--transfers", "1", "--stats=1s", "--stats-log-level", "NOTICE", "--use-json-log"));
+        boolean loggingEnabled = PreferenceManager
+                .getDefaultSharedPreferences(context)
+                .getBoolean(context.getString(R.string.pref_key_logs), false);
+        ArrayList<String> defaultParameter = new ArrayList<>(Arrays.asList("--transfers", "1", "--stats=1s", "--use-json-log"));
+        if (!loggingEnabled) {
+            defaultParameter.addAll(Arrays.asList("--stats-log-level", "NOTICE", "--log-level", "INFO"));
+        }
         ArrayList<String> directionParameter = new ArrayList<>();
 
         if(useMD5Sum){
