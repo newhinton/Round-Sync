@@ -1,6 +1,15 @@
 package ca.pkay.rcloneexplorer.workmanager
 
+/**
+ * Formats the final sync result from already-collected stats.
+ *
+ * Example: errors=1, transfers=2 -> "Sync completed with 1 error.\nSuccessfully synced 4 MB in 2 files."
+ */
 object SyncResultFormatter {
+    /**
+     * Final rclone counters used for user-facing summaries. `totalTransfers` is copied or updated files,
+     * while deletions and renames are separate change types.
+     */
     data class Stats(
         val totalTransfers: Int,
         val totalSize: String,
@@ -13,6 +22,9 @@ object SyncResultFormatter {
         fun hasChanges(): Boolean = changedItems() > 0
     }
 
+    /**
+     * Localized message builders supplied by Android resources.
+     */
     data class Labels(
         val nothingToDo: String,
         val completedWithErrors: (Int) -> String,
@@ -22,6 +34,9 @@ object SyncResultFormatter {
         val renameSummary: (Int) -> String
     )
 
+    /**
+     * Clean success message. "Nothing to do" is only valid when there were no changes and no errors.
+     */
     fun successMessage(stats: Stats, labels: Labels): String {
         if (!stats.hasChanges() && !stats.hasErrors()) {
             return labels.nothingToDo
@@ -34,6 +49,9 @@ object SyncResultFormatter {
         }
     }
 
+    /**
+     * Partial result message: keep the clear error state, but still include any work rclone completed.
+     */
     fun completedWithErrorsMessage(stats: Stats, labels: Labels): String {
         return (listOf(labels.completedWithErrors(stats.errors)) + summaryLines(stats, labels))
             .joinToString("\n")

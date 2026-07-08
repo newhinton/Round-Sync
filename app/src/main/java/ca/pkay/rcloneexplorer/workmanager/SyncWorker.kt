@@ -324,6 +324,10 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
         )
     }
 
+    /**
+     * Android resource-backed labels for SyncResultFormatter. Keeping these here avoids putting Context
+     * or plural-resource knowledge into the formatter.
+     */
     private fun resultLabels(): SyncResultFormatter.Labels {
         return SyncResultFormatter.Labels(
             nothingToDo = mContext.getString(R.string.operation_success_description_zero),

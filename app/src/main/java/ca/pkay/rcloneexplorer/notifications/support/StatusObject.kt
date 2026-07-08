@@ -109,6 +109,7 @@ class StatusObject(var mContext: Context){
                 val attempt = retryAttempt.groupValues[1].toInt()
                 val attempts = retryAttempt.groupValues[2].toInt()
                 retryAttemptErrorCount = retryAttempt.groupValues[3].toInt()
+                // Rclone repeats the same underlying errors on retries; keep only the final attempt details.
                 if (attempt < attempts) {
                     mErrorList.clear()
                     retryAttemptErrorCount = 0

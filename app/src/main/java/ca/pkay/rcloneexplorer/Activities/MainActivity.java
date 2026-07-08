@@ -233,6 +233,7 @@ public class MainActivity extends AppCompatActivity
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        // MainActivity is singleTop, so notification taps can arrive here instead of onCreate().
         if(MAIN_ACTIVITY_START_LOG.equals(intent.getAction())){
             startLogFragment();
             navigationView.setCheckedItem(R.id.nav_logs);
