@@ -181,9 +181,17 @@ public class Rclone {
         String tmpDir = context.getCacheDir().getAbsolutePath();
         environmentValues.add("TMPDIR=" + tmpDir);
 
-        // ignore chtimes errors
-        // ref: https://github.com/rclone/rclone/issues/2446
-        environmentValues.add("RCLONE_LOCAL_NO_SET_MODTIME=true");
+        // RCLONE_LOCAL_NO_SET_MODTIME used to be set here to work around chtimes
+        // crashes on old Android storage stacks (ref: rclone#2446). It makes the
+        // local backend's Precision() report ModTimeNotSupported unconditionally
+        // (backend/local/local.go), which makes rclone's default file comparison
+        // fall back to a silent size-only check for every sync, ignoring
+        // modification time entirely -- changed files of the same size never get
+        // re-synced. A failing chtimes() is not fatal in current rclone: a failed
+        // SetModTime is just logged and counted as an error, the transfer itself
+        // still succeeds (fs/operations/operations.go). So leave modtime-setting
+        // enabled and let rclone's own runtime precision probe (readPrecision())
+        // degrade gracefully per-remote if chtimes truly isn't supported there.
 
         // Allow the caller to overwrite any option for special cases
         Iterator<String> envVarIter = environmentValues.iterator();
