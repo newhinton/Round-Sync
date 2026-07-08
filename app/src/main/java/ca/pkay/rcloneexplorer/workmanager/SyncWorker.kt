@@ -125,6 +125,7 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
             handleTask()
             postSync()
         } else {
+            failureReason = FAILURE_REASON.NO_TASK
             postSync()
             return Result.failure()
         }
@@ -235,7 +236,7 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
         when (failureReason) {
             FAILURE_REASON.NO_FAILURE -> {
                 showSuccessNotification(notificationId)
-                followupTask(mTask.onSuccessFollowup)
+                if (::mTask.isInitialized) followupTask(mTask.onSuccessFollowup)
                 return
             }
             FAILURE_REASON.CANCELLED -> {
@@ -259,7 +260,7 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
                 content = mContext.getString(R.string.operation_failed_unknown_rclone_error, mTitle)
             }
         }
-        followupTask(mTask.onFailFollowup)
+        if (::mTask.isInitialized) followupTask(mTask.onFailFollowup)
         showFailNotification(notificationId, content)
         endNotificationAlreadyPosted = true
         finishWork()
