@@ -8,6 +8,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.preference.PreferenceManager
 import androidx.work.WorkManager
+import ca.pkay.rcloneexplorer.Activities.MainActivity
 import ca.pkay.rcloneexplorer.BroadcastReceivers.SyncRestartAction
 import ca.pkay.rcloneexplorer.R
 import ca.pkay.rcloneexplorer.util.FLog
@@ -29,6 +30,7 @@ class SyncServiceNotifications(var mContext: Context) {
         const val PERSISTENT_NOTIFICATION_ID_FOR_SYNC = 162
         const val CANCEL_ID_NOTSET = "CANCEL_ID_NOTSET"
         const val TAG = "SyncServiceNotifications"
+        private const val LOGS_PENDING_INTENT_REQUEST = 163
 
     }
 
@@ -83,6 +85,8 @@ class SyncServiceNotifications(var mContext: Context) {
             .setSmallIcon(R.drawable.ic_twotone_cloud_error_24)
             .setContentTitle(mContext.getString(R.string.operation_failed))
             .setContentText(content)
+            .setContentIntent(createLogsPendingIntent())
+            .setAutoCancel(true)
             .setStyle(
                 NotificationCompat.BigTextStyle().bigText(content)
             )
@@ -128,6 +132,8 @@ class SyncServiceNotifications(var mContext: Context) {
             .setSmallIcon(R.drawable.ic_twotone_cloud_error_24)
             .setContentTitle(mContext.getString(R.string.operation_failed_cancelled))
             .setContentText(content)
+            .setContentIntent(createLogsPendingIntent())
+            .setAutoCancel(true)
             .setStyle(
                 NotificationCompat.BigTextStyle().bigText(content)
             )
@@ -166,6 +172,8 @@ class SyncServiceNotifications(var mContext: Context) {
             .setSmallIcon(R.drawable.ic_twotone_cloud_done_24)
             .setContentTitle(mContext.getString(R.string.operation_success, title))
             .setContentText(content)
+            .setContentIntent(createLogsPendingIntent())
+            .setAutoCancel(true)
             .setStyle(
                 NotificationCompat.BigTextStyle().bigText(
                     content
@@ -227,6 +235,7 @@ class SyncServiceNotifications(var mContext: Context) {
                 intent
             )
         }
+        builder.setContentIntent(createLogsPendingIntent())
 
         return builder.build()
     }
@@ -234,5 +243,16 @@ class SyncServiceNotifications(var mContext: Context) {
     fun cancelSyncNotification(notificationId: Int) {
         val notificationManagerCompat = NotificationManagerCompat.from(mContext)
         notificationManagerCompat.cancel(notificationId)
+    }
+
+    private fun createLogsPendingIntent(): PendingIntent {
+        val intent = Intent(mContext, MainActivity::class.java)
+        intent.action = MainActivity.MAIN_ACTIVITY_START_LOG
+        return PendingIntent.getActivity(
+            mContext,
+            LOGS_PENDING_INTENT_REQUEST,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
     }
 }

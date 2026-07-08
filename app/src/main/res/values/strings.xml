@@ -337,11 +337,17 @@
     <string name="copy">Copy</string>
     <string name="operation_success">%s sync successful</string>
     <string name="operation_success_description_zero">There was nothing to do.</string>
+    <string name="operation_success_description_completed">Sync completed.</string>
+    <plurals name="operation_completed_with_errors">
+        <item quantity="one">Sync completed with %d error.</item>
+        <item quantity="other">Sync completed with %d errors.</item>
+    </plurals>
     <plurals name="operation_success_description">
         <item quantity="one">Successfully synced %2$s in %3$d file.</item>
         <item quantity="other">Successfully synced %2$s in %3$d files.</item>
     </plurals>
     <string name="operation_success_description_deletions_prefix">Also deleted %d files and folders.</string>
+    <string name="operation_success_description_renames_prefix">Also renamed %d files and folders.</string>
     <string name="operation_report_success_title">Sync-Report Successes</string>
     <string name="operation_report_success_short_content">%d Tasks succeeded</string>
     <string name="operation_report_fail_title">Sync-Report Failures</string>

@@ -70,3 +70,6 @@ debug/
 .idea/codeStyles/codeStyleConfig.xml
 .idea/inspectionProfiles/Project_Default.xml
 .idea/
+
+# exported app backup from Android studio
+**/application.backup
