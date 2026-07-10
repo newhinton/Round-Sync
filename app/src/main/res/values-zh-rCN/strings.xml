@@ -319,9 +319,17 @@
         <item quantity="one">已删除 %d 个文件/文件夹。</item>
         <item quantity="other">已删除 %d 个文件/文件夹。</item>
     </plurals>
+    <plurals name="operation_success_description_deletions_also">
+        <item quantity="one">还删除了 %d 个文件/文件夹。</item>
+        <item quantity="other">还删除了 %d 个文件/文件夹。</item>
+    </plurals>
     <plurals name="operation_success_description_renames">
         <item quantity="one">已重命名 %d 个文件/文件夹。</item>
         <item quantity="other">已重命名 %d 个文件/文件夹。</item>
+    </plurals>
+    <plurals name="operation_success_description_renames_also">
+        <item quantity="one">还重命名了 %d 个文件/文件夹。</item>
+        <item quantity="other">还重命名了 %d 个文件/文件夹。</item>
     </plurals>
     <string name="operation_report_success_title">Sync-Report 成功</string>
     <string name="operation_report_success_short_content">%d 任务成功</string>

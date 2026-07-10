@@ -348,16 +348,24 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
                     transfers
                 )
             },
-            deletionSummary = { deletions ->
+            deletionSummary = { deletions, isAdditional ->
                 mContext.resources.getQuantityString(
-                    R.plurals.operation_success_description_deletions,
+                    if (isAdditional) {
+                        R.plurals.operation_success_description_deletions_also
+                    } else {
+                        R.plurals.operation_success_description_deletions
+                    },
                     deletions,
                     deletions
                 )
             },
-            renameSummary = { renames ->
+            renameSummary = { renames, isAdditional ->
                 mContext.resources.getQuantityString(
-                    R.plurals.operation_success_description_renames,
+                    if (isAdditional) {
+                        R.plurals.operation_success_description_renames_also
+                    } else {
+                        R.plurals.operation_success_description_renames
+                    },
                     renames,
                     renames
                 )

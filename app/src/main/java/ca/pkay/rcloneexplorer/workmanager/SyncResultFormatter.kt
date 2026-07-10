@@ -3,7 +3,7 @@ package ca.pkay.rcloneexplorer.workmanager
 /**
  * Formats the final sync result from already-collected stats.
  *
- * Example: errors=1, transfers=2 -> "Sync completed with 1 error.\nSuccessfully synced 4 MB in 2 files."
+ * Example: transfers=1, deletions=2 -> "Successfully synced 4 MB in 1 file.\nAlso deleted 2 files/folders."
  */
 object SyncResultFormatter {
     /**
@@ -30,8 +30,8 @@ object SyncResultFormatter {
         val completedWithErrors: (Int) -> String,
         val completed: String,
         val transferSummary: (String, Int) -> String,
-        val deletionSummary: (Int) -> String,
-        val renameSummary: (Int) -> String
+        val deletionSummary: (Int, Boolean) -> String,
+        val renameSummary: (Int, Boolean) -> String
     )
 
     /**
@@ -59,19 +59,22 @@ object SyncResultFormatter {
 
     private fun summaryLines(stats: Stats, labels: Labels): List<String> {
         val lines = ArrayList<String>()
+        var hasActionLine = false
 
         if (stats.totalTransfers > 0) {
             lines.add(labels.transferSummary(stats.totalSize, stats.totalTransfers))
+            hasActionLine = true
         } else if (stats.hasChanges()) {
             lines.add(labels.completed)
         }
 
         if (stats.deletions > 0) {
-            lines.add(labels.deletionSummary(stats.deletions))
+            lines.add(labels.deletionSummary(stats.deletions, hasActionLine))
+            hasActionLine = true
         }
 
         if (stats.renames > 0) {
-            lines.add(labels.renameSummary(stats.renames))
+            lines.add(labels.renameSummary(stats.renames, hasActionLine))
         }
 
         return lines

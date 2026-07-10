@@ -313,9 +313,17 @@
         <item quantity="one">%d Datei/Ordner gelöscht.</item>
         <item quantity="other">%d Dateien/Ordner gelöscht.</item>
     </plurals>
+    <plurals name="operation_success_description_deletions_also">
+        <item quantity="one">Außerdem wurde %d Datei/Ordner gelöscht.</item>
+        <item quantity="other">Außerdem wurden %d Dateien/Ordner gelöscht.</item>
+    </plurals>
     <plurals name="operation_success_description_renames">
         <item quantity="one">%d Datei/Ordner umbenannt.</item>
         <item quantity="other">%d Dateien/Ordner umbenannt.</item>
+    </plurals>
+    <plurals name="operation_success_description_renames_also">
+        <item quantity="one">Außerdem wurde %d Datei/Ordner umbenannt.</item>
+        <item quantity="other">Außerdem wurden %d Dateien/Ordner umbenannt.</item>
     </plurals>
     <string name="operation_report_success_title">Sync-Bericht Erfolge</string>
     <string name="operation_report_success_short_content">%d Aufgaben erfolgreich</string>
