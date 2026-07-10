@@ -2,6 +2,7 @@ package ca.pkay.rcloneexplorer.notifications
 
 import android.app.PendingIntent
 import android.app.PendingIntent.FLAG_IMMUTABLE
+import android.app.PendingIntent.FLAG_UPDATE_CURRENT
 import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationCompat
@@ -12,6 +13,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import ca.pkay.rcloneexplorer.Activities.MainActivity
 import ca.pkay.rcloneexplorer.BroadcastReceivers.ClearReportBroadcastReciever
 import ca.pkay.rcloneexplorer.R
 import ca.pkay.rcloneexplorer.util.NotificationUtils
@@ -87,9 +89,11 @@ class ReportNotifications(var mContext: Context) {
             .setSmallIcon(R.drawable.ic_twotone_cloud_done_24)
             .setContentTitle(mContext.getString(R.string.operation_report_success_title))
             .setContentText(mContext.getString(R.string.operation_report_success_short_content, notificationContent.lines().size-1))
+            .setContentIntent(createLogsPendingIntent())
+            .setAutoCancel(true)
             .setStyle(
                 NotificationCompat.BigTextStyle().bigText(
-                    notificationContent
+                    content
                 )
             )
             .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -142,9 +146,11 @@ class ReportNotifications(var mContext: Context) {
             .setSmallIcon(R.drawable.ic_twotone_cloud_error_24)
             .setContentTitle(mContext.getString(R.string.operation_report_fail_title))
             .setContentText(mContext.getString(R.string.operation_report_fail_short_content, notificationContent.lines().size-1))
+            .setContentIntent(createLogsPendingIntent())
+            .setAutoCancel(true)
             .setStyle(
                 NotificationCompat.BigTextStyle().bigText(
-                    notificationContent
+                    "$title: $line\n"
                 )
             )
             .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -164,6 +170,17 @@ class ReportNotifications(var mContext: Context) {
             0,
             intent,
             PendingIntent.FLAG_ONE_SHOT or FLAG_IMMUTABLE
+        )
+    }
+
+    private fun createLogsPendingIntent(): PendingIntent {
+        val intent = Intent(mContext, MainActivity::class.java)
+        intent.action = MainActivity.MAIN_ACTIVITY_START_LOG
+        return PendingIntent.getActivity(
+            mContext,
+            0,
+            intent,
+            FLAG_UPDATE_CURRENT or FLAG_IMMUTABLE
         )
     }
 

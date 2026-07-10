@@ -16,9 +16,15 @@ class StatusObject(var mContext: Context){
     var mErrorList = ArrayList<ErrorObject>()
     var mStats = JSONObject()
     var mLogline = JSONObject()
+    private var retryAttemptErrorCount = 0
 
     var estimatedAverageSpeed = 0L
     var lastItemAverageSpeed = 0L
+
+    companion object {
+        private val retryAttemptPattern =
+            Regex("""^Attempt (\d+)/(\d+) failed with (\d+) errors?.*""")
+    }
 
     fun getSpeed(): String {
         return Formatter.formatFileSize(mContext, mStats.optLong("speed", 0)) + "/s"
@@ -63,6 +69,22 @@ class StatusObject(var mContext: Context){
         return mStats.optInt("deletes", 0) + mStats.optInt("deletedDirs", 0)
     }
 
+    fun getRenames(): Int {
+        return mStats.optInt("renames", 0)
+    }
+
+    fun getErrorCount(): Int {
+        return when {
+            retryAttemptErrorCount > 0 -> retryAttemptErrorCount
+            mErrorList.isNotEmpty() -> mErrorList.size
+            else -> mStats.optInt("errors", 0)
+        }
+    }
+
+    fun hasErrors(): Boolean {
+        return getErrorCount() > 0
+    }
+
     fun getErrorMessage(): String {
         if(mLogline.has("msg") && mLogline.getString("level") == "error") {
             return mLogline.getString("msg")
@@ -82,9 +104,24 @@ class StatusObject(var mContext: Context){
             clearObject()
             mLogline = logLine
 
-            var error = ErrorObject(getErrorObject(), getErrorMessage())
+            val retryAttempt = retryAttemptPattern.matchEntire(getErrorMessage())
+            if (retryAttempt != null) {
+                val attempt = retryAttempt.groupValues[1].toInt()
+                val attempts = retryAttempt.groupValues[2].toInt()
+                retryAttemptErrorCount = retryAttempt.groupValues[3].toInt()
+                // Rclone repeats the same underlying errors on retries; keep only the final attempt details.
+                if (attempt < attempts) {
+                    mErrorList.clear()
+                    retryAttemptErrorCount = 0
+                }
+                return
+            }
+
+            val error = ErrorObject(getErrorObject(), getErrorMessage())
             Log.e(TAG, error.mErrorObject + " - " + error.mErrorMessage)
-            mErrorList.add(error)
+            if (mErrorList.none { it.mErrorObject == error.mErrorObject && it.mErrorMessage == error.mErrorMessage }) {
+                mErrorList.add(error)
+            }
         }
 
         if(logLine.has("stats")) {
@@ -231,7 +268,9 @@ class StatusObject(var mContext: Context){
         var all = ""
         mErrorList.forEach {
             all += it.mErrorMessage + "\n"
-            all += mContext.getString(R.string.status_offendingfile) + it.mErrorObject + "\n"
+            if (it.mErrorObject.isNotEmpty() && !it.mErrorMessage.startsWith("not deleting ")) {
+                all += mContext.getString(R.string.status_offendingfile) + it.mErrorObject + "\n"
+            }
         }
         return all
     }

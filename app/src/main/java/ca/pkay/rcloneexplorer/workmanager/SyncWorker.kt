@@ -66,7 +66,7 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
     private val mPreferences = PreferenceManager.getDefaultSharedPreferences(mContext)
 
 
-    private var log2File: Log2File? = null
+    private val log2File = Log2File(mContext)
 
 
 
@@ -129,8 +129,11 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
             return Result.failure()
         }
 
-        // Indicate whether the work finished successfully with the Result
-        return Result.success()
+        return if (failureReason == FAILURE_REASON.NO_FAILURE) {
+            Result.success()
+        } else {
+            Result.failure()
+        }
     }
 
     override fun onStopped() {
@@ -183,13 +186,15 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
                     val line = iterator.next()
                     try {
                         val logline = JSONObject(line)
+                        val level = logline.optString("level")
+                        if (sIsLoggingEnabled && (level == "error" || level == "warning")) {
+                            log2File.log(line)
+                        }
+
                         //todo: migrate this to StatusObject, so that we can handle everything properly.
-                        if (logline.getString("level") == "error") {
-                            if (sIsLoggingEnabled) {
-                                log2File?.log(line)
-                            }
+                        if (level == "error") {
                             statusObject.parseLoglineToStatusObject(logline)
-                        } else if (logline.getString("level") == "warning") {
+                        } else if (level == "warning" || logline.has("stats")) {
                             statusObject.parseLoglineToStatusObject(logline)
                         }
 
@@ -211,7 +216,10 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
                 FLog.e(TAG, "onHandleIntent: error reading stdout", e)
             }
             try {
-                localProcessReference.waitFor()
+                val exitCode = localProcessReference.waitFor()
+                if (exitCode != 0 || statusObject.hasErrors()) {
+                    failureReason = FAILURE_REASON.RCLONE_ERROR
+                }
             } catch (e: InterruptedException) {
                 FLog.e(TAG, "onHandleIntent: error waiting for process", e)
             }
@@ -256,7 +264,11 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
                 content = mContext.getString(R.string.operation_failed_no_connection, mTitle)
             }
             FAILURE_REASON.RCLONE_ERROR -> {
-                content = mContext.getString(R.string.operation_failed_unknown_rclone_error, mTitle)
+                content = if (statusObject.hasErrors()) {
+                    generateCompletedWithErrorsMessage(statusObject)
+                } else {
+                    mContext.getString(R.string.operation_failed_unknown_rclone_error, mTitle)
+                }
             }
         }
         followupTask(mTask.onFailFollowup)
@@ -295,28 +307,70 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
     // this is currently only a useless mapper. It is supposed to keep this worker in sync with the ephemeral one.
     // when they are merged eventually, this can be easily extracted.
     private fun generateSuccessMessage(statusObject: StatusObject): String {
-        var message = mContext.resources.getQuantityString(
-                R.plurals.operation_success_description,
-                statusObject.getTotalTransfers(),
-                mTitle,
-                statusObject.getTotalSize(),
-                statusObject.getTotalTransfers()
+        return SyncResultFormatter.successMessage(statusObject.toResultStats(), resultLabels())
+    }
+
+    private fun generateCompletedWithErrorsMessage(statusObject: StatusObject): String {
+        return SyncResultFormatter.completedWithErrorsMessage(statusObject.toResultStats(), resultLabels())
+    }
+
+    private fun StatusObject.toResultStats(): SyncResultFormatter.Stats {
+        return SyncResultFormatter.Stats(
+            getTotalTransfers(),
+            getTotalSize(),
+            getDeletions(),
+            getRenames(),
+            getErrorCount()
         )
-        if (statusObject.getTotalTransfers() == 0) {
-            message = mContext.resources.getString(R.string.operation_success_description_zero)
-        }
-        if (statusObject.getDeletions() > 0) {
-            message += """
-                        
-                        ${
-                mContext.getString(
-                        R.string.operation_success_description_deletions_prefix,
-                        statusObject.getDeletions()
+    }
+
+    /**
+     * Android resource-backed labels for SyncResultFormatter. Keeping these here avoids putting Context
+     * or plural-resource knowledge into the formatter.
+     */
+    private fun resultLabels(): SyncResultFormatter.Labels {
+        return SyncResultFormatter.Labels(
+            nothingToDo = mContext.getString(R.string.operation_success_description_zero),
+            completedWithErrors = { errors ->
+                mContext.resources.getQuantityString(
+                    R.plurals.operation_completed_with_errors,
+                    errors,
+                    errors
+                )
+            },
+            completed = mContext.getString(R.string.operation_success_description_completed),
+            transferSummary = { totalSize, transfers ->
+                mContext.resources.getQuantityString(
+                    R.plurals.operation_success_description,
+                    transfers,
+                    mTitle,
+                    totalSize,
+                    transfers
+                )
+            },
+            deletionSummary = { deletions, isAdditional ->
+                mContext.resources.getQuantityString(
+                    if (isAdditional) {
+                        R.plurals.operation_success_description_deletions_also
+                    } else {
+                        R.plurals.operation_success_description_deletions
+                    },
+                    deletions,
+                    deletions
+                )
+            },
+            renameSummary = { renames, isAdditional ->
+                mContext.resources.getQuantityString(
+                    if (isAdditional) {
+                        R.plurals.operation_success_description_renames_also
+                    } else {
+                        R.plurals.operation_success_description_renames
+                    },
+                    renames,
+                    renames
                 )
             }
-                        """.trimIndent()
-        }
-        return message
+        )
     }
 
     private fun showFailNotification(notificationId: Int, content: String, wasCancelled: Boolean = false) {
