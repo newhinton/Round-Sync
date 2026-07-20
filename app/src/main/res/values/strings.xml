@@ -553,7 +553,7 @@
     <string name="theminSettingsDescription">Change the appearance</string>
     <string name="notificationSettingsDescription">Control more precisely on when you get notified</string>
     <string name="loggingSettingsDescription">Gather more insight when this app misbehaves</string>
-    <string name="importSettingsDescription">Replace your current config with an backup</string>
+    <string name="importSettingsDescription">Replace your current config with a backup</string>
     <string name="exportSettingsDescription">Backup your remotes, tasks and triggers</string>
     <string name="import_settings_icon_content_description">Import Icon</string>
     <string name="export_settings_icon_content_description">Export Icon</string>
