@@ -13,11 +13,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -36,8 +40,21 @@ fun RemotesComposeScreen(
     onAddNewRemote: () -> Unit,
     onEditRemoteConfig: (RemoteItem) -> Unit
 ) {
+    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val pullRefreshState = rememberPullToRefreshState()
+    if (pullRefreshState.isRefreshing) {
+        LaunchedEffect(true) {
+            viewModel.refresh()
+        }
+    }
+    LaunchedEffect(uiState.isRefreshing) {
+        if (!uiState.isRefreshing) {
+            pullRefreshState.endRefresh()
+        }
+    }
 
     var selectedRemoteForProperties by remember { mutableStateOf<RemoteItem?>(null) }
     var remoteToDelete by remember { mutableStateOf<RemoteItem?>(null) }
@@ -116,83 +133,95 @@ fun RemotesComposeScreen(
                     }
                 }
 
-                // Remotes List or Empty State
-                if (uiState.isLoading && uiState.displayRemotes.isEmpty()) {
-                    BrandLoader(message = "Loading your cloud remotes...")
-                } else if (uiState.displayRemotes.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
+                // Pull-to-Refresh & Remotes List
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f)
+                        .nestedScroll(pullRefreshState.nestedScrollConnection)
+                ) {
+                    if (uiState.isLoading && uiState.displayRemotes.isEmpty()) {
+                        BrandLoader(message = "Loading your cloud remotes...")
+                    } else if (uiState.displayRemotes.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Surface(
-                                modifier = Modifier.size(88.dp),
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
                             ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.CloudQueue,
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .padding(20.dp)
-                                        .fillMaxSize(),
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(18.dp))
-                            Text(
-                                text = if (uiState.isSearching) "No matching remotes found" else "No Cloud Remotes Configured",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = if (uiState.isSearching) "Try a different search term" else "Connect your Google Drive, Dropbox, SFTP, OneDrive, S3, or WebDAV storage.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-
-                            if (!uiState.isSearching) {
-                                Spacer(modifier = Modifier.height(20.dp))
-                                Button(
-                                    onClick = onAddNewRemote,
-                                    shape = RoundedCornerShape(14.dp)
+                                Surface(
+                                    modifier = Modifier.size(88.dp),
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
                                 ) {
-                                    Icon(Icons.Default.Add, contentDescription = null)
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Add Remote")
+                                    Icon(
+                                        imageVector = Icons.Outlined.CloudQueue,
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .padding(20.dp)
+                                            .fillMaxSize(),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(18.dp))
+                                Text(
+                                    text = if (uiState.isSearching) "No matching remotes found" else "No Cloud Remotes Configured",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = if (uiState.isSearching) "Try a different search term" else "Connect your Google Drive, Dropbox, SFTP, OneDrive, S3, or WebDAV storage.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+
+                                if (!uiState.isSearching) {
+                                    Spacer(modifier = Modifier.height(20.dp))
+                                    Button(
+                                        onClick = onAddNewRemote,
+                                        shape = RoundedCornerShape(14.dp)
+                                    ) {
+                                        Icon(Icons.Default.Add, contentDescription = null)
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("Add Remote")
+                                    }
                                 }
                             }
                         }
-                    }
-                } else {
-                    LazyVerticalGrid(
-                        columns = GridCells.Adaptive(minSize = 300.dp),
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 100.dp),
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
-                    ) {
-                        items(uiState.displayRemotes, key = { it.name }) { remote ->
-                            RemoteCard(
-                                remote = remote,
-                                quota = uiState.storageQuotas[remote.name],
-                                isLoadingQuota = uiState.loadingQuotas.contains(remote.name),
-                                onClick = { onRemoteClick(remote) },
-                                onFetchQuota = { viewModel.fetchStorageQuota(remote) },
-                                onPropertiesClick = { selectedRemoteForProperties = remote },
-                                onTogglePin = { viewModel.togglePin(remote) },
-                                onDeleteClick = { remoteToDelete = remote },
-                                onEditClick = { onEditRemoteConfig(remote) },
-                                onReconnectClick = { viewModel.reconnectRemote(remote) }
-                            )
+                    } else {
+                        LazyVerticalGrid(
+                            columns = GridCells.Adaptive(minSize = 300.dp),
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 100.dp),
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            items(uiState.displayRemotes, key = { it.name }) { remote ->
+                                RemoteCard(
+                                    remote = remote,
+                                    quota = uiState.storageQuotas[remote.name],
+                                    isLoadingQuota = uiState.loadingQuotas.contains(remote.name),
+                                    onClick = { onRemoteClick(remote) },
+                                    onFetchQuota = { viewModel.fetchStorageQuota(remote) },
+                                    onPropertiesClick = { selectedRemoteForProperties = remote },
+                                    onTogglePin = { viewModel.togglePinRemote(remote) },
+                                    onDeleteClick = { remoteToDelete = remote },
+                                    onEditClick = { onEditRemoteConfig(remote) },
+                                    onReconnectClick = { viewModel.reconnectRemote(remote, context) }
+                                )
+                            }
                         }
                     }
+
+                    PullToRefreshContainer(
+                        state = pullRefreshState,
+                        modifier = Modifier.align(Alignment.TopCenter)
+                    )
                 }
             }
 
@@ -227,7 +256,7 @@ fun RemotesComposeScreen(
             },
             onReconnect = {
                 selectedRemoteForProperties = null
-                viewModel.reconnectRemote(remote)
+                viewModel.reconnectRemote(remote, context)
             },
             onDismiss = { selectedRemoteForProperties = null }
         )

@@ -83,16 +83,28 @@ class SettingsFragment : Fragment() {
                             }
                         },
                         onImportClick = {
-                            val intent = Intent(requireContext(), MainActivity::class.java).apply {
-                                action = MainActivity.MAIN_ACTIVITY_START_IMPORT
+                            val act = activity
+                            if (act is MainActivity) {
+                                act.importConfigFile()
+                            } else {
+                                val intent = Intent(requireContext(), MainActivity::class.java).apply {
+                                    action = MainActivity.MAIN_ACTIVITY_START_IMPORT
+                                    addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                                }
+                                startActivity(intent)
                             }
-                            startActivity(intent)
                         },
                         onExportClick = {
-                            val intent = Intent(requireContext(), MainActivity::class.java).apply {
-                                action = MainActivity.MAIN_ACTIVITY_START_EXPORT
+                            val act = activity
+                            if (act is MainActivity) {
+                                act.exportConfigFile()
+                            } else {
+                                val intent = Intent(requireContext(), MainActivity::class.java).apply {
+                                    action = MainActivity.MAIN_ACTIVITY_START_EXPORT
+                                    addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                                }
+                                startActivity(intent)
                             }
-                            startActivity(intent)
                         },
                         onAboutClick = {
                             val intent = Intent(requireContext(), AboutActivity::class.java)

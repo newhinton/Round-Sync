@@ -237,6 +237,22 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        if (intent != null) {
+            String action = intent.getAction();
+            if (MAIN_ACTIVITY_START_IMPORT.equals(action)) {
+                startConfigImportFlow();
+            } else if (MAIN_ACTIVITY_START_EXPORT.equals(action)) {
+                startConfigExportFlow();
+            } else if (MAIN_ACTIVITY_START_LOG.equals(action)) {
+                startLogFragment();
+            }
+        }
+    }
+
+    @Override
     protected void onPostCreate(@Nullable Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
         requestPermissions();
@@ -1082,3 +1098,5 @@ public class MainActivity extends AppCompatActivity
         }
     }
 }
+
+

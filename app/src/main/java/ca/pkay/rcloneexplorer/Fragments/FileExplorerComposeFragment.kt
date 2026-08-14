@@ -3,22 +3,24 @@ package ca.pkay.rcloneexplorer.Fragments
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.util.Base64
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.PreferenceManager
-import ca.pkay.rcloneexplorer.Dialogs.FilePropertiesDialog
-import ca.pkay.rcloneexplorer.Dialogs.LinkDialog
-import ca.pkay.rcloneexplorer.Dialogs.ServeDialog
-import ca.pkay.rcloneexplorer.Dialogs.SortDialog
+import ca.pkay.rcloneexplorer.BuildConfig
+import ca.pkay.rcloneexplorer.Dialogs.*
 import ca.pkay.rcloneexplorer.FilePicker
 import ca.pkay.rcloneexplorer.Items.FileItem
 import ca.pkay.rcloneexplorer.Items.RemoteItem
@@ -29,22 +31,35 @@ import ca.pkay.rcloneexplorer.Services.ThumbnailsLoadingService
 import ca.pkay.rcloneexplorer.ui.FileExplorerComposeScreen
 import ca.pkay.rcloneexplorer.ui.viewmodel.FileExplorerViewModel
 import ca.pkay.rcloneexplorer.util.ActivityHelper.tryStartService
+import ca.pkay.rcloneexplorer.util.FLog
 import ca.pkay.rcloneexplorer.workmanager.EphemeralTaskManager
+import es.dmoral.toasty.Toasty
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import java.io.File
 import java.net.ServerSocket
 import java.security.SecureRandom
 import java.util.ArrayList
 
-class FileExplorerComposeFragment : Fragment(), SortDialog.OnClickListener, ServeDialog.Callback {
+class FileExplorerComposeFragment : Fragment(), SortDialog.OnClickListener, ServeDialog.Callback, OpenAsDialog.OnClickListener {
 
     companion object {
         private const val ARG_REMOTE = "remote_param"
         private const val FILE_PICKER_UPLOAD_RESULT = 186
         private const val FILE_PICKER_DOWNLOAD_RESULT = 204
         const val STREAMING_INTENT_RESULT = 168
+
+        const val OPEN_AS_TEXT = 1
+        const val OPEN_AS_IMAGE = 2
+        const val OPEN_AS_VIDEO = 3
+        const val OPEN_AS_AUDIO = 4
 
         @JvmStatic
         fun newInstance(remoteItem: RemoteItem): FileExplorerComposeFragment {
@@ -84,7 +99,20 @@ class FileExplorerComposeFragment : Fragment(), SortDialog.OnClickListener, Serv
         savedInstanceState: Bundle?
     ): View {
         remote?.let { viewModel.initRemote(it) }
-        startThumbnailService()
+
+        // Start/Stop thumbnail service on-demand only when folder contains images
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.uiState
+                .map { it.hasImagesInFolder && it.showThumbnails }
+                .distinctUntilChanged()
+                .collect { needsThumbnails ->
+                    if (needsThumbnails) {
+                        startThumbnailService()
+                    } else {
+                        stopThumbnailService()
+                    }
+                }
+        }
 
         return ComposeView(requireContext()).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
@@ -92,7 +120,9 @@ class FileExplorerComposeFragment : Fragment(), SortDialog.OnClickListener, Serv
                 MaterialTheme {
                     FileExplorerComposeScreen(
                         viewModel = viewModel,
-                        onFileClicked = { fileItem -> onFileClick(fileItem) },
+                        onFileClicked = { fileItem -> openFile(fileItem) },
+                        onOpenAsClicked = { fileItem -> showOpenAsDialog(fileItem) },
+                        onRenameClicked = { fileItem, newName -> viewModel.renameFile(fileItem, newName) },
                         onFilePropertiesClicked = { fileItem -> showFileProperties(fileItem) },
                         onFileLinkShareClicked = { fileItem -> showLinkDialog(fileItem) },
                         onUploadFiles = { startUploadPicker() },
@@ -110,6 +140,7 @@ class FileExplorerComposeFragment : Fragment(), SortDialog.OnClickListener, Serv
         val currentRemote = remote ?: return
         if (RemoteItem.SAFW == currentRemote.type) return
         val context = context ?: return
+        if (isThumbnailServiceRunning) return
 
         try {
             val random = SecureRandom()
@@ -138,6 +169,7 @@ class FileExplorerComposeFragment : Fragment(), SortDialog.OnClickListener, Serv
                 context.stopService(Intent(context, ThumbnailsLoadingService::class.java))
             } catch (ignored: Exception) {}
             isThumbnailServiceRunning = false
+            viewModel.setThumbnailServerInfo("", 0)
         }
     }
 
@@ -164,18 +196,192 @@ class FileExplorerComposeFragment : Fragment(), SortDialog.OnClickListener, Serv
         stopThumbnailService()
     }
 
-    private fun onFileClick(fileItem: FileItem) {
-        val context = context ?: return
+    fun openFile(fileItem: FileItem, openAs: Int = -1) {
         val currentRemote = remote ?: return
+        val ctx = context ?: return
+        val mime = fileItem.mimeType ?: ""
 
-        // Launch stream or open intent
-        val intent = Intent(context, StreamingService::class.java).apply {
-            putExtra(StreamingService.SERVE_PATH_ARG, fileItem.path)
-            putExtra(StreamingService.REMOTE_ARG, currentRemote)
-            putExtra(StreamingService.SHOW_NOTIFICATION_TEXT, true)
-            putExtra(StreamingService.SERVE_PROTOCOL, StreamingService.SERVE_HTTP)
+        val isMedia = openAs == OPEN_AS_VIDEO || openAs == OPEN_AS_AUDIO ||
+                (openAs == -1 && (mime.startsWith("video/") || mime.startsWith("audio/")))
+
+        if (isMedia) {
+            streamAndOpen(fileItem, currentRemote, openAs)
+        } else {
+            downloadAndOpen(fileItem, currentRemote, openAs)
         }
-        tryStartService(context, intent)
+    }
+
+    private fun streamAndOpen(fileItem: FileItem, currentRemote: RemoteItem, openAs: Int) {
+        val ctx = context ?: return
+        val loadingDialog = LoadingDialog()
+            .setCanCancel(false)
+            .setTitle(R.string.loading)
+        loadingDialog.show(childFragmentManager, "streaming loading dialog")
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            val port = allocatePort(8080)
+            val serveIntent = Intent(ctx, StreamingService::class.java).apply {
+                putExtra(StreamingService.SERVE_PATH_ARG, fileItem.path)
+                putExtra(StreamingService.REMOTE_ARG, currentRemote)
+                putExtra(StreamingService.SHOW_NOTIFICATION_TEXT, false)
+                putExtra(StreamingService.SERVE_PORT, port)
+            }
+            try {
+                ctx.stopService(Intent(ctx, StreamingService::class.java))
+            } catch (ignored: Exception) {}
+            tryStartService(ctx, serveIntent)
+
+            val uri = Uri.parse("http://127.0.0.1:$port")
+                .buildUpon()
+                .appendPath(fileItem.name)
+                .build()
+
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                when {
+                    openAs == OPEN_AS_VIDEO -> setDataAndType(uri, "video/*")
+                    openAs == OPEN_AS_AUDIO -> setDataAndType(uri, "audio/*")
+                    fileItem.mimeType?.startsWith("audio/") == true -> setDataAndType(uri, "audio/*")
+                    fileItem.mimeType?.startsWith("video/") == true -> setDataAndType(uri, "video/*")
+                    else -> setData(uri)
+                }
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+
+            val ready = withContext(Dispatchers.IO) {
+                val client = OkHttpClient.Builder().build()
+                val request = Request.Builder().url(uri.toString()).head().build()
+                var available = false
+                var waitTime = 15000L
+                while (waitTime > 0 && isActive) {
+                    val start = System.currentTimeMillis()
+                    try {
+                        val response = client.newCall(request).execute()
+                        if (response.code in 200..299) {
+                            available = true
+                            break
+                        }
+                    } catch (ignored: Exception) {}
+                    delay(250)
+                    val elapsed = System.currentTimeMillis() - start
+                    waitTime -= elapsed
+                }
+                available
+            }
+
+            Dialogs.dismissSilently(loadingDialog)
+            if (ready && isAdded) {
+                try {
+                    val chooser = Intent.createChooser(intent, "Open with...")
+                    startActivityForResult(chooser, STREAMING_INTENT_RESULT)
+                } catch (e: Exception) {
+                    Toasty.error(ctx, "No app available to play this media", Toast.LENGTH_SHORT, true).show()
+                }
+            } else if (isAdded) {
+                Toasty.error(ctx, getString(R.string.streaming_task_failed), Toast.LENGTH_LONG, true).show()
+                try {
+                    ctx.stopService(serveIntent)
+                } catch (ignored: Exception) {}
+            }
+        }
+    }
+
+    private fun downloadAndOpen(fileItem: FileItem, currentRemote: RemoteItem, openAs: Int) {
+        val ctx = context ?: return
+        val rclone = Rclone(ctx)
+
+        var process: Process? = null
+        var isCancelled = false
+
+        val loadingDialog = LoadingDialog()
+            .setCanCancel(false)
+            .setTitle(getString(R.string.loading_file))
+            .setNegativeButton(getString(R.string.cancel))
+            .setOnNegativeListener {
+                isCancelled = true
+                try {
+                    process?.destroy()
+                } catch (ignored: Exception) {}
+            }
+        loadingDialog.show(childFragmentManager, "download loading dialog")
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            val cacheDirs = ContextCompat.getExternalCacheDirs(ctx)
+            if (cacheDirs.isEmpty()) {
+                Dialogs.dismissSilently(loadingDialog)
+                Toasty.error(ctx, "Cache storage unavailable", Toast.LENGTH_SHORT, true).show()
+                return@launch
+            }
+            val saveLocation = cacheDirs[0].absolutePath
+            val fileLocation = "$saveLocation/${fileItem.name}"
+
+            val success = withContext(Dispatchers.IO) {
+                try {
+                    val p = rclone.downloadFile(currentRemote, fileItem, saveLocation)
+                    process = p
+                    p?.waitFor()
+                    p != null && p.exitValue() == 0 && !isCancelled
+                } catch (e: Exception) {
+                    false
+                }
+            }
+
+            Dialogs.dismissSilently(loadingDialog)
+
+            if (isCancelled) return@launch
+
+            if (!success || !isAdded) {
+                Toasty.error(ctx, "Failed to download and open file", Toast.LENGTH_SHORT, true).show()
+                return@launch
+            }
+
+            try {
+                val savedFile = File(fileLocation)
+                val sharedFileUri = FileProvider.getUriForFile(ctx, BuildConfig.APPLICATION_ID + ".fileprovider", savedFile)
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    when (openAs) {
+                        OPEN_AS_TEXT -> setDataAndType(sharedFileUri, "text/*")
+                        OPEN_AS_IMAGE -> setDataAndType(sharedFileUri, "image/*")
+                        else -> {
+                            val mime = fileItem.mimeType
+                            if (!mime.isNullOrEmpty() && mime != "application/octet-stream") {
+                                setDataAndTypeAndNormalize(sharedFileUri, mime)
+                            } else {
+                                setDataAndType(sharedFileUri, "*/*")
+                            }
+                        }
+                    }
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+
+                val chooser = Intent.createChooser(intent, "Open with...")
+                startActivity(chooser)
+            } catch (e: Exception) {
+                FLog.e("FileExplorer", "Failed launching open intent", e)
+                Toasty.error(ctx, "No application found to open this file", Toast.LENGTH_SHORT, true).show()
+            }
+        }
+    }
+
+    private fun showOpenAsDialog(fileItem: FileItem) {
+        val dialog = OpenAsDialog().setFileItem(fileItem)
+        dialog.show(childFragmentManager, "open as dialog")
+    }
+
+    override fun onClickText(fileItem: FileItem) {
+        openFile(fileItem, OPEN_AS_TEXT)
+    }
+
+    override fun onClickAudio(fileItem: FileItem) {
+        openFile(fileItem, OPEN_AS_AUDIO)
+    }
+
+    override fun onClickVideo(fileItem: FileItem) {
+        openFile(fileItem, OPEN_AS_VIDEO)
+    }
+
+    override fun onClickImage(fileItem: FileItem) {
+        openFile(fileItem, OPEN_AS_IMAGE)
     }
 
     private fun showFileProperties(fileItem: FileItem) {
@@ -225,7 +431,8 @@ class FileExplorerComposeFragment : Fragment(), SortDialog.OnClickListener, Serv
             .edit()
             .putInt("ca.pkay.rcexplorer.sort_order", sortOrder)
             .apply()
-        viewModel.refresh()
+
+        viewModel.loadDirectory(viewModel.uiState.value.currentPath, clearSearch = false, forceRefresh = false, isNavigatingBack = false)
     }
 
     private fun showServeDialog() {
@@ -233,45 +440,37 @@ class FileExplorerComposeFragment : Fragment(), SortDialog.OnClickListener, Serv
         serveDialog.show(childFragmentManager, "serve dialog")
     }
 
-    override fun onServeOptionsSelected(
-        protocol: Int,
-        allowRemoteAccess: Boolean,
-        user: String?,
-        password: String?
-    ) {
-        val context = context ?: return
+    override fun onServeOptionsSelected(protocol: Int, allowRemoteAccess: Boolean, user: String?, password: String?) {
         val currentRemote = remote ?: return
+        val ctx = context ?: return
+        try {
+            ctx.stopService(Intent(ctx, StreamingService::class.java))
+        } catch (ignored: Exception) {}
 
-        context.stopService(Intent(context, StreamingService::class.java))
-
-        val intent = Intent(context, StreamingService::class.java).apply {
+        val intent = Intent(ctx, StreamingService::class.java).apply {
             putExtra(StreamingService.SERVE_PATH_ARG, viewModel.uiState.value.currentPath)
             putExtra(StreamingService.REMOTE_ARG, currentRemote)
             putExtra(StreamingService.SHOW_NOTIFICATION_TEXT, true)
             putExtra(StreamingService.ALLOW_REMOTE_ACCESS, allowRemoteAccess)
-            putExtra(StreamingService.AUTHENTICATION_USERNAME, user)
-            putExtra(StreamingService.AUTHENTICATION_PASSWORD, password)
-
+            if (!user.isNullOrEmpty()) putExtra(StreamingService.AUTHENTICATION_USERNAME, user)
+            if (!password.isNullOrEmpty()) putExtra(StreamingService.AUTHENTICATION_PASSWORD, password)
             when (protocol) {
                 Rclone.SERVE_PROTOCOL_HTTP -> putExtra(StreamingService.SERVE_PROTOCOL, StreamingService.SERVE_HTTP)
-                Rclone.SERVE_PROTOCOL_FTP -> putExtra(StreamingService.SERVE_PROTOCOL, StreamingService.SERVE_FTP)
-                Rclone.SERVE_PROTOCOL_DLNA -> putExtra(StreamingService.SERVE_PROTOCOL, StreamingService.SERVE_DLNA)
                 Rclone.SERVE_PROTOCOL_WEBDAV -> putExtra(StreamingService.SERVE_PROTOCOL, StreamingService.SERVE_WEBDAV)
+                Rclone.SERVE_PROTOCOL_FTP -> putExtra(StreamingService.SERVE_PROTOCOL, StreamingService.SERVE_FTP)
             }
         }
-        tryStartService(context, intent)
+        tryStartService(ctx, intent)
     }
 
     private fun startUploadPicker() {
-        val intent = Intent(context, FilePicker::class.java).apply {
-            putExtra(FilePicker.FILE_PICKER_PICK_DESTINATION_TYPE, false)
-        }
+        val intent = Intent(requireContext(), FilePicker::class.java)
         startActivityForResult(intent, FILE_PICKER_UPLOAD_RESULT)
     }
 
-    private fun startDownloadPicker(items: List<FileItem>) {
-        pendingDownloadList = items
-        val intent = Intent(context, FilePicker::class.java).apply {
+    private fun startDownloadPicker(itemsToDownload: List<FileItem>) {
+        pendingDownloadList = itemsToDownload
+        val intent = Intent(requireContext(), FilePicker::class.java).apply {
             putExtra(FilePicker.FILE_PICKER_PICK_DESTINATION_TYPE, true)
         }
         startActivityForResult(intent, FILE_PICKER_DOWNLOAD_RESULT)
@@ -280,28 +479,24 @@ class FileExplorerComposeFragment : Fragment(), SortDialog.OnClickListener, Serv
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        val context = context ?: return
         val currentRemote = remote ?: return
+        val ctx = context ?: return
 
         if (requestCode == FILE_PICKER_UPLOAD_RESULT && resultCode == Activity.RESULT_OK && data != null) {
-            val result = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                data.getSerializableExtra(FilePicker.FILE_PICKER_RESULT, ArrayList::class.java) as? ArrayList<File>
-            } else {
-                @Suppress("DEPRECATION", "UNCHECKED_CAST")
-                data.getSerializableExtra(FilePicker.FILE_PICKER_RESULT) as? ArrayList<File>
-            } ?: return
-            for (file in result) {
-                EphemeralTaskManager.queueUpload(context, currentRemote, file.path, viewModel.uiState.value.currentPath)
+            @Suppress("UNCHECKED_CAST")
+            val uploadFiles = data.getSerializableExtra(FilePicker.FILE_PICKER_RESULT) as? ArrayList<File> ?: return
+            val path = viewModel.uiState.value.currentPath
+            for (file in uploadFiles) {
+                EphemeralTaskManager.queueUpload(ctx, currentRemote, file.path, path)
             }
-            viewModel.setInfoMessage("Queued ${result.size} upload(s)")
+            viewModel.setInfoMessage("Queued ${uploadFiles.size} file(s) for upload")
         } else if (requestCode == FILE_PICKER_DOWNLOAD_RESULT && resultCode == Activity.RESULT_OK && data != null) {
-            val selectedPath = data.getStringExtra(FilePicker.FILE_PICKER_RESULT) ?: return
+            val destination = data.getStringExtra(FilePicker.FILE_PICKER_RESULT) ?: return
             for (item in pendingDownloadList) {
-                EphemeralTaskManager.queueDownload(context, currentRemote, item, selectedPath)
+                EphemeralTaskManager.queueDownload(ctx, currentRemote, item, destination)
             }
-            viewModel.setInfoMessage("Queued ${pendingDownloadList.size} download(s)")
+            viewModel.setInfoMessage("Queued ${pendingDownloadList.size} file(s) for download")
             pendingDownloadList = emptyList()
-            viewModel.deselectAll()
         }
     }
 }

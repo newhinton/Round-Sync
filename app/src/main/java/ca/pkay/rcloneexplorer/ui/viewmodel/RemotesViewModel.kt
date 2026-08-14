@@ -1,12 +1,19 @@
 package ca.pkay.rcloneexplorer.ui.viewmodel
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.preference.PreferenceManager
+import ca.pkay.rcloneexplorer.InteractiveRunner
+import ca.pkay.rcloneexplorer.InteractiveRunner.Step
+import ca.pkay.rcloneexplorer.InteractiveRunner.StringAction
 import ca.pkay.rcloneexplorer.Items.RemoteItem
 import ca.pkay.rcloneexplorer.R
 import ca.pkay.rcloneexplorer.Rclone
+import ca.pkay.rcloneexplorer.RemoteConfig.OauthHelper
+import ca.pkay.rcloneexplorer.RemoteConfig.OauthHelper.InitOauthStep
+import ca.pkay.rcloneexplorer.RemoteConfig.OauthHelper.OauthFinishStep
 import ca.pkay.rcloneexplorer.util.FLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
@@ -73,49 +80,56 @@ class RemotesViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun refresh() {
+        loadRemotes(force = false)
+    }
+
     fun fetchStorageQuota(remote: RemoteItem) {
-        val remoteName = remote.name
-        if (_uiState.value.loadingQuotas.contains(remoteName)) return
+        if (_uiState.value.storageQuotas.containsKey(remote.name) ||
+            _uiState.value.loadingQuotas.contains(remote.name)) return
+
+        _uiState.update {
+            it.copy(loadingQuotas = it.loadingQuotas + remote.name)
+        }
 
         viewModelScope.launch {
-            _uiState.update {
-                it.copy(loadingQuotas = it.loadingQuotas + remoteName)
-            }
-
             val result = withContext(Dispatchers.IO) {
                 try {
                     rclone.aboutRemote(remote)
                 } catch (e: Exception) {
-                    FLog.e(TAG, "Failed fetching about for ${remote.name}", e)
+                    FLog.e(TAG, "Error fetching quota for ${remote.name}", e)
                     null
                 }
             }
 
-            _uiState.update { state ->
-                val newMap = state.storageQuotas.toMutableMap()
-                if (result != null && !result.hasFailed()) {
-                    newMap[remoteName] = result
-                }
-                state.copy(
-                    loadingQuotas = state.loadingQuotas - remoteName,
-                    storageQuotas = newMap
+            _uiState.update {
+                val updatedQuotas = if (result != null) it.storageQuotas + (remote.name to result) else it.storageQuotas
+                it.copy(
+                    storageQuotas = updatedQuotas,
+                    loadingQuotas = it.loadingQuotas - remote.name
                 )
             }
         }
     }
 
-    fun togglePin(remote: RemoteItem) {
-        val pinnedKey = getApplication<Application>().getString(R.string.shared_preferences_pinned_remotes)
-        val currentPinned = prefs.getStringSet(pinnedKey, HashSet())?.toMutableSet() ?: mutableSetOf()
-
+    fun togglePinRemote(remote: RemoteItem) {
+        val stringSet = prefs.getStringSet(
+            getApplication<Application>().getString(R.string.shared_preferences_pinned_remotes),
+            HashSet()
+        )
+        val pinned = HashSet(stringSet ?: emptySet())
         if (remote.isPinned) {
-            currentPinned.remove(remote.name)
+            pinned.remove(remote.name)
             remote.pin(false)
         } else {
-            currentPinned.add(remote.name)
+            pinned.add(remote.name)
             remote.pin(true)
         }
-        prefs.edit().putStringSet(pinnedKey, currentPinned).apply()
+        prefs.edit().putStringSet(
+            getApplication<Application>().getString(R.string.shared_preferences_pinned_remotes),
+            pinned
+        ).apply()
+
         loadRemotes()
     }
 
@@ -134,16 +148,35 @@ class RemotesViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun reconnectRemote(remote: RemoteItem) {
+    fun reconnectRemote(remote: RemoteItem, context: Context) {
         viewModelScope.launch {
-            val process = withContext(Dispatchers.IO) {
-                rclone.reconnectRemote(remote)
+            _uiState.update { it.copy(infoMessage = "Re-authenticating ${remote.displayName}...") }
+            withContext(Dispatchers.IO) {
+                try {
+                    val process = rclone.reconnectRemote(remote)
+                    if (process != null) {
+                        val start = Step("y/n> ", StringAction("y"))
+                        val postOauth = start.addFollowing("y/n> ", "y")
+                            .addFollowing(InitOauthStep(context))
+                            .addFollowing(OauthFinishStep())
+
+                        if (RemoteItem.ONEDRIVE == remote.type) {
+                            postOauth.addFollowing("OneDrive Personal or Business", "onedrive")
+                                .addFollowing("Chose drive to use:> ", "0")
+                                .addFollowing("y/n> ", "y")
+                        }
+
+                        val runner = InteractiveRunner(start, { e ->
+                            FLog.e(TAG, "OAuth recipe error for ${remote.typeReadable}", e)
+                        }, process)
+                        OauthHelper.registerRunner(runner)
+                        runner.runSteps()
+                    }
+                } catch (e: Exception) {
+                    FLog.e(TAG, "Failed reconnecting remote", e)
+                }
             }
-            if (process != null) {
-                _uiState.update { it.copy(infoMessage = "Reconnected ${remote.displayName}") }
-            } else {
-                _uiState.update { it.copy(errorMessage = "Could not reconnect remote") }
-            }
+            loadRemotes(force = true)
         }
     }
 

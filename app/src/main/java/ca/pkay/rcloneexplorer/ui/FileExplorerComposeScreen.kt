@@ -20,12 +20,15 @@ import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -52,6 +55,8 @@ data class BreadcrumbItem(
 fun FileExplorerComposeScreen(
     viewModel: FileExplorerViewModel,
     onFileClicked: (FileItem) -> Unit,
+    onOpenAsClicked: (FileItem) -> Unit = {},
+    onRenameClicked: (FileItem, String) -> Unit = { _, _ -> },
     onFilePropertiesClicked: (FileItem) -> Unit,
     onFileLinkShareClicked: (FileItem) -> Unit,
     onUploadFiles: () -> Unit,
@@ -65,6 +70,7 @@ fun FileExplorerComposeScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
     var itemForOptionSheet by remember { mutableStateOf<FileItem?>(null) }
+    var fileToRename by remember { mutableStateOf<FileItem?>(null) }
     var showFabMenu by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.infoMessage) {
@@ -416,105 +422,129 @@ fun FileExplorerComposeScreen(
                     }
                 }
 
-                // File Content List / Grid
-                if (uiState.isLoading && uiState.displayFiles.isEmpty()) {
-                    BrandLoader(message = "Loading folder contents...")
-                } else if (uiState.displayFiles.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(bottom = 80.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
+                // Pull to Refresh Container & File Content List / Grid
+                val pullRefreshState = rememberPullToRefreshState()
+                if (pullRefreshState.isRefreshing) {
+                    LaunchedEffect(true) {
+                        viewModel.refresh()
+                    }
+                }
+                LaunchedEffect(uiState.isRefreshing) {
+                    if (!uiState.isRefreshing) {
+                        pullRefreshState.endRefresh()
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f)
+                        .nestedScroll(pullRefreshState.nestedScrollConnection)
+                ) {
+                    if (uiState.isLoading && uiState.displayFiles.isEmpty()) {
+                        BrandLoader(message = "Loading folder contents...")
+                    } else if (uiState.displayFiles.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(bottom = 80.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Surface(
-                                modifier = Modifier.size(80.dp),
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
                             ) {
-                                Icon(
-                                    imageVector = if (uiState.isSearching) Icons.Outlined.SearchOff else Icons.Outlined.FolderOpen,
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .padding(20.dp)
-                                        .fillMaxSize(),
-                                    tint = MaterialTheme.colorScheme.primary
+                                Surface(
+                                    modifier = Modifier.size(80.dp),
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                ) {
+                                    Icon(
+                                        imageVector = if (uiState.isSearching) Icons.Outlined.SearchOff else Icons.Outlined.FolderOpen,
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .padding(20.dp)
+                                            .fillMaxSize(),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = if (uiState.isSearching) "No files matching \"${uiState.searchQuery}\"" else "This folder is empty",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
-                            }
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = if (uiState.isSearching) "No files matching \"${uiState.searchQuery}\"" else "This folder is empty",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = if (uiState.isSearching) "Try adjusting search or filters" else "Tap + to upload files or create a directory",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                } else {
-                    LazyVerticalGrid(
-                        columns = if (uiState.isGridView) GridCells.Fixed(2) else GridCells.Fixed(1),
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(
-                            start = 12.dp,
-                            end = 12.dp,
-                            top = 10.dp,
-                            bottom = if (isInSelectMode) 130.dp else 90.dp
-                        ),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        items(uiState.displayFiles, key = { "${it.path}:${it.name}" }) { fileItem ->
-                            val isSelected = uiState.selectedItems.contains(fileItem)
-                            if (uiState.isGridView) {
-                                GridFileCard(
-                                    fileItem = fileItem,
-                                    isSelected = isSelected,
-                                    showThumbnails = uiState.showThumbnails,
-                                    thumbnailServerAuth = uiState.thumbnailServerAuth,
-                                    thumbnailServerPort = uiState.thumbnailServerPort,
-                                    onClick = {
-                                        if (isInSelectMode) {
-                                            viewModel.toggleSelection(fileItem)
-                                        } else if (fileItem.isDir) {
-                                            viewModel.navigateInto(fileItem)
-                                        } else {
-                                            onFileClicked(fileItem)
-                                        }
-                                    },
-                                    onLongClick = { viewModel.toggleSelection(fileItem) },
-                                    onOptionsClick = { itemForOptionSheet = fileItem }
-                                )
-                            } else {
-                                ListFileCard(
-                                    fileItem = fileItem,
-                                    isSelected = isSelected,
-                                    showThumbnails = uiState.showThumbnails,
-                                    thumbnailServerAuth = uiState.thumbnailServerAuth,
-                                    thumbnailServerPort = uiState.thumbnailServerPort,
-                                    onClick = {
-                                        if (isInSelectMode) {
-                                            viewModel.toggleSelection(fileItem)
-                                        } else if (fileItem.isDir) {
-                                            viewModel.navigateInto(fileItem)
-                                        } else {
-                                            onFileClicked(fileItem)
-                                        }
-                                    },
-                                    onLongClick = { viewModel.toggleSelection(fileItem) },
-                                    onOptionsClick = { itemForOptionSheet = fileItem }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = if (uiState.isSearching) "Try adjusting search or filters" else "Tap + to upload files or create a directory",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
+                    } else {
+                        LazyVerticalGrid(
+                            columns = if (uiState.isGridView) GridCells.Fixed(2) else GridCells.Fixed(1),
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(
+                                start = 12.dp,
+                                end = 12.dp,
+                                top = 10.dp,
+                                bottom = if (isInSelectMode) 130.dp else 90.dp
+                            ),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            items(uiState.displayFiles, key = { "${it.path}:${it.name}" }) { fileItem ->
+                                val isSelected = uiState.selectedItems.contains(fileItem)
+                                if (uiState.isGridView) {
+                                    GridFileCard(
+                                        fileItem = fileItem,
+                                        isSelected = isSelected,
+                                        showThumbnails = uiState.showThumbnails,
+                                        thumbnailServerAuth = uiState.thumbnailServerAuth,
+                                        thumbnailServerPort = uiState.thumbnailServerPort,
+                                        onClick = {
+                                            if (isInSelectMode) {
+                                                viewModel.toggleSelection(fileItem)
+                                            } else if (fileItem.isDir) {
+                                                viewModel.navigateInto(fileItem)
+                                            } else {
+                                                onFileClicked(fileItem)
+                                            }
+                                        },
+                                        onLongClick = { viewModel.toggleSelection(fileItem) },
+                                        onOptionsClick = { itemForOptionSheet = fileItem }
+                                    )
+                                } else {
+                                    ListFileCard(
+                                        fileItem = fileItem,
+                                        isSelected = isSelected,
+                                        showThumbnails = uiState.showThumbnails,
+                                        thumbnailServerAuth = uiState.thumbnailServerAuth,
+                                        thumbnailServerPort = uiState.thumbnailServerPort,
+                                        onClick = {
+                                            if (isInSelectMode) {
+                                                viewModel.toggleSelection(fileItem)
+                                            } else if (fileItem.isDir) {
+                                                viewModel.navigateInto(fileItem)
+                                            } else {
+                                                onFileClicked(fileItem)
+                                            }
+                                        },
+                                        onLongClick = { viewModel.toggleSelection(fileItem) },
+                                        onOptionsClick = { itemForOptionSheet = fileItem }
+                                    )
+                                }
+                            }
+                        }
                     }
+
+                    PullToRefreshContainer(
+                        state = pullRefreshState,
+                        modifier = Modifier.align(Alignment.TopCenter)
+                    )
                 }
             }
 
@@ -781,6 +811,25 @@ fun FileExplorerComposeScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Options list
+                if (!file.isDir) {
+                    ListItem(
+                        headlineContent = { Text("Open with...") },
+                        leadingContent = { Icon(Icons.Default.OpenWith, contentDescription = null) },
+                        modifier = Modifier.clickable {
+                            itemForOptionSheet = null
+                            onOpenAsClicked(file)
+                        }
+                    )
+                }
+                ListItem(
+                    headlineContent = { Text("Rename") },
+                    leadingContent = { Icon(Icons.Default.Edit, contentDescription = null) },
+                    modifier = Modifier.clickable {
+                        val target = file
+                        itemForOptionSheet = null
+                        fileToRename = target
+                    }
+                )
                 ListItem(
                     headlineContent = { Text("Properties & Hash") },
                     leadingContent = { Icon(Icons.Default.Info, contentDescription = null) },
@@ -834,6 +883,43 @@ fun FileExplorerComposeScreen(
                 )
             }
         }
+    }
+
+    // Rename Single File / Folder Dialog
+    fileToRename?.let { targetItem ->
+        var newName by remember { mutableStateOf(targetItem.name) }
+        AlertDialog(
+            onDismissRequest = { fileToRename = null },
+            title = { Text("Rename") },
+            text = {
+                OutlinedTextField(
+                    value = newName,
+                    onValueChange = { newName = it },
+                    label = { Text("New Name") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (newName.isNotBlank() && newName != targetItem.name) {
+                            onRenameClicked(targetItem, newName.trim())
+                        }
+                        fileToRename = null
+                    },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Rename")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { fileToRename = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 

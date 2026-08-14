@@ -1,7 +1,6 @@
 package ca.pkay.rcloneexplorer.ui.viewmodel
 
 import android.app.Application
-import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.preference.PreferenceManager
@@ -16,7 +15,10 @@ import ca.pkay.rcloneexplorer.ui.ActiveTransferItem
 import ca.pkay.rcloneexplorer.ui.BreadcrumbItem
 import ca.pkay.rcloneexplorer.util.FLog
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.*
@@ -40,6 +42,7 @@ data class FileExplorerUiState(
     val showThumbnails: Boolean = true,
     val thumbnailServerAuth: String = "",
     val thumbnailServerPort: Int = 0,
+    val hasImagesInFolder: Boolean = false,
     val isDedupeSheetOpen: Boolean = false,
     val isScanningDuplicates: Boolean = false,
     val duplicateGroups: List<DuplicateGroup> = emptyList(),
@@ -65,6 +68,7 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
     private var sortOrder: Int = prefs.getInt("ca.pkay.rcexplorer.sort_order", SortDialog.ALPHA_ASCENDING)
     private val pathStack = Stack<String>()
     private val directoryCache = ConcurrentHashMap<String, List<FileItem>>()
+    private var backgroundRefreshJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -88,35 +92,47 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
         }
         pathStack.clear()
         pathStack.push(rootPath)
-        loadDirectory(rootPath)
+        loadDirectory(rootPath, clearSearch = true, forceRefresh = false, isNavigatingBack = false)
     }
 
     fun setThumbnailServerInfo(auth: String, port: Int) {
         _uiState.update { it.copy(thumbnailServerAuth = auth, thumbnailServerPort = port) }
     }
 
-    fun loadDirectory(path: String, clearSearch: Boolean = true, forceRefresh: Boolean = false) {
+    fun loadDirectory(
+        path: String,
+        clearSearch: Boolean = true,
+        forceRefresh: Boolean = false,
+        isNavigatingBack: Boolean = false
+    ) {
         val currentRemote = _uiState.value.remote ?: return
         val cacheKey = "${currentRemote.name}:$path"
         val cachedFiles = directoryCache[cacheKey]
         val showHidden = _uiState.value.showHiddenFiles
 
+        // Always cancel previous background refresh job when navigating
+        backgroundRefreshJob?.cancel()
+
         viewModelScope.launch {
             if (cachedFiles != null && !forceRefresh) {
-                // Instant pre-cached display
+                // Instant pre-cached display (0ms delay)
                 val sorted = sortFiles(cachedFiles, sortOrder)
+                val filtered = applyFiltersAndSearch(
+                    sorted,
+                    if (clearSearch) "" else _uiState.value.searchQuery,
+                    if (clearSearch) FileTypeFilter.ALL else _uiState.value.typeFilter,
+                    showHidden
+                )
+                val hasImages = filtered.any { !it.isDir && it.mimeType?.startsWith("image/") == true }
+
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        isRefreshing = true,
+                        isRefreshing = false,
                         currentPath = path,
                         rawFiles = cachedFiles,
-                        displayFiles = applyFiltersAndSearch(
-                            sorted,
-                            if (clearSearch) "" else it.searchQuery,
-                            if (clearSearch) FileTypeFilter.ALL else it.typeFilter,
-                            showHidden
-                        ),
+                        displayFiles = filtered,
+                        hasImagesInFolder = hasImages,
                         breadcrumbs = generateBreadcrumbs(currentRemote.name, path),
                         searchQuery = if (clearSearch) "" else it.searchQuery,
                         isSearching = if (clearSearch) false else it.isSearching,
@@ -126,33 +142,49 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
                     )
                 }
 
-                // Seamless background refresh
-                val freshItems = withContext(Dispatchers.IO) {
-                    try {
-                        rclone.getDirectoryContent(currentRemote, path, false)
-                    } catch (e: Exception) {
-                        FLog.e(TAG, "Background directory refresh error", e)
-                        null
-                    }
-                }
+                // If navigating backward: DO NOT background refresh (zero bandwidth / jitter)
+                // If navigating forward/direct: schedule 2-second debounced background refresh
+                if (!isNavigatingBack) {
+                    backgroundRefreshJob = viewModelScope.launch {
+                        delay(2000) // 2-second debounce
+                        if (!isActive || _uiState.value.currentPath != path) return@launch
 
-                if (freshItems != null) {
-                    directoryCache[cacheKey] = freshItems
-                    val freshSorted = sortFiles(freshItems, sortOrder)
-                    _uiState.update {
-                        if (it.currentPath == path) {
-                            it.copy(
-                                isRefreshing = false,
-                                rawFiles = freshItems,
-                                displayFiles = applyFiltersAndSearch(freshSorted, it.searchQuery, it.typeFilter, it.showHiddenFiles)
+                        _uiState.update { it.copy(isRefreshing = true) }
+                        val freshItems = withContext(Dispatchers.IO) {
+                            try {
+                                rclone.getDirectoryContent(currentRemote, path, false)
+                            } catch (e: Exception) {
+                                FLog.e(TAG, "Background directory refresh error", e)
+                                null
+                            }
+                        }
+
+                        if (!isActive || _uiState.value.currentPath != path) return@launch
+
+                        if (freshItems != null) {
+                            directoryCache[cacheKey] = freshItems
+                            val freshSorted = sortFiles(freshItems, sortOrder)
+                            val freshFiltered = applyFiltersAndSearch(
+                                freshSorted,
+                                _uiState.value.searchQuery,
+                                _uiState.value.typeFilter,
+                                _uiState.value.showHiddenFiles
                             )
-                        } else it
+                            _uiState.update {
+                                it.copy(
+                                    isRefreshing = false,
+                                    rawFiles = freshItems,
+                                    displayFiles = freshFiltered,
+                                    hasImagesInFolder = freshFiltered.any { item -> !item.isDir && item.mimeType?.startsWith("image/") == true }
+                                )
+                            }
+                        } else {
+                            _uiState.update { it.copy(isRefreshing = false) }
+                        }
                     }
-                } else {
-                    _uiState.update { it.copy(isRefreshing = false) }
                 }
             } else {
-                // Not cached or force refreshed
+                // Not in cache or forced refresh
                 _uiState.update {
                     it.copy(
                         isLoading = cachedFiles == null,
@@ -181,12 +213,14 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
                 if (items != null) {
                     directoryCache[cacheKey] = items
                     val sorted = sortFiles(items, sortOrder)
+                    val filtered = applyFiltersAndSearch(sorted, _uiState.value.searchQuery, _uiState.value.typeFilter, _uiState.value.showHiddenFiles)
                     _uiState.update {
                         it.copy(
                             isLoading = false,
                             isRefreshing = false,
                             rawFiles = items,
-                            displayFiles = applyFiltersAndSearch(sorted, it.searchQuery, it.typeFilter, it.showHiddenFiles),
+                            displayFiles = filtered,
+                            hasImagesInFolder = filtered.any { item -> !item.isDir && item.mimeType?.startsWith("image/") == true },
                             errorMessage = null
                         )
                     }
@@ -206,10 +240,12 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
     fun toggleShowHiddenFiles() {
         val newState = !_uiState.value.showHiddenFiles
         prefs.edit().putBoolean("pref_key_show_hidden_files", newState).apply()
+        val filtered = applyFiltersAndSearch(_uiState.value.rawFiles, _uiState.value.searchQuery, _uiState.value.typeFilter, newState)
         _uiState.update {
             it.copy(
                 showHiddenFiles = newState,
-                displayFiles = applyFiltersAndSearch(it.rawFiles, it.searchQuery, it.typeFilter, newState)
+                displayFiles = filtered,
+                hasImagesInFolder = filtered.any { item -> !item.isDir && item.mimeType?.startsWith("image/") == true }
             )
         }
     }
@@ -217,7 +253,7 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
     fun refreshCurrentDirectory() {
         val currentPath = _uiState.value.currentPath
         if (currentPath.isNotEmpty()) {
-            loadDirectory(currentPath, clearSearch = false, forceRefresh = true)
+            loadDirectory(currentPath, clearSearch = false, forceRefresh = true, isNavigatingBack = false)
         }
     }
 
@@ -237,14 +273,14 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
     fun navigateInto(dirItem: FileItem) {
         val newPath = dirItem.path
         pathStack.push(newPath)
-        loadDirectory(newPath)
+        loadDirectory(newPath, clearSearch = true, forceRefresh = false, isNavigatingBack = false)
     }
 
     fun navigateUp(): Boolean {
         if (pathStack.size > 1) {
             pathStack.pop()
             val prevPath = pathStack.peek()
-            loadDirectory(prevPath)
+            loadDirectory(prevPath, clearSearch = true, forceRefresh = false, isNavigatingBack = true)
             return true
         }
         return false
@@ -253,7 +289,7 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
     fun navigateToBreadcrumb(path: String) {
         val currentRemote = _uiState.value.remote ?: return
         rebuildStack(currentRemote.name, path)
-        loadDirectory(path)
+        loadDirectory(path, clearSearch = true, forceRefresh = false, isNavigatingBack = false)
     }
 
     fun toggleViewMode() {
@@ -267,28 +303,34 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
         _uiState.update {
             val nextState = !currentlySearching
             val query = if (nextState) it.searchQuery else ""
+            val filtered = applyFiltersAndSearch(it.rawFiles, query, it.typeFilter, it.showHiddenFiles)
             it.copy(
                 isSearching = nextState,
                 searchQuery = query,
-                displayFiles = applyFiltersAndSearch(it.rawFiles, query, it.typeFilter, it.showHiddenFiles)
+                displayFiles = filtered,
+                hasImagesInFolder = filtered.any { item -> !item.isDir && item.mimeType?.startsWith("image/") == true }
             )
         }
     }
 
     fun onSearchQueryChanged(query: String) {
         _uiState.update {
+            val filtered = applyFiltersAndSearch(it.rawFiles, query, it.typeFilter, it.showHiddenFiles)
             it.copy(
                 searchQuery = query,
-                displayFiles = applyFiltersAndSearch(it.rawFiles, query, it.typeFilter, it.showHiddenFiles)
+                displayFiles = filtered,
+                hasImagesInFolder = filtered.any { item -> !item.isDir && item.mimeType?.startsWith("image/") == true }
             )
         }
     }
 
     fun onTypeFilterChanged(filter: FileTypeFilter) {
         _uiState.update {
+            val filtered = applyFiltersAndSearch(it.rawFiles, it.searchQuery, filter, it.showHiddenFiles)
             it.copy(
                 typeFilter = filter,
-                displayFiles = applyFiltersAndSearch(it.rawFiles, it.searchQuery, filter, it.showHiddenFiles)
+                displayFiles = filtered,
+                hasImagesInFolder = filtered.any { item -> !item.isDir && item.mimeType?.startsWith("image/") == true }
             )
         }
     }
@@ -373,6 +415,32 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
             setInfoMessage("Transferred $successCount / ${clip.count} items")
             invalidateCache(destPath)
             refreshCurrentDirectory()
+        }
+    }
+
+    // --- Single File Rename ---
+
+    fun renameFile(item: FileItem, newName: String) {
+        val remote = _uiState.value.remote ?: return
+        val currentPath = _uiState.value.currentPath
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            val cleanPath = currentPath.removePrefix("//${remote.name}").trimStart('/')
+            val destPath = if (cleanPath.isEmpty()) newName else "$cleanPath/$newName"
+
+            val success = withContext(Dispatchers.IO) {
+                val process = rclone.moveTo(remote, item, destPath)
+                process?.waitFor()
+                process != null && process.exitValue() == 0
+            }
+
+            if (success) {
+                setInfoMessage("Renamed to $newName")
+                invalidateCache(currentPath)
+                refreshCurrentDirectory()
+            } else {
+                setErrorMessage("Failed to rename item")
+            }
         }
     }
 
