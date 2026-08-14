@@ -2,7 +2,6 @@ package ca.pkay.rcloneexplorer.workmanager
 
 import android.content.Context
 import android.os.Parcel
-import android.util.Log
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
@@ -16,6 +15,7 @@ import de.felixnuesse.extract.notifications.implementations.UploadWorkerNotifica
 class EphemeralTaskManager(private var mContext: Context) {
 
     companion object {
+        const val TAG_EPHEMERAL_WORK = "tag_ephemeral_work"
 
         fun queueDownload(
             context: Context,
@@ -91,14 +91,22 @@ class EphemeralTaskManager(private var mContext: Context) {
 
         private fun addFileItemToData(key: String, fileItem: FileItem, data: Data.Builder){
             val parcel = Parcel.obtain()
-            fileItem.writeToParcel(parcel, 0)
-            data.putByteArray(key, parcel.marshall())
+            try {
+                fileItem.writeToParcel(parcel, 0)
+                data.putByteArray(key, parcel.marshall())
+            } finally {
+                parcel.recycle()
+            }
         }
 
         private fun addRemoteItemToData(key: String, remote: RemoteItem, data: Data.Builder){
             val parcel = Parcel.obtain()
-            remote.writeToParcel(parcel, 0)
-            data.putByteArray(key, parcel.marshall())
+            try {
+                remote.writeToParcel(parcel, 0)
+                data.putByteArray(key, parcel.marshall())
+            } finally {
+                parcel.recycle()
+            }
         }
     }
 
@@ -106,21 +114,19 @@ class EphemeralTaskManager(private var mContext: Context) {
     protected fun work(inputData: Data, tag: String) {
         val uploadWorkRequest = OneTimeWorkRequestBuilder<EphemeralWorker>()
         uploadWorkRequest.setInputData(inputData)
-        uploadWorkRequest.addTag(tag)
+        uploadWorkRequest.addTag(TAG_EPHEMERAL_WORK)
+        if (tag.isNotEmpty()) {
+            uploadWorkRequest.addTag(tag)
+        }
         WorkManager.getInstance(mContext).enqueue(uploadWorkRequest.build())
     }
 
     fun cancel() {
         WorkManager.getInstance(mContext)
-            .cancelAllWork()
+            .cancelAllWorkByTag(TAG_EPHEMERAL_WORK)
     }
-    fun cancel(tag: String) {
 
-        //Intent syncIntent = new Intent(context, SyncService.class);
-        //syncIntent.setAction(TASK_CANCEL_ACTION);
-        //syncIntent.putExtra(EXTRA_TASK_ID, intent.getLongExtra(EXTRA_TASK_ID, -1));
-        //context.startService(syncIntent);
-        Log.e("TAG", "CANCEL"+tag)
+    fun cancel(tag: String) {
         WorkManager
             .getInstance(mContext)
             .cancelAllWorkByTag(tag)

@@ -1,37 +1,40 @@
 package ca.pkay.rcloneexplorer.Services
 
-import android.app.IntentService
+import android.app.Service
 import android.content.Intent
-import android.util.Log
+import android.os.IBinder
 import ca.pkay.rcloneexplorer.Database.DatabaseHandler
 import ca.pkay.rcloneexplorer.workmanager.SyncManager
-import de.felixnuesse.extract.extensions.tag
-
 
 /**
  * This service is only meant to provide other apps
  * the ability to start a task.
  * Do not actually implement any sync changes, they only belong in the SyncManager/Worker!
  */
-class SyncService: IntentService("ca.pkay.rcexplorer.SYNC_SERCVICE"){
-    override fun onHandleIntent(intent: Intent?) {
-        if(intent == null){
-            return
-        }
+class SyncService : Service() {
 
-        val action = intent.action
-        val taskId = intent.getIntExtra("task", -1)
-        // Todo: Allow SyncWorker to run in silent mode, or remove this!
-        val silentRun = intent.getBooleanExtra("notification", true)
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent != null) {
+            val action = intent.action
+            val taskId = intent.getIntExtra("task", -1)
 
-
-        if (action.equals("START_TASK")) {
-            val db = DatabaseHandler(this)
-            for (task in db.allTasks) {
-                if (task.id == taskId.toLong()) {
-                    SyncManager(this).queue(task)
-                }
+            if ("START_TASK" == action && taskId != -1) {
+                Thread {
+                    val db = DatabaseHandler(this)
+                    val task = db.getTask(taskId.toLong())
+                    if (task != null) {
+                        SyncManager(this).queue(task)
+                    }
+                    stopSelf(startId)
+                }.start()
+                return START_NOT_STICKY
             }
         }
+        stopSelf(startId)
+        return START_NOT_STICKY
+    }
+
+    override fun onBind(intent: Intent?): IBinder? {
+        return null
     }
 }

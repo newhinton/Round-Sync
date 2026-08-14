@@ -125,6 +125,7 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
             handleTask()
             postSync()
         } else {
+            failureReason = FAILURE_REASON.NO_TASK
             postSync()
             return Result.failure()
         }
@@ -143,7 +144,9 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
 
     private fun finishWork() {
         sRcloneProcess?.destroy()
-        mContext.unregisterReceiver(connectivityChangeBroadcastReceiver)
+        try {
+            mContext.unregisterReceiver(connectivityChangeBroadcastReceiver)
+        } catch (ignored: Exception) {}
         postSync()
     }
 
@@ -180,6 +183,12 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
                 val reader = BufferedReader(InputStreamReader(localProcessReference.errorStream))
                 val iterator = reader.lineSequence().iterator()
                 while(iterator.hasNext()) {
+                    if (sConnectivityChanged) {
+                        try {
+                            localProcessReference.destroy()
+                        } catch (ignored: Exception) {}
+                        break
+                    }
                     val line = iterator.next()
                     try {
                         val logline = JSONObject(line)
@@ -259,7 +268,9 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
                 content = mContext.getString(R.string.operation_failed_unknown_rclone_error, mTitle)
             }
         }
-        followupTask(mTask.onFailFollowup)
+        if (this::mTask.isInitialized) {
+            followupTask(mTask.onFailFollowup)
+        }
         showFailNotification(notificationId, content)
         endNotificationAlreadyPosted = true
         finishWork()
@@ -267,10 +278,11 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
 
     private fun showCancelledNotification(notificationId: Int) {
         SyncLog.info(mContext, mTitle, mContext.getString(R.string.operation_failed_cancelled))
+        val taskId = if (this::mTask.isInitialized) mTask.id else -1L
         mNotificationManager.showCancelledNotificationOrReport(
             mTitle,
             notificationId,
-            mTask.id
+            taskId
         )
     }
 
@@ -338,11 +350,12 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
             notifyTitle = mContext.getString(R.string.operation_failed_cancelled)
         }
         SyncLog.error(mContext, notifyTitle, "$mTitle: $text")
+        val taskId = if (this::mTask.isInitialized) mTask.id else -1L
         mNotificationManager.showFailedNotificationOrReport(
             mTitle,
             text,
             notificationId,
-            mTask.id
+            taskId
         )
     }
 

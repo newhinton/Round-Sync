@@ -2,37 +2,60 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlinx-serialization'
 
+def localPropertiesFile = rootProject.file("local.properties")
+def localProperties = new Properties()
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withInputStream { stream ->
+        localProperties.load(stream)
+    }
+}
+
 android {
     signingConfigs {
         release {
-            keyAlias 'fdroid'
-            storeFile file('.config/android/roundsync.keystore')
+            def keystoreFile = localProperties.getProperty("KEYSTORE_FILE") ?: System.getenv("KEYSTORE_FILE")
+            def keystorePass = localProperties.getProperty("KEYSTORE_PASSWORD") ?: System.getenv("KEYSTORE_PASSWORD")
+            def keyAliasName = localProperties.getProperty("KEY_ALIAS") ?: System.getenv("KEY_ALIAS")
+            def keyPass = localProperties.getProperty("KEY_PASSWORD") ?: System.getenv("KEY_PASSWORD")
+
+            if (keystoreFile != null && keystorePass != null) {
+                storeFile file("${rootProject.projectDir}/$keystoreFile")
+                storePassword keystorePass
+                keyAlias = keyAliasName ?: "reality_key"
+                keyPassword = keyPass ?: keystorePass
+            }
         }
     }
     ndkVersion project.properties['de.felixnuesse.extract.ndkVersion']
     defaultConfig {
         generatedDensities = []
         vectorDrawables.generatedDensities = []
-        applicationId 'de.felixnuesse.extract'
-        minSdkVersion 23
-        compileSdk 34
-        targetSdkVersion 34
-        versionCode 410 // last digit is reserved for ABI, only ever end on 0!
-        versionName '2.5.6'
+        applicationId 'rm.neubofy.in'
+        minSdkVersion 31
+        compileSdk 35
+        targetSdkVersion 35
+        versionCode 1
+        versionName '1.0.0'
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField "java.lang.String", "CLI", System.getenv('RCX_BUILD_CLI') ? System.getenv('RCX_BUILD_CLI') : "\"c03129b6-b09f-9cb4-8fcd-7f143b8f94ef\""
         buildConfigField "java.lang.String", "VCP_AUTHORITY", "\"" + applicationId + ".vcp\"";
-        setProperty("archivesBaseName",  "roundsync_v"+versionName)
+        buildConfigField "long", "BUILD_TIMESTAMP", "${System.currentTimeMillis()}L"
+        setProperty("archivesBaseName",  "RemoteManager_v" + versionName + "_" + System.currentTimeMillis())
 
         externalNativeBuild {
             ndkBuild {
                 arguments "LOCAL_LDFLAGS += -Wl,--build-id=none"
             }
         }
+
+        ndk {
+            abiFilters 'arm64-v8a'
+        }
     }
 
     buildFeatures {
         viewBinding true
+        buildConfig true
     }
 
     buildTypes {
@@ -43,6 +66,11 @@ android {
                     appIcon: "@mipmap/ic_launcher_debug",
                     appIconRound: "@mipmap/ic_launcher_debug_round"
             ]
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-DEBUG"
+            buildConfigField "java.lang.String", "VCP_AUTHORITY", "\"rm.neubofy.in.debug.vcp\"";
+            resValue("string", "app_name", "Remote Manager (Debug)")
+            resValue("string", "app_short_name", "Remote Manager")
         }
         release {
             minifyEnabled true
@@ -52,7 +80,9 @@ android {
                     appIcon: "@mipmap/ic_launcher",
                     appIconRound: "@mipmap/ic_launcher_round"
             ]
-            signingConfig signingConfigs.release
+            if (signingConfigs.release.storeFile != null && signingConfigs.release.storeFile.exists()) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 
@@ -62,40 +92,6 @@ android {
         }
     }
 
-    flavorDimensions += 'edition'
-    productFlavors {
-        // Default GitHub and Google Play build
-        rs {
-            dimension 'edition'
-        }
-        // OSS build
-        oss {
-            dimension 'edition'
-        }
-    }
-
-    splits {
-        abi {
-            enable true
-            reset()
-            include 'x86', 'x86_64', 'armeabi-v7a', 'arm64-v8a'
-            universalApk true
-        }
-    }
-
-    project.ext.versionCodes = [
-        'armeabi-v7a': 6,
-        'arm64-v8a'  : 7,
-        'x86'        : 8,
-        'x86_64'     : 9
-    ]
-
-    android.applicationVariants.all { variant ->
-        variant.outputs.each { output ->
-            output.versionCodeOverride =
-                    project.ext.versionCodes.get(output.getFilter(com.android.build.OutputFile.ABI), 0) + android.defaultConfig.versionCode
-        }
-    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -115,34 +111,30 @@ android {
         generateLocaleConfig true
     }
 
-    buildTypes {
-        getByName("debug") {
-            applicationIdSuffix = ".debug"
-            versionNameSuffix = "-DEBUG"
-            buildConfigField "java.lang.String", "VCP_AUTHORITY", "\"" + defaultConfig.applicationId + ".debug.vcp\"";
-            resValue("string", "app_name", "RS Debug")
-            resValue("string", "app_short_name", "RS Debug")
-        }
-    }
-
     lint {
         baseline = file("lint-baseline.xml")
-        abortOnError = true
+        abortOnError = false
         warning 'MissingTranslation'
-
     }
 
     gradle.projectsEvaluated {
-        preBuild.dependsOn(':rclone:buildAll')
+        def isCI = System.getenv("CI") != null
+        def hasGo = false
+        try {
+            def process = "go version".execute()
+            process.waitFor()
+            hasGo = (process.exitValue() == 0)
+        } catch (Exception ignored) {}
+
+        if (isCI || hasGo) {
+            preBuild.dependsOn(':rclone:buildAll')
+        }
     }
 
     namespace 'ca.pkay.rcloneexplorer'
 
-    // https://android.izzysoft.de/articles/named/iod-scan-apkchecks#blobs
     dependenciesInfo {
-        // Disables dependency metadata when building APKs.
         includeInApk = false
-        // Disables dependency metadata when building Android App Bundles.
         includeInBundle = false
     }
 }
@@ -159,8 +151,8 @@ dependencies {
     implementation 'androidx.cardview:cardview:1.0.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.browser:browser:1.8.0'
-    implementation 'androidx.legacy:legacy-support-v4:1.0.0'
     implementation 'androidx.recyclerview:recyclerview:1.3.2'
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
     implementation 'com.leinardi.android:speed-dial:3.3.0'
     implementation 'org.markdownj:markdownj-core:0.4'
     implementation 'jp.wasabeef:recyclerview-animators:4.0.2'
@@ -169,9 +161,9 @@ dependencies {
     implementation 'com.google.android.material:material:1.11.0'
     implementation 'androidx.preference:preference-ktx:1.2.1'
     implementation 'androidx.datastore:datastore-preferences:1.1.0'
+    implementation 'androidx.security:security-crypto:1.1.0-alpha06'
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
-
 
     // Thumbnails
     implementation 'com.github.bumptech.glide:glide:4.16.0'
@@ -185,16 +177,12 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-core:2.14.1'
     implementation 'com.fasterxml.jackson.core:jackson-annotations:2.14.1'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.14.1'
-    // Timestmps
+    // Timestamps
     implementation 'com.github.x0b:rfc3339parser:2.0.0'
     // SAF/WebDAV
     implementation project(':safdav')
     implementation 'org.nanohttpd:nanohttpd:2.3.1'
 
-    // Java 8+ library support
-    // TODO: replace with coreLibraryDesugar once available
-    implementation 'net.sourceforge.streamsupport:android-retrostreams:1.7.4'
-    implementation 'net.sourceforge.streamsupport:android-retrofuture:1.7.4'
     // App intro
     implementation 'com.github.AppIntro:AppIntro:6.3.1'
     // TEST

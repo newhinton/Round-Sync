@@ -1,3 +1,4 @@
+
 package ca.pkay.rcloneexplorer.Activities;
 
 import static ca.pkay.rcloneexplorer.util.ActivityHelper.tryStartActivityForResult;
@@ -81,7 +82,6 @@ import ca.pkay.rcloneexplorer.util.PermissionManager;
 import ca.pkay.rcloneexplorer.util.SharedPreferencesUtil;
 import de.felixnuesse.extract.updates.UpdateChecker;
 import es.dmoral.toasty.Toasty;
-import java9.util.stream.Stream;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener,
@@ -217,6 +217,7 @@ public class MainActivity extends AppCompatActivity
         triggerService.queueTrigger();
 
         (new UpdateChecker(this)).schedule();
+        ca.pkay.rcloneexplorer.util.AppUpdateManager.INSTANCE.checkForUpdates(this, true, false, null);
     }
 
     @Override
@@ -799,7 +800,7 @@ public class MainActivity extends AppCompatActivity
             if(null != persisted) {
                 externalVolumes = persisted.split("\\|");
             }
-            String[] current = Stream.of(context.getExternalFilesDirs(null))
+            String[] current = Arrays.stream(context.getExternalFilesDirs(null))
                     .filter(f -> f != null)
                     .map(this::getRootOrSelf)
                     .filter(this::isPermissable)

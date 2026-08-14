@@ -110,10 +110,7 @@ def getCrossCompiler(abi) {
     }
 
     def abiToCompiler = [
-        'armeabi-v7a': "armv7a-linux-androideabi${NDK_TOOLCHAIN_VERSION}-clang",
-        'arm64-v8a': "aarch64-linux-android${NDK_TOOLCHAIN_VERSION}-clang",
-        'x86': "i686-linux-android${NDK_TOOLCHAIN_VERSION}-clang",
-        'x86_64': "x86_64-linux-android${NDK_TOOLCHAIN_VERSION}-clang",
+        'arm64-v8a': "aarch64-linux-android${NDK_TOOLCHAIN_VERSION}-clang"
     ]
 
     return Paths.get(
@@ -133,10 +130,7 @@ def getOutputPath(abi) {
 
 def buildRclone(abi) {
     def abiToEnv = [
-        'armeabi-v7a': ['GOARCH': 'arm', 'GOARM': '7'],
-        'arm64-v8a': ['GOARCH': 'arm64'],
-        'x86': ['GOARCH': '386'],
-        'x86_64': ['GOARCH': 'amd64'],
+        'arm64-v8a': ['GOARCH': 'arm64']
     ]
 
     return {
@@ -170,8 +164,6 @@ def buildRclone(abi) {
 }
 
 task createRcloneModule(type: Exec) {
-    // We create a dummy go module to be able to checkout our specific rclone
-    // version later on.
     onlyIf { !Paths.get(CACHE_PATH, 'go.mod').toFile().exists() }
     Paths.get(CACHE_PATH).toFile().mkdirs()
     workingDir CACHE_PATH
@@ -183,41 +175,31 @@ task checkoutRclone(type: Exec, dependsOn: createRcloneModule) {
     workingDir CACHE_PATH
     environment 'GOPATH', GOPATH
 
-    def goVersionOutput = new ByteArrayOutputStream()
-    exec{
-        commandLine 'go', 'version'
-        standardOutput = goVersionOutput;
-    }
+    doFirst {
+        def goVersionOutput = new ByteArrayOutputStream()
+        exec{
+            commandLine 'go', 'version'
+            standardOutput = goVersionOutput;
+        }
 
-    if (goVersionOutput.toString().contains(GO_REQ_VERSION)) {
-        println "You are running the required go version."
-    } else {
-        logger.error("The requred go version is: ${GO_REQ_VERSION}")
-        logger.error( "You are running: ${goVersionOutput}")
+        if (goVersionOutput.toString().contains(GO_REQ_VERSION)) {
+            println "You are running the required go version."
+        } else {
+            logger.error("The requred go version is: ${GO_REQ_VERSION}")
+            logger.error( "You are running: ${goVersionOutput}")
+        }
+        println "You are building rclone v${RCLONE_VERSION}"
     }
-    println "You are building rclone v${RCLONE_VERSION}"
 
     commandLine 'go', 'get', '-v', '-d', "${RCLONE_MODULE}@v${RCLONE_VERSION}"
-}
-
-task buildArm(dependsOn: checkoutRclone) {
-    configure buildRclone('armeabi-v7a')
 }
 
 task buildArm64(dependsOn: checkoutRclone) {
     configure buildRclone('arm64-v8a')
 }
 
-task buildx86(dependsOn: checkoutRclone) {
-    configure buildRclone('x86')
-}
-
-task buildx64(dependsOn: checkoutRclone) {
-    configure buildRclone('x86_64')
-}
-
 task buildAll {
-    dependsOn buildArm, buildArm64, buildx86, buildx64
+    dependsOn buildArm64
 }
 
 task clean {

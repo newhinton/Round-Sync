@@ -1,7 +1,6 @@
 package ca.pkay.rcloneexplorer.workmanager
 
 import android.content.Context
-import android.util.Log
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
@@ -12,6 +11,9 @@ import java.util.Random
 
 class SyncManager(private var mContext: Context) {
 
+    companion object {
+        const val TAG_SYNC_WORK = "tag_sync_work"
+    }
 
     fun queue(trigger: Trigger) {
         queue(trigger.triggerTarget)
@@ -28,6 +30,7 @@ class SyncManager(private var mContext: Context) {
         data.putLong(SyncWorker.TASK_ID, taskID)
 
         uploadWorkRequest.setInputData(data.build())
+        uploadWorkRequest.addTag(TAG_SYNC_WORK)
         uploadWorkRequest.addTag(taskID.toString())
         work(uploadWorkRequest.build())
     }
@@ -41,6 +44,7 @@ class SyncManager(private var mContext: Context) {
         data.putString(SyncWorker.TASK_EPHEMERAL, task.asJSON().toString())
 
         uploadWorkRequest.setInputData(data.build())
+        uploadWorkRequest.addTag(TAG_SYNC_WORK)
         uploadWorkRequest.addTag(task.id.toString())
         work(uploadWorkRequest.build())
     }
@@ -52,15 +56,10 @@ class SyncManager(private var mContext: Context) {
 
     fun cancel() {
         WorkManager.getInstance(mContext)
-            .cancelAllWork()
+            .cancelAllWorkByTag(TAG_SYNC_WORK)
     }
-    fun cancel(tag: String) {
 
-        //Intent syncIntent = new Intent(context, SyncService.class);
-        //syncIntent.setAction(TASK_CANCEL_ACTION);
-        //syncIntent.putExtra(EXTRA_TASK_ID, intent.getLongExtra(EXTRA_TASK_ID, -1));
-        //context.startService(syncIntent);
-        Log.e("TAG", "CANCEL"+tag)
+    fun cancel(tag: String) {
         WorkManager
             .getInstance(mContext)
             .cancelAllWorkByTag(tag)

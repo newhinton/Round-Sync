@@ -44,6 +44,7 @@ public class AboutActivity extends AppCompatActivity {
         Rclone rclone = new Rclone(this);
 
         ((TextView)findViewById(R.id.version_number)).setText(BuildConfig.VERSION_NAME);
+        findViewById(R.id.version_number).setOnClickListener(v -> ca.pkay.rcloneexplorer.util.AppUpdateManager.INSTANCE.checkForUpdates(this, false, false, null));
         ((TextView)findViewById(R.id.rclone_version)).setText(rclone.getRcloneVersion());
 
         findViewById(R.id.changelog).setOnClickListener(v -> showChangelog());

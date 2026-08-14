@@ -94,8 +94,7 @@ import ca.pkay.rcloneexplorer.workmanager.EphemeralTaskManager;
 import ca.pkay.rcloneexplorer.workmanager.SyncManager;
 import de.felixnuesse.ui.BreadcrumbView;
 import es.dmoral.toasty.Toasty;
-import java9.util.stream.Collectors;
-import java9.util.stream.StreamSupport;
+import java.util.stream.Collectors;
 import jp.wasabeef.recyclerview.animators.LandingAnimator;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -1969,7 +1968,7 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
 
                     if(BuildConfig.DEBUG) {
                         Map<String, List<String>> headerFields =  response.headers().toMultimap();
-                        String headers = StreamSupport.stream(headerFields.keySet())
+                        String headers = headerFields.keySet().stream()
                                 .map(k -> k + '=' + headerFields.get(k))
                                 .collect(Collectors.joining(",", "{", "}"));
                         FLog.v(TAG, "doInBackground: Response %s", headers);

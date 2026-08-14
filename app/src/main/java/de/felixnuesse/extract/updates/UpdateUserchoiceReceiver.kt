@@ -40,56 +40,46 @@ class UpdateUserchoiceReceiver : BroadcastReceiver() {
             val versionKey = context.getString(R.string.pref_key_app_updates_found_update_for_version)
             val version = preferenceManager.getString(versionKey,"")?: ""
 
-            // the following might be superfluous. keep it for universal fallback.
-            var abi = when(Build.CPU_ABI) {
-                "x86" -> "x86"
-                "x86_64" -> "x86_64"
-                "arm64-v8a" -> "arm64-v8a"
-                "armeabi-v7a" -> "armeabi-v7a"
-                else -> {
-                    Log.e(tag(), "Unknown ABI, trying unviversal!")
-                    "unviversal"
-                }
-            }
-
             if(version.isNotEmpty()) {
-                if (Build.VERSION.SDK_INT >= VERSION_CODES.N) {
-                    downloadAndInstall(
-                        URL("https://github.com/newhinton/Round-Sync/releases/download/$version/roundsync_$version-oss-$abi-release.apk"),
-                        context,
-                        version,
-                        abi
-                    )
-                }
+                val tag = if (version.startsWith("v")) version else "v$version"
+                val cleanVersion = version.removePrefix("v")
+                val downloadUrl = "https://github.com/neubofy/Remote-Manager/releases/download/$tag/RemoteManager_v$cleanVersion.apk"
+                downloadAndInstall(
+                    URL(downloadUrl),
+                    context,
+                    cleanVersion
+                )
             }
             AppUpdateNotification(context).cancelNotification()
         }
     }
 
-    @RequiresApi(VERSION_CODES.N)
-    private fun downloadAndInstall(url: URL, context: Context, version: String, abi: String) {
-        Log.e(tag(), "Download url: $url")
+    private fun downloadAndInstall(url: URL, context: Context, version: String) {
+        Log.d(tag(), "Download url: $url")
         Thread {
-            val dir = context.externalCacheDir?.absolutePath ?: ""
-            Log.e(tag(), "Download dir: $dir")
-            val target = File(dir, "roundsync_$version-oss-$abi-release.apk")
-            url.openStream()
-                .use { input ->
-                FileOutputStream(target).use {
-                    input.copyTo(it)
+            try {
+                val dir = context.externalCacheDir ?: context.cacheDir
+                val target = File(dir, "RemoteManager_v$version.apk")
+                if (target.exists()) {
+                    target.delete()
                 }
-            }
+                url.openStream().use { input ->
+                    FileOutputStream(target).use { output ->
+                        input.copyTo(output)
+                    }
+                }
 
-            var fileUri = Uri.fromFile(target)
-            if (Build.VERSION.SDK_INT >= VERSION_CODES.N) {
-                fileUri = FileProvider.getUriForFile(context,BuildConfig.APPLICATION_ID + ".fileprovider", target)
-            }
+                val fileUri = FileProvider.getUriForFile(context, BuildConfig.APPLICATION_ID + ".fileprovider", target)
 
-            val intent = Intent(Intent.ACTION_VIEW)
-            intent.setDataAndType(fileUri, "application/vnd.android.package-archive")
-            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK)
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            context.startActivity(intent)
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(fileUri, "application/vnd.android.package-archive")
+                    flags = Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(intent)
+            } catch (e: Exception) {
+                Log.e(tag(), "Error downloading update", e)
+            }
         }.start()
     }
 }

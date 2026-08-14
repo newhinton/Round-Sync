@@ -103,27 +103,30 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
         }
 
         if (showThumbnails && !item.isDir()) {
-            String server = "http://127.0.0.1:29179/";
             boolean localLoad = item.getRemote().getType() == RemoteItem.SAFW;
             String mimeType = item.getMimeType();
-            if ((mimeType.startsWith("image/") || mimeType.startsWith("video/")) && item.getSize() <= sizeLimit) {
+            if ((mimeType != null && (mimeType.startsWith("image/") || mimeType.startsWith("video/"))) && item.getSize() <= sizeLimit) {
                 RequestOptions glideOption = new RequestOptions()
                         .centerCrop()
+                        .override(180, 180)
                         .diskCacheStrategy(DiskCacheStrategy.ALL)
-                        .placeholder(R.drawable.ic_file);
+                        .placeholder(R.drawable.ic_file)
+                        .error(R.drawable.ic_file);
                 if(localLoad) {
                     bindSafFile(holder, item, glideOption);
                 } else {
                     String[] serverParams = listener.getThumbnailServerParams();
-                    String hiddenPath = serverParams[0];
-                    int serverPort = Integer.parseInt(serverParams[1]);
-                    String url = "http://127.0.0.1:" + serverPort + "/" + hiddenPath + '/' + item.getPath();
-                    Glide
-                            .with(context)
-                            .load(new PersistentGlideUrl(url))
-                            .apply(glideOption)
-                            .thumbnail(0.1f)
-                            .into(holder.fileIcon);
+                    if (serverParams != null && serverParams.length >= 2) {
+                        String hiddenPath = serverParams[0];
+                        int serverPort = Integer.parseInt(serverParams[1]);
+                        String url = "http://127.0.0.1:" + serverPort + "/" + hiddenPath + '/' + item.getPath();
+                        Glide
+                                .with(context)
+                                .load(new PersistentGlideUrl(url))
+                                .apply(glideOption)
+                                .thumbnail(0.1f)
+                                .into(holder.fileIcon);
+                    }
                 }
 
             } else {
@@ -226,8 +229,15 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
             try {
                 URL url = super.toURL();
                 String path = url.getPath();
-                return path.substring(path.indexOf('/', 1));
-            } catch (MalformedURLException e) {
+                if (path != null) {
+                    int secondSlash = path.indexOf('/', 1);
+                    if (secondSlash >= 0) {
+                        return path.substring(secondSlash);
+                    }
+                    return path;
+                }
+                return super.getCacheKey();
+            } catch (Exception e) {
                 return super.getCacheKey();
             }
         }

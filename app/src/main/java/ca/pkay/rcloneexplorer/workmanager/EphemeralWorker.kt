@@ -89,17 +89,18 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
 
         registerBroadcastReceivers()
 
-        updateForegroundNotification(mNotificationManager?.updateNotification(
-            mTitle,
-            mTitle,
-            ArrayList(),
-            0,
-            ongoingNotificationID
-        ))
-
         if (inputData.keyValueMap.containsKey(EPHEMERAL_TYPE)){
             val type = Type.valueOf(inputData.getString(EPHEMERAL_TYPE) ?: "")
             mNotificationManager = prepareNotificationManager(type)
+            mTitle = mNotificationManager?.initialTitle ?: ""
+
+            updateForegroundNotification(mNotificationManager?.updateNotification(
+                mTitle,
+                mTitle,
+                ArrayList(),
+                0,
+                ongoingNotificationID
+            ))
 
             val remoteItem = getRemoteitemFromParcel(REMOTE)
             if(remoteItem == null){
@@ -191,7 +192,9 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
 
     private fun finishWork() {
         sRcloneProcess?.destroy()
-        mContext.unregisterReceiver(connectivityChangeBroadcastReceiver)
+        try {
+            mContext.unregisterReceiver(connectivityChangeBroadcastReceiver)
+        } catch (ignored: Exception) {}
         postSync()
     }
 
@@ -425,9 +428,13 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
         }
 
         val parcel = Parcel.obtain()
-        parcel.unmarshall(sourceParcelByteArray, 0, sourceParcelByteArray.size)
-        parcel.setDataPosition(0)
-        return FileItem.CREATOR.createFromParcel(parcel)
+        try {
+            parcel.unmarshall(sourceParcelByteArray, 0, sourceParcelByteArray.size)
+            parcel.setDataPosition(0)
+            return FileItem.CREATOR.createFromParcel(parcel)
+        } finally {
+            parcel.recycle()
+        }
     }
 
     private fun getRemoteitemFromParcel(key: String): RemoteItem? {
@@ -439,9 +446,13 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
         }
 
         val parcel = Parcel.obtain()
-        parcel.unmarshall(sourceParcelByteArray, 0, sourceParcelByteArray.size)
-        parcel.setDataPosition(0)
-        return RemoteItem.CREATOR.createFromParcel(parcel)
+        try {
+            parcel.unmarshall(sourceParcelByteArray, 0, sourceParcelByteArray.size)
+            parcel.setDataPosition(0)
+            return RemoteItem.CREATOR.createFromParcel(parcel)
+        } finally {
+            parcel.recycle()
+        }
     }
 
     private fun getCurrentFile(): FileItem {

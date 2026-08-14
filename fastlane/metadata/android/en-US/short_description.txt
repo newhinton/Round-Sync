@@ -1,1 +1,0 @@
-A file manager for Android, using rclone for the heavy lifting.
