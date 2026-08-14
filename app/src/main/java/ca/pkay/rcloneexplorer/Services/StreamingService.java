@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
+import android.os.PowerManager;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
@@ -39,6 +40,8 @@ public class StreamingService extends IntentService {
     private final int PERSISTENT_NOTIFICATION_ID = 179;
     private Rclone rclone;
     private Process runningProcess;
+
+    private PowerManager.WakeLock wakeLock;
 
     /**
      * Creates an IntentService.  Invoked by your subclass's constructor.*
@@ -72,7 +75,7 @@ public class StreamingService extends IntentService {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             flags = PendingIntent.FLAG_IMMUTABLE;
         }
-        Intent foregroundIntent = new Intent(this, StreamingService.class);
+        Intent foregroundIntent = new Intent(this, ca.pkay.rcloneexplorer.Activities.MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, foregroundIntent, flags);
 
         Intent cancelIntent = new Intent(this, ServeCancelAction.class);
@@ -96,40 +99,63 @@ public class StreamingService extends IntentService {
 
         startForeground(PERSISTENT_NOTIFICATION_ID, builder.build());
 
-        switch (protocol) {
-            case SERVE_FTP:
-                runningProcess = rclone.serve(Rclone.SERVE_PROTOCOL_FTP, port, allowRemoteAccess, authenticationUsername, authenticationPassword, remote, servePath);
-                break;
-            case SERVE_WEBDAV:
-                runningProcess = rclone.serve(Rclone.SERVE_PROTOCOL_WEBDAV, port, allowRemoteAccess, authenticationUsername, authenticationPassword, remote, servePath);
-                break;
-            case SERVE_DLNA:
-                runningProcess = rclone.serve(Rclone.SERVE_PROTOCOL_DLNA, port, allowRemoteAccess, authenticationUsername, authenticationPassword, remote, servePath);
-                break;
-            case SERVE_HTTP:
-            default:
-                runningProcess = rclone.serve(Rclone.SERVE_PROTOCOL_HTTP, port, allowRemoteAccess, authenticationUsername, authenticationPassword, remote, servePath);
-                break;
-        }
-
-        if (runningProcess != null) {
-            try {
-                runningProcess.waitFor();
-            } catch (InterruptedException e) {
-                FLog.e(TAG, "onHandleIntent: error waiting for process", e);
+        // Acquire WakeLock to prevent CPU sleep during media stream
+        try {
+            PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            if (powerManager != null) {
+                wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "RemoteManager:StreamingWakeLock");
+                wakeLock.acquire(12 * 60 * 60 * 1000L); // 12 hours max timeout
             }
+        } catch (Exception e) {
+            FLog.w(TAG, "Could not acquire WakeLock for streaming", e);
         }
 
-        if (runningProcess != null && runningProcess.exitValue() != 0) {
-            rclone.logErrorOutput(runningProcess);
-        }
+        try {
+            switch (protocol) {
+                case SERVE_FTP:
+                    runningProcess = rclone.serve(Rclone.SERVE_PROTOCOL_FTP, port, allowRemoteAccess, authenticationUsername, authenticationPassword, remote, servePath);
+                    break;
+                case SERVE_WEBDAV:
+                    runningProcess = rclone.serve(Rclone.SERVE_PROTOCOL_WEBDAV, port, allowRemoteAccess, authenticationUsername, authenticationPassword, remote, servePath);
+                    break;
+                case SERVE_DLNA:
+                    runningProcess = rclone.serve(Rclone.SERVE_PROTOCOL_DLNA, port, allowRemoteAccess, authenticationUsername, authenticationPassword, remote, servePath);
+                    break;
+                case SERVE_HTTP:
+                default:
+                    runningProcess = rclone.serve(Rclone.SERVE_PROTOCOL_HTTP, port, allowRemoteAccess, authenticationUsername, authenticationPassword, remote, servePath);
+                    break;
+            }
 
-        stopForeground(true);
+            if (runningProcess != null) {
+                try {
+                    runningProcess.waitFor();
+                } catch (InterruptedException e) {
+                    FLog.e(TAG, "onHandleIntent: error waiting for process", e);
+                }
+            }
+
+            if (runningProcess != null && runningProcess.exitValue() != 0) {
+                rclone.logErrorOutput(runningProcess);
+            }
+        } finally {
+            releaseLocks();
+            stopForeground(true);
+        }
+    }
+
+    private void releaseLocks() {
+        try {
+            if (wakeLock != null && wakeLock.isHeld()) {
+                wakeLock.release();
+            }
+        } catch (Exception ignored) {}
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
+        releaseLocks();
         if (null != runningProcess) {
             runningProcess.destroy();
         }

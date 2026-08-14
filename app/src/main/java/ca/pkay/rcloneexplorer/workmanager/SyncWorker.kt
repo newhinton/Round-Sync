@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-import android.net.wifi.WifiManager
 import androidx.annotation.StringRes
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.preference.PreferenceManager
@@ -25,8 +24,8 @@ import ca.pkay.rcloneexplorer.notifications.SyncServiceNotifications
 import ca.pkay.rcloneexplorer.notifications.SyncServiceNotifications.Companion.GROUP_ID
 import ca.pkay.rcloneexplorer.notifications.support.StatusObject
 import ca.pkay.rcloneexplorer.util.FLog
+import ca.pkay.rcloneexplorer.util.NotificationUtils
 import ca.pkay.rcloneexplorer.util.SyncLog
-import ca.pkay.rcloneexplorer.util.WifiConnectivitiyUtil
 import kotlinx.serialization.json.Json
 import org.json.JSONException
 import org.json.JSONObject
@@ -89,18 +88,16 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
 
 
     override fun doWork(): Result {
-
         prepareNotifications()
-        registerBroadcastReceivers()
 
-        updateForegroundNotification(mNotificationManager.updateSyncNotification(
+        val initialNotification = mNotificationManager.updateSyncNotification(
             mTitle,
             mTitle,
             ArrayList(),
             0,
             ongoingNotificationID
-        ))
-
+        )
+        updateForegroundNotification(initialNotification)
 
         var ephemeralTask: Task? = null
 
@@ -144,9 +141,6 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
 
     private fun finishWork() {
         sRcloneProcess?.destroy()
-        try {
-            mContext.unregisterReceiver(connectivityChangeBroadcastReceiver)
-        } catch (ignored: Exception) {}
         postSync()
     }
 
@@ -158,21 +152,20 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
         if (mTask.title == "") {
             mTitle = mTask.remotePath
         }
-        if(arePreconditionsMet()) {
-            val taskFilter = if(mTask.filterId != null ) mDatabase.getFilter(mTask.filterId!!) else null;
-            val taskFilterList = taskFilter?.getFilters() ?: ArrayList()
-            sRcloneProcess = mRclone.sync(
-                remoteItem,
-                mTask.localPath,
-                mTask.remotePath,
-                mTask.direction,
-                mTask.md5sum,
-                taskFilterList,
-                mTask.deleteExcluded
-            )
-            handleSync(mTitle)
-            sendUploadFinishedBroadcast(remoteItem.name, mTask.remotePath)
-        }
+
+        val taskFilter = if (mTask.filterId != null) mDatabase.getFilter(mTask.filterId!!) else null
+        val taskFilterList = taskFilter?.getFilters() ?: ArrayList()
+        sRcloneProcess = mRclone.sync(
+            remoteItem,
+            mTask.localPath,
+            mTask.remotePath,
+            mTask.direction,
+            mTask.md5sum,
+            taskFilterList,
+            mTask.deleteExcluded
+        )
+        handleSync(mTitle)
+        sendUploadFinishedBroadcast(remoteItem.name, mTask.remotePath)
     }
 
     private fun handleSync(title: String) {
@@ -183,35 +176,32 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
                 val reader = BufferedReader(InputStreamReader(localProcessReference.errorStream))
                 val iterator = reader.lineSequence().iterator()
                 while(iterator.hasNext()) {
-                    if (sConnectivityChanged) {
-                        try {
-                            localProcessReference.destroy()
-                        } catch (ignored: Exception) {}
-                        break
-                    }
                     val line = iterator.next()
                     try {
                         val logline = JSONObject(line)
-                        //todo: migrate this to StatusObject, so that we can handle everything properly.
+                        // Parse status object for progress and errors
                         if (logline.getString("level") == "error") {
                             if (sIsLoggingEnabled) {
                                 log2File?.log(line)
                             }
                             statusObject.parseLoglineToStatusObject(logline)
-                        } else if (logline.getString("level") == "warning") {
+                        } else if (logline.getString("level") == "warning" || logline.has("stats")) {
                             statusObject.parseLoglineToStatusObject(logline)
                         }
 
-                        updateForegroundNotification(mNotificationManager.updateSyncNotification(
+                        // In-place notification update with progress bar (no repeated setForegroundAsync IPC)
+                        val updatedNotification = mNotificationManager.updateSyncNotification(
                             title,
                             statusObject.notificationContent,
                             statusObject.notificationBigText,
                             statusObject.notificationPercent,
                             ongoingNotificationID
-                        ))
+                        )
+                        updatedNotification?.let {
+                            NotificationUtils.createNotification(mContext, ongoingNotificationID, it)
+                        }
                     } catch (e: JSONException) {
                         FLog.e(TAG, "SyncService-Error: the offending line: $line")
-                        //FLog.e(TAG, "onHandleIntent: error reading json", e)
                     }
                 }
             } catch (e: InterruptedIOException) {
@@ -359,21 +349,8 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
         )
     }
 
-    private fun arePreconditionsMet(): Boolean {
-        val connection = WifiConnectivitiyUtil.dataConnection(this.applicationContext)
-        if (mTask.wifionly && connection === WifiConnectivitiyUtil.Connection.METERED) {
-            failureReason = FAILURE_REASON.NO_UNMETERED
-            return false
-        } else if (connection === WifiConnectivitiyUtil.Connection.DISCONNECTED || connection === WifiConnectivitiyUtil.Connection.NOT_AVAILABLE) {
-            failureReason = FAILURE_REASON.NO_CONNECTION
-            return false
-        }
-
-        return true
-    }
 
     private fun prepareNotifications() {
-
         GenericSyncNotification(mContext).setNotificationChannel(
                 SyncServiceNotifications.CHANNEL_ID,
                 getString(R.string.sync_service_notification_channel_title),
@@ -402,7 +379,6 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
                 GROUP_ID,
                 getString(R.string.sync_service_notification_group)
         )
-
     }
 
     private fun sendUploadFinishedBroadcast(remote: String, path: String?) {
@@ -421,7 +397,6 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
         }
     }
 
-
     private fun log(message: String) {
         FLog.e(TAG, "SyncWorker: $message")
     }
@@ -429,23 +404,6 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
     private fun getString(@StringRes resId: Int): String {
         return mContext.getString(resId)
     }
-
-    private fun registerBroadcastReceivers() {
-        val intentFilter = IntentFilter()
-        intentFilter.addAction(WifiManager.SUPPLICANT_CONNECTION_CHANGE_ACTION)
-        mContext.registerReceiver(connectivityChangeBroadcastReceiver, intentFilter)
-    }
-
-    private val connectivityChangeBroadcastReceiver: BroadcastReceiver =
-        object : BroadcastReceiver() {
-            override fun onReceive(context: Context, intent: Intent) {
-                if(endNotificationAlreadyPosted){
-                    return
-                }
-                sConnectivityChanged = true
-                failureReason = FAILURE_REASON.CONNECTIVITY_CHANGED
-            }
-        }
 
     private fun followupTask(followUpTaskID: Long?) {
         if (followUpTaskID == null || followUpTaskID == -1L) {

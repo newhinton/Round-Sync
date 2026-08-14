@@ -669,95 +669,165 @@ fun FileExplorerComposeScreen(
                 }
             }
 
-            // Glassmorphic Bottom Selection Action Bar
+            // Glassmorphic Responsive Bottom Selection Action Bar
             AnimatedVisibility(
                 visible = isInSelectMode,
                 enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
                 exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(16.dp)
+                    .padding(horizontal = 14.dp, vertical = 12.dp)
             ) {
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(24.dp))
+                        .clip(RoundedCornerShape(22.dp))
                         .border(
                             BorderStroke(
                                 1.dp,
                                 Brush.linearGradient(
                                     listOf(
-                                        Color.White.copy(alpha = 0.25f),
+                                        Color.White.copy(alpha = 0.22f),
                                         Color.White.copy(alpha = 0.05f)
                                     )
                                 )
                             ),
-                            RoundedCornerShape(24.dp)
+                            RoundedCornerShape(22.dp)
                         ),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.94f),
-                    shadowElevation = 14.dp
+                    color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.96f),
+                    tonalElevation = 6.dp,
+                    shadowElevation = 16.dp
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 10.dp)
+                            .padding(horizontal = 12.dp, vertical = 10.dp)
                     ) {
+                        // Top Header Row: Counter, Select/Deselect All chip, and Dismiss Button
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(
+                                            text = "${uiState.selectedItems.size}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+
+                                Text(
+                                    text = "Selected",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f),
+                                    modifier = Modifier.clickable {
+                                        if (uiState.selectedItems.size == uiState.displayFiles.size) {
+                                            viewModel.deselectAll()
+                                        } else {
+                                            viewModel.selectAll()
+                                        }
+                                    }
+                                ) {
+                                    Text(
+                                        text = if (uiState.selectedItems.size == uiState.displayFiles.size) "Deselect All" else "Select All",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                    )
+                                }
+                            }
+
+                            IconButton(
+                                onClick = { viewModel.deselectAll() },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Cancel Selection",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                            thickness = 0.8.dp,
+                            modifier = Modifier.padding(bottom = 6.dp)
+                        )
+
+                        // Action Grid Row: 6 equally distributed columns fitting all screen widths
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Selected Count & Select All
-                            Column {
-                                Text(
-                                    text = "${uiState.selectedItems.size} Selected",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Text(
-                                    text = if (uiState.selectedItems.size == uiState.displayFiles.size) "Deselect All" else "Select All",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.secondary,
-                                    modifier = Modifier.clickable {
-                                        if (uiState.selectedItems.size == uiState.displayFiles.size) viewModel.deselectAll() else viewModel.selectAll()
-                                    }
-                                )
-                            }
-
-                            // Actions Row (Copy, Cut, Duplicate, Batch Rename, Download, Move, Delete)
-                            Row(
-                                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                IconButton(onClick = { viewModel.copySelected() }) {
-                                    Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = MaterialTheme.colorScheme.onSurface)
+                            SelectionActionButton(
+                                icon = Icons.Default.ContentCopy,
+                                label = "Copy",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f),
+                                onClick = { viewModel.copySelected() }
+                            )
+                            SelectionActionButton(
+                                icon = Icons.Default.ContentCut,
+                                label = "Cut",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f),
+                                onClick = { viewModel.cutSelected() }
+                            )
+                            SelectionActionButton(
+                                icon = Icons.AutoMirrored.Filled.DriveFileMove,
+                                label = "Move",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f),
+                                onClick = { onMoveSelected(uiState.selectedItems.toList()) }
+                            )
+                            SelectionActionButton(
+                                icon = Icons.Default.Download,
+                                label = "Download",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f),
+                                onClick = { onDownloadSelected(uiState.selectedItems.toList()) }
+                            )
+                            SelectionActionButton(
+                                icon = Icons.Default.CopyAll,
+                                label = "Duplicate",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f),
+                                onClick = { viewModel.duplicateSelected() }
+                            )
+                            SelectionActionButton(
+                                icon = Icons.Default.Delete,
+                                label = "Delete",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.weight(1f),
+                                onClick = {
+                                    itemsToDelete = uiState.selectedItems.toList()
+                                    showDeleteConfirmationDialog = true
                                 }
-                                IconButton(onClick = { viewModel.cutSelected() }) {
-                                    Icon(Icons.Default.ContentCut, contentDescription = "Cut", tint = MaterialTheme.colorScheme.onSurface)
-                                }
-                                IconButton(onClick = { viewModel.duplicateSelected() }) {
-                                    Icon(Icons.Default.CopyAll, contentDescription = "Duplicate", tint = MaterialTheme.colorScheme.onSurface)
-                                }
-                                IconButton(onClick = { onDownloadSelected(uiState.selectedItems.toList()) }) {
-                                    Icon(Icons.Default.Download, contentDescription = "Download", tint = MaterialTheme.colorScheme.onSurface)
-                                }
-                                IconButton(onClick = { onMoveSelected(uiState.selectedItems.toList()) }) {
-                                    Icon(Icons.AutoMirrored.Filled.DriveFileMove, contentDescription = "Move", tint = MaterialTheme.colorScheme.onSurface)
-                                }
-                                IconButton(
-                                    onClick = {
-                                        itemsToDelete = uiState.selectedItems.toList()
-                                        showDeleteConfirmationDialog = true
-                                    }
-                                ) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
-                                }
-                                IconButton(onClick = { viewModel.deselectAll() }) {
-                                    Icon(Icons.Default.Close, contentDescription = "Cancel", tint = MaterialTheme.colorScheme.onSurface)
-                                }
-                            }
+                            )
                         }
                     }
                 }
@@ -1143,6 +1213,8 @@ fun GridFileCard(
                             .diskCacheKey(cacheSignature)
                             .memoryCachePolicy(CachePolicy.ENABLED)
                             .diskCachePolicy(CachePolicy.ENABLED)
+                            .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
+                            .allowRgb565(true)
                             .crossfade(true)
                             .size(180, 180)
                             .build(),
@@ -1314,6 +1386,8 @@ fun ListFileCard(
                             .diskCacheKey(cacheSignature)
                             .memoryCachePolicy(CachePolicy.ENABLED)
                             .diskCachePolicy(CachePolicy.ENABLED)
+                            .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
+                            .allowRgb565(true)
                             .crossfade(true)
                             .size(180, 180)
                             .build(),
@@ -1390,5 +1464,39 @@ fun ListFileCard(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun SelectionActionButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    tint: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = tint,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+            fontWeight = FontWeight.Medium,
+            color = tint,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }

@@ -60,10 +60,11 @@ class GeneralPreferencesFragment : PreferenceFragmentCompat() {
         clearCachePreference?.setOnPreferenceClickListener {
             viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                 try {
-                    com.bumptech.glide.Glide.get(requireContext().applicationContext).clearDiskCache()
+                    val imageLoader = coil.Coil.imageLoader(requireContext())
+                    imageLoader.diskCache?.clear()
                     ca.pkay.rcloneexplorer.data.CacheManager.clearCache(requireContext())
                     withContext(Dispatchers.Main) {
-                        com.bumptech.glide.Glide.get(requireContext().applicationContext).clearMemory()
+                        imageLoader.memoryCache?.clear()
                         Toasty.success(requireContext(), getString(R.string.thumbnail_cache_cleared), Toast.LENGTH_SHORT, true).show()
                     }
                 } catch (e: Exception) {

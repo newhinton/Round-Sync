@@ -664,8 +664,24 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
         val currentRemote = _uiState.value.remote ?: return
         val currentPath = _uiState.value.currentPath
 
+        // Optimistic UI Update: remove items immediately from UI state
+        val updatedRaw = _uiState.value.rawFiles.filterNot { selected.contains(it) }
+        val updatedDisplay = applyFiltersAndSearch(
+            sortFiles(updatedRaw, sortOrder),
+            _uiState.value.searchQuery,
+            _uiState.value.typeFilter,
+            _uiState.value.showHiddenFiles
+        )
+        _uiState.update {
+            it.copy(
+                rawFiles = updatedRaw,
+                displayFiles = updatedDisplay,
+                selectedItems = emptySet(),
+                isRefreshing = true
+            )
+        }
+
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
             var deletedCount = 0
             withContext(Dispatchers.IO) {
                 for (item in selected) {
@@ -679,7 +695,7 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
                 }
             }
             DirectoryCacheRepository.remove(currentRemote.name, currentPath)
-            _uiState.update { it.copy(infoMessage = "Deleted $deletedCount item(s)") }
+            _uiState.update { it.copy(infoMessage = "Deleted $deletedCount item(s)", isRefreshing = false) }
             loadDirectory(currentPath, clearSearch = false, forceRefresh = true, isNavigatingBack = false)
         }
     }
@@ -692,8 +708,24 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
         val currentRemote = _uiState.value.remote ?: return
         val currentPath = _uiState.value.currentPath
 
+        // Optimistic UI Update: remove item immediately from UI state
+        val updatedRaw = _uiState.value.rawFiles.filterNot { it == fileItem }
+        val updatedDisplay = applyFiltersAndSearch(
+            sortFiles(updatedRaw, sortOrder),
+            _uiState.value.searchQuery,
+            _uiState.value.typeFilter,
+            _uiState.value.showHiddenFiles
+        )
+        _uiState.update {
+            it.copy(
+                rawFiles = updatedRaw,
+                displayFiles = updatedDisplay,
+                selectedItems = it.selectedItems - fileItem,
+                isRefreshing = true
+            )
+        }
+
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
             withContext(Dispatchers.IO) {
                 try {
                     val proc = rclone.deleteItems(currentRemote, fileItem)
@@ -703,7 +735,7 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
                 }
             }
             DirectoryCacheRepository.remove(currentRemote.name, currentPath)
-            _uiState.update { it.copy(infoMessage = "Deleted \"${fileItem.name}\"") }
+            _uiState.update { it.copy(infoMessage = "Deleted \"${fileItem.name}\"", isRefreshing = false) }
             loadDirectory(currentPath, clearSearch = false, forceRefresh = true, isNavigatingBack = false)
         }
     }
@@ -719,7 +751,7 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
         }
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(isRefreshing = true) }
             val created = withContext(Dispatchers.IO) {
                 try {
                     rclone.makeDirectory(currentRemote, newDirPath)
@@ -730,10 +762,10 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
             }
             if (created == true) {
                 DirectoryCacheRepository.remove(currentRemote.name, currentPath)
-                _uiState.update { it.copy(infoMessage = "Created folder \"$folderName\"") }
+                _uiState.update { it.copy(infoMessage = "Created folder \"$folderName\"", isRefreshing = false) }
                 loadDirectory(currentPath, clearSearch = false, forceRefresh = true, isNavigatingBack = false)
             } else {
-                _uiState.update { it.copy(isLoading = false, errorMessage = "Failed to create folder") }
+                _uiState.update { it.copy(isRefreshing = false, errorMessage = "Failed to create folder") }
             }
         }
     }
@@ -748,7 +780,7 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
         val cleanNew = if (cleanParent.isEmpty()) newName else "$cleanParent/$newName"
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(isRefreshing = true) }
             val moved = withContext(Dispatchers.IO) {
                 try {
                     rclone.moveTo(currentRemote, cleanOld, cleanNew)
@@ -759,10 +791,10 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
             }
             if (moved == true) {
                 DirectoryCacheRepository.remove(currentRemote.name, currentPath)
-                _uiState.update { it.copy(infoMessage = "Renamed to \"$newName\"") }
+                _uiState.update { it.copy(infoMessage = "Renamed to \"$newName\"", isRefreshing = false) }
                 loadDirectory(currentPath, clearSearch = false, forceRefresh = true, isNavigatingBack = false)
             } else {
-                _uiState.update { it.copy(isLoading = false, errorMessage = "Failed to rename file") }
+                _uiState.update { it.copy(isRefreshing = false, errorMessage = "Failed to rename file") }
             }
         }
     }

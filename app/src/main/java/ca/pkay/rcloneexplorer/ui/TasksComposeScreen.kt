@@ -11,7 +11,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -26,16 +25,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import ca.pkay.rcloneexplorer.Activities.TaskActivity
 import ca.pkay.rcloneexplorer.Activities.TriggerActivity
-import kotlinx.coroutines.launch
 import ca.pkay.rcloneexplorer.Database.DatabaseHandler
 import ca.pkay.rcloneexplorer.Items.RemoteItem
 import ca.pkay.rcloneexplorer.Items.SyncDirectionObject
 import ca.pkay.rcloneexplorer.Items.Task
+import ca.pkay.rcloneexplorer.Items.Trigger
 import ca.pkay.rcloneexplorer.R
+import ca.pkay.rcloneexplorer.Services.TriggerService
 import ca.pkay.rcloneexplorer.workmanager.SyncManager
-import ca.pkay.rcloneexplorer.workmanager.SyncWorker
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+data class TaskWithTriggers(
+    val task: Task,
+    val triggers: List<Trigger>
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,17 +52,33 @@ fun TasksComposeScreen(
 ) {
     val context = LocalContext.current
     val dbHandler = remember { DatabaseHandler(context) }
-    var taskList by remember { mutableStateOf<List<Task>>(emptyList()) }
+    var taskDataList by remember { mutableStateOf<List<TaskWithTriggers>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
     var taskToDelete by remember { mutableStateOf<Task?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    fun loadTasks() {
-        taskList = dbHandler.allTasks
+    fun loadTasksAndTriggers() {
+        scope.launch {
+            isLoading = true
+            val items = withContext(Dispatchers.IO) {
+                val tasks = dbHandler.allTasks
+                val triggers = dbHandler.allTrigger
+                val triggersByTask = triggers.groupBy { it.triggerTarget }
+                tasks.map { task ->
+                    TaskWithTriggers(
+                        task = task,
+                        triggers = triggersByTask[task.id] ?: emptyList()
+                    )
+                }
+            }
+            taskDataList = items
+            isLoading = false
+        }
     }
 
     LaunchedEffect(Unit) {
-        loadTasks()
+        loadTasksAndTriggers()
     }
 
     Scaffold(
@@ -64,7 +86,7 @@ fun TasksComposeScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Sync Tasks",
+                        text = "Sync Tasks & Schedules",
                         fontWeight = FontWeight.Bold
                     )
                 },
@@ -73,7 +95,7 @@ fun TasksComposeScreen(
                     titleContentColor = MaterialTheme.colorScheme.onSurface
                 ),
                 actions = {
-                    IconButton(onClick = { loadTasks() }) {
+                    IconButton(onClick = { loadTasksAndTriggers() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh tasks")
                     }
                 }
@@ -92,7 +114,16 @@ fun TasksComposeScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
-        if (taskList.isEmpty()) {
+        if (isLoading && taskDataList.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else if (taskDataList.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -149,39 +180,65 @@ fun TasksComposeScreen(
                     .fillMaxSize()
                     .padding(paddingValues)
                     .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
                 contentPadding = PaddingValues(top = 8.dp, bottom = 100.dp)
             ) {
-                items(taskList, key = { it.id }) { task ->
+                items(taskDataList, key = { it.task.id }) { item ->
                     TaskCard(
-                        task = task,
+                        task = item.task,
+                        triggers = item.triggers,
                         onRunTask = {
-                            SyncManager(context).queue(task)
+                            SyncManager(context).queue(item.task)
                             scope.launch {
-                                snackbarHostState.showSnackbar("Started sync task: ${task.title}")
+                                snackbarHostState.showSnackbar("Started sync task: ${item.task.title}")
                             }
                         },
-                        onEditTask = { onEditTaskClick(task) },
-                        onManageTriggers = { onManageTriggersClick(task) },
-                        onDeleteTask = { taskToDelete = task }
+                        onToggleTrigger = { trigger, isEnabled ->
+                            scope.launch {
+                                withContext(Dispatchers.IO) {
+                                    trigger.isEnabled = isEnabled
+                                    dbHandler.updateTrigger(trigger)
+                                    val triggerService = TriggerService(context)
+                                    if (isEnabled) {
+                                        triggerService.queueSingleTrigger(trigger)
+                                    } else {
+                                        triggerService.cancelTrigger(trigger.id)
+                                    }
+                                }
+                                loadTasksAndTriggers()
+                            }
+                        },
+                        onEditTask = { onEditTaskClick(item.task) },
+                        onManageTriggers = { onManageTriggersClick(item.task) },
+                        onDeleteTask = { taskToDelete = item.task }
                     )
                 }
             }
         }
     }
 
-    // Delete Confirmation
+    // Delete Confirmation Dialog
     taskToDelete?.let { target ->
         AlertDialog(
             onDismissRequest = { taskToDelete = null },
             title = { Text("Delete Task") },
-            text = { Text("Are you sure you want to delete sync task \"${target.title}\"?") },
+            text = { Text("Are you sure you want to delete sync task \"${target.title}\"? Associated schedules will also be cancelled.") },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        dbHandler.deleteTask(target.id)
-                        loadTasks()
-                        taskToDelete = null
+                        scope.launch {
+                            withContext(Dispatchers.IO) {
+                                val triggers = dbHandler.allTrigger.filter { it.triggerTarget == target.id }
+                                val triggerService = TriggerService(context)
+                                for (t in triggers) {
+                                    triggerService.cancelTrigger(t.id)
+                                    dbHandler.deleteTrigger(t.id)
+                                }
+                                dbHandler.deleteTask(target.id)
+                            }
+                            loadTasksAndTriggers()
+                            taskToDelete = null
+                        }
                     }
                 ) {
                     Text("Delete", color = MaterialTheme.colorScheme.error)
@@ -199,7 +256,9 @@ fun TasksComposeScreen(
 @Composable
 fun TaskCard(
     task: Task,
+    triggers: List<Trigger>,
     onRunTask: () -> Unit,
+    onToggleTrigger: (Trigger, Boolean) -> Unit,
     onEditTask: () -> Unit,
     onManageTriggers: () -> Unit,
     onDeleteTask: () -> Unit
@@ -238,7 +297,7 @@ fun TaskCard(
                 .fillMaxWidth()
                 .padding(14.dp)
         ) {
-            // Header Row: Remote Icon, Task Title, 3-Dot Menu
+            // Header Row: Remote Icon, Task Title, Run & 3-Dot Menu
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -281,7 +340,7 @@ fun TaskCard(
                     ) {
                         Icon(
                             Icons.Default.PlayArrow,
-                            contentDescription = "Run task",
+                            contentDescription = "Run task now",
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -319,7 +378,7 @@ fun TaskCard(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Manage Triggers & Schedules") },
+                                text = { Text("Add / Manage Triggers") },
                                 leadingIcon = { Icon(Icons.Outlined.Alarm, contentDescription = null) },
                                 onClick = {
                                     showMenu = false
@@ -383,6 +442,94 @@ fun TaskCard(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Trigger & Schedule Section
+            if (triggers.isNotEmpty()) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    triggers.forEach { trigger ->
+                        val scheduleSummary = if (trigger.type == Trigger.TRIGGER_TYPE_INTERVAL) {
+                            "Interval: Every ${trigger.time}m"
+                        } else {
+                            val hour = trigger.time / 60
+                            val minute = trigger.time % 60
+                            val timeStr = String.format("%02d:%02d", hour, minute)
+                            "Scheduled: $timeStr"
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.4f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(
+                                        imageVector = if (trigger.type == Trigger.TRIGGER_TYPE_INTERVAL) Icons.Outlined.Update else Icons.Outlined.Alarm,
+                                        contentDescription = null,
+                                        tint = if (trigger.isEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column {
+                                        Text(
+                                            text = if (trigger.title.isNotBlank()) trigger.title else scheduleSummary,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Medium,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = scheduleSummary,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+
+                                Switch(
+                                    checked = trigger.isEnabled,
+                                    onCheckedChange = { isChecked ->
+                                        onToggleTrigger(trigger, isChecked)
+                                    },
+                                    modifier = Modifier.height(28.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                OutlinedButton(
+                    onClick = onManageTriggers,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(vertical = 6.dp)
+                ) {
+                    Icon(
+                        Icons.Outlined.AlarmAdd,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Add Automatic Schedule / Trigger",
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
             }
         }

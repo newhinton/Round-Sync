@@ -12,8 +12,6 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import ca.pkay.rcloneexplorer.Items.FileItem;
-import com.bumptech.glide.Glide;
-import com.bumptech.glide.request.RequestOptions;
 
 import java.io.File;
 import java.net.URLConnection;
@@ -75,16 +73,15 @@ public class FilePickerAdapter extends RecyclerView.Adapter<FilePickerAdapter.Vi
             String mimeType = FileItem.getMimeType("application/octet-stream", file.getPath());
             if (mimeType != null && mimeType.startsWith("image")) {
                 holder.fileIcon.setImageTintList(null);
-                RequestOptions glideOption = new RequestOptions()
-                        .centerCrop()
-                        .placeholder(R.drawable.ic_file);
-                Glide
-                        .with(context)
-                        .load(file)
-                        .apply(glideOption)
-                        .into(holder.fileIcon);
+                coil.Coil.imageLoader(context).enqueue(
+                    new coil.request.ImageRequest.Builder(context)
+                        .data(file)
+                        .target(holder.fileIcon)
+                        .placeholder(R.drawable.ic_file)
+                        .error(R.drawable.ic_file)
+                        .build()
+                );
             } else {
-                Glide.with(context).clear(holder.fileIcon);
                 holder.fileIcon.setImageTintList(null);
                 holder.fileIcon.setImageResource(R.drawable.ic_file);
             }

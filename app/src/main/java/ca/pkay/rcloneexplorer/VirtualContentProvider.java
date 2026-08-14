@@ -1626,7 +1626,7 @@ public class VirtualContentProvider extends SingleRootProvider {
 
         @Override
         public void run() {
-            byte[] buf = new byte[4096];
+            byte[] buf = new byte[65536]; // 64 KB buffer for high SAF pipe throughput
             int len;
             long lengthBarrier = this.streamLength;
             try {

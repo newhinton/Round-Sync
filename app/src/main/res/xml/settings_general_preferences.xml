@@ -44,11 +44,6 @@
             android:key="@string/shared_preferences_allow_sync_trigger_while_idle"
             android:title="@string/alarm_while_idle"
             app:summary="@string/alarm_while_idle_summary" />
-        <SwitchPreference
-            android:defaultValue="false"
-            android:key="@string/pref_key_wifi_only_transfers"
-            android:title="@string/transfer_only_on_wifi"
-            app:summary="@string/transfer_only_on_wifi_summary" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/preference_category_header_proxy">

@@ -15,15 +15,10 @@ import androidx.annotation.NonNull;
 import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.bumptech.glide.Glide;
-import com.bumptech.glide.load.DecodeFormat;
-import com.bumptech.glide.load.engine.DiskCacheStrategy;
-import com.bumptech.glide.load.model.GlideUrl;
-import com.bumptech.glide.request.RequestOptions;
-import com.bumptech.glide.signature.ObjectKey;
+import coil.Coil;
+import coil.request.ImageRequest;
+import coil.size.Scale;
 
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -122,37 +117,35 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
             String mimeType = item.getMimeType();
             if (mimeType != null && mimeType.startsWith("image/") && item.getSize() <= sizeLimit) {
                 holder.fileIcon.setImageTintList(null);
-                String cacheSignature = item.getRemote().getName() + ":" + item.getPath() + ":" + item.getModTime() + ":" + item.getSize();
-                RequestOptions glideOption = new RequestOptions()
-                        .centerCrop()
-                        .override(180, 180)
-                        .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
-                        .signature(new ObjectKey(cacheSignature))
-                        .placeholder(R.drawable.ic_file)
-                        .error(R.drawable.ic_file);
-                if(localLoad) {
-                    bindSafFile(holder, item, glideOption);
+                String cacheKey = item.getRemote().getName() + ":" + item.getPath() + ":" + item.getModTime() + ":" + item.getSize();
+                if (localLoad) {
+                    bindSafFile(holder, item, cacheKey);
                 } else {
                     String[] serverParams = listener.getThumbnailServerParams();
                     if (serverParams != null && serverParams.length >= 2) {
                         String hiddenPath = serverParams[0];
                         int serverPort = Integer.parseInt(serverParams[1]);
                         String url = "http://127.0.0.1:" + serverPort + "/" + hiddenPath + '/' + item.getPath();
-                        Glide
-                                .with(context)
-                                .load(new PersistentGlideUrl(url))
-                                .apply(glideOption)
-                                .into(holder.fileIcon);
+                        ImageRequest request = new ImageRequest.Builder(context)
+                                .data(url)
+                                .target(holder.fileIcon)
+                                .size(180, 180)
+                                .scale(Scale.FIT)
+                                .memoryCacheKey(cacheKey)
+                                .diskCacheKey(cacheKey)
+                                .placeholder(R.drawable.ic_file)
+                                .error(R.drawable.ic_file)
+                                .crossfade(true)
+                                .build();
+                        Coil.imageLoader(context).enqueue(request);
                     }
                 }
 
             } else {
-                Glide.with(context).clear(holder.fileIcon);
                 holder.fileIcon.setImageTintList(null);
                 holder.fileIcon.setImageResource(R.drawable.ic_file);
             }
         } else {
-            Glide.with(context).clear(holder.fileIcon);
             if (!item.isDir()) {
                 holder.fileIcon.setImageTintList(null);
                 holder.fileIcon.setImageResource(R.drawable.ic_file);
@@ -231,45 +224,27 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
     @Override
     public void onViewRecycled(@NonNull ViewHolder holder) {
         super.onViewRecycled(holder);
-        Glide.with(context).clear(holder.fileIcon);
+        holder.fileIcon.setImageDrawable(null);
     }
 
-    private void bindSafFile(@NonNull ViewHolder holder, FileItem item, RequestOptions glideOption) {
+    private void bindSafFile(@NonNull ViewHolder holder, FileItem item, String cacheKey) {
         try {
             Uri contentUri = SafAccessProvider.getDirectServer(context).getDocumentUri('/'+ item.getPath());
-            Glide
-                    .with(context)
-                    .load(contentUri)
-                    .apply(glideOption)
-                    .into(holder.fileIcon);
+            ImageRequest request = new ImageRequest.Builder(context)
+                    .data(contentUri)
+                    .target(holder.fileIcon)
+                    .size(180, 180)
+                    .scale(Scale.FIT)
+                    .memoryCacheKey(cacheKey)
+                    .diskCacheKey(cacheKey)
+                    .placeholder(R.drawable.ic_file)
+                    .error(R.drawable.ic_file)
+                    .crossfade(true)
+                    .build();
+            Coil.imageLoader(context).enqueue(request);
         } catch (FileAccessError e) {
             FLog.e(TAG, "onBindViewHolder: SAF error", e);
             holder.fileIcon.setImageResource(R.drawable.ic_file);
-        }
-    }
-
-    private static class PersistentGlideUrl extends GlideUrl {
-
-        public PersistentGlideUrl(String url) {
-            super(url);
-        }
-
-        @Override
-        public String getCacheKey() {
-            try {
-                URL url = super.toURL();
-                String path = url.getPath();
-                if (path != null) {
-                    int secondSlash = path.indexOf('/', 1);
-                    if (secondSlash >= 0) {
-                        return path.substring(secondSlash);
-                    }
-                    return path;
-                }
-                return super.getCacheKey();
-            } catch (Exception e) {
-                return super.getCacheKey();
-            }
         }
     }
 

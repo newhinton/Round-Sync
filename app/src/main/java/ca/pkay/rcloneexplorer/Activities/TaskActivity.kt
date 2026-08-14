@@ -173,7 +173,7 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback{
         }
 
         findViewById<TextView>(R.id.task_title_textfield).text = existingTask?.title
-        switchWifi.isChecked = existingTask?.wifionly ?: false
+        switchWifi.visibility = View.GONE
         switchMD5sum.isChecked = existingTask?.md5sum ?: false
         switchDeleteExcluded.isChecked = existingTask?.deleteExcluded ?: false
         prepareSyncDirectionDropdown()
