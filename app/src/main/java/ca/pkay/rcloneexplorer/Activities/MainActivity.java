@@ -135,15 +135,13 @@ public class MainActivity extends AppCompatActivity
         availableDrawerPinnedRemoteId = 2;
         setContentView(R.layout.activity_main);
         Toolbar toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
-        ActionBar actionbar = getSupportActionBar();
-        if (actionbar != null) {
-            actionbar.setDisplayHomeAsUpEnabled(true);
-            actionbar.setHomeAsUpIndicator(R.drawable.ic_menu);
-        }
-
-        if (findViewById(R.id.appBar) != null) {
-            findViewById(R.id.appBar).setVisibility(View.GONE);
+        if (toolbar != null) {
+            setSupportActionBar(toolbar);
+            ActionBar actionbar = getSupportActionBar();
+            if (actionbar != null) {
+                actionbar.setDisplayHomeAsUpEnabled(true);
+                actionbar.setHomeAsUpIndicator(R.drawable.ic_menu);
+            }
         }
 
         getSupportFragmentManager().addOnBackStackChangedListener(() -> {

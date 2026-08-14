@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 
 data class FileExplorerUiState(
     val remote: RemoteItem? = null,
@@ -33,6 +34,7 @@ data class FileExplorerUiState(
     val searchQuery: String = "",
     val typeFilter: FileTypeFilter = FileTypeFilter.ALL,
     val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
     val errorMessage: String? = null,
     val showThumbnails: Boolean = true,
     val thumbnailServerAuth: String = "",
@@ -61,6 +63,7 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
 
     private var sortOrder: Int = prefs.getInt("ca.pkay.rcexplorer.sort_order", SortDialog.ALPHA_ASCENDING)
     private val pathStack = Stack<String>()
+    private val directoryCache = ConcurrentHashMap<String, List<FileItem>>()
 
     init {
         viewModelScope.launch {
@@ -89,60 +92,126 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
         _uiState.update { it.copy(thumbnailServerAuth = auth, thumbnailServerPort = port) }
     }
 
-    fun loadDirectory(path: String, clearSearch: Boolean = true) {
+    fun loadDirectory(path: String, clearSearch: Boolean = true, forceRefresh: Boolean = false) {
         val currentRemote = _uiState.value.remote ?: return
+        val cacheKey = "${currentRemote.name}:$path"
+        val cachedFiles = directoryCache[cacheKey]
+
         viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isLoading = true,
-                    currentPath = path,
-                    rawFiles = emptyList(),
-                    displayFiles = emptyList(),
-                    breadcrumbs = generateBreadcrumbs(currentRemote.name, path),
-                    searchQuery = if (clearSearch) "" else it.searchQuery,
-                    isSearching = if (clearSearch) false else it.isSearching,
-                    typeFilter = if (clearSearch) FileTypeFilter.ALL else it.typeFilter,
-                    selectedItems = emptySet(),
-                    errorMessage = null
-                )
-            }
-
-            val items = withContext(Dispatchers.IO) {
-                try {
-                    rclone.getDirectoryContent(currentRemote, path, false)
-                } catch (e: Exception) {
-                    FLog.e(TAG, "Failed loading directory", e)
-                    null
-                }
-            }
-
-            if (items != null) {
-                val sorted = sortFiles(items, sortOrder)
+            if (cachedFiles != null && !forceRefresh) {
+                // Instant pre-cached display
+                val sorted = sortFiles(cachedFiles, sortOrder)
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        rawFiles = sorted,
-                        displayFiles = applyFiltersAndSearch(sorted, it.searchQuery, it.typeFilter)
+                        isRefreshing = true,
+                        currentPath = path,
+                        rawFiles = cachedFiles,
+                        displayFiles = applyFiltersAndSearch(sorted, if (clearSearch) "" else it.searchQuery, if (clearSearch) FileTypeFilter.ALL else it.typeFilter),
+                        breadcrumbs = generateBreadcrumbs(currentRemote.name, path),
+                        searchQuery = if (clearSearch) "" else it.searchQuery,
+                        isSearching = if (clearSearch) false else it.isSearching,
+                        typeFilter = if (clearSearch) FileTypeFilter.ALL else it.typeFilter,
+                        selectedItems = emptySet(),
+                        errorMessage = null
                     )
+                }
+
+                // Seamless background refresh
+                val freshItems = withContext(Dispatchers.IO) {
+                    try {
+                        rclone.getDirectoryContent(currentRemote, path, false)
+                    } catch (e: Exception) {
+                        FLog.e(TAG, "Background directory refresh error", e)
+                        null
+                    }
+                }
+
+                if (freshItems != null) {
+                    directoryCache[cacheKey] = freshItems
+                    val freshSorted = sortFiles(freshItems, sortOrder)
+                    _uiState.update {
+                        if (it.currentPath == path) {
+                            it.copy(
+                                isRefreshing = false,
+                                rawFiles = freshItems,
+                                displayFiles = applyFiltersAndSearch(freshSorted, it.searchQuery, it.typeFilter)
+                            )
+                        } else it
+                    }
+                } else {
+                    _uiState.update { it.copy(isRefreshing = false) }
                 }
             } else {
+                // Not cached or force refreshed
                 _uiState.update {
                     it.copy(
-                        isLoading = false,
-                        rawFiles = emptyList(),
-                        displayFiles = emptyList(),
-                        errorMessage = "Could not load folder contents"
+                        isLoading = cachedFiles == null,
+                        isRefreshing = cachedFiles != null,
+                        currentPath = path,
+                        rawFiles = cachedFiles ?: emptyList(),
+                        displayFiles = if (cachedFiles != null) applyFiltersAndSearch(sortFiles(cachedFiles, sortOrder), it.searchQuery, it.typeFilter) else emptyList(),
+                        breadcrumbs = generateBreadcrumbs(currentRemote.name, path),
+                        searchQuery = if (clearSearch) "" else it.searchQuery,
+                        isSearching = if (clearSearch) false else it.isSearching,
+                        typeFilter = if (clearSearch) FileTypeFilter.ALL else it.typeFilter,
+                        selectedItems = emptySet(),
+                        errorMessage = null
                     )
+                }
+
+                val items = withContext(Dispatchers.IO) {
+                    try {
+                        rclone.getDirectoryContent(currentRemote, path, false)
+                    } catch (e: Exception) {
+                        FLog.e(TAG, "Failed loading directory", e)
+                        null
+                    }
+                }
+
+                if (items != null) {
+                    directoryCache[cacheKey] = items
+                    val sorted = sortFiles(items, sortOrder)
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            isRefreshing = false,
+                            rawFiles = items,
+                            displayFiles = applyFiltersAndSearch(sorted, it.searchQuery, it.typeFilter),
+                            errorMessage = null
+                        )
+                    }
+                } else {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            isRefreshing = false,
+                            errorMessage = if (cachedFiles == null) "Could not load folder contents" else null
+                        )
+                    }
                 }
             }
         }
     }
 
-    fun refresh() {
+    fun refreshCurrentDirectory() {
         val currentPath = _uiState.value.currentPath
         if (currentPath.isNotEmpty()) {
-            loadDirectory(currentPath, clearSearch = false)
+            loadDirectory(currentPath, clearSearch = false, forceRefresh = true)
         }
+    }
+
+    fun invalidateCache(path: String? = null) {
+        val remoteName = _uiState.value.remote?.name ?: return
+        if (path != null) {
+            directoryCache.remove("$remoteName:$path")
+        } else {
+            directoryCache.clear()
+        }
+    }
+
+    fun refresh() {
+        refreshCurrentDirectory()
     }
 
     fun navigateInto(dirItem: FileItem) {
@@ -282,7 +351,8 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
             }
             removeActiveTransfer(transferId)
             setInfoMessage("Transferred $successCount / ${clip.count} items")
-            refresh()
+            invalidateCache(destPath)
+            refreshCurrentDirectory()
         }
     }
 
@@ -307,7 +377,8 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
             removeActiveTransfer(transferId)
             deselectAll()
             setInfoMessage("Duplicated $successCount items")
-            refresh()
+            invalidateCache(_uiState.value.currentPath)
+            refreshCurrentDirectory()
         }
     }
 
@@ -332,7 +403,8 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
             val successCount = results.count { it.second }
             deselectAll()
             setInfoMessage("Renamed $successCount / ${selected.size} items")
-            refresh()
+            invalidateCache(_uiState.value.currentPath)
+            refreshCurrentDirectory()
         }
     }
 
@@ -370,7 +442,8 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
             }
             closeDedupeSheet()
             setInfoMessage("Deleted $deletedCount duplicate files")
-            refresh()
+            invalidateCache(_uiState.value.currentPath)
+            refreshCurrentDirectory()
         }
     }
 
@@ -403,7 +476,9 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
             removeActiveTransfer(transferId)
             deselectAll()
             setInfoMessage("$actionName $count item(s) to ${targetFolder.name}")
-            refresh()
+            invalidateCache(_uiState.value.currentPath)
+            invalidateCache(targetPath)
+            refreshCurrentDirectory()
         }
     }
 
@@ -452,7 +527,8 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
             }
             if (success) {
                 setInfoMessage("Created folder \"$name\"")
-                refresh()
+                invalidateCache(currentPath)
+                refreshCurrentDirectory()
             } else {
                 setErrorMessage("Failed to create folder")
             }
@@ -476,7 +552,8 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
             }
             deselectAll()
             setInfoMessage("Deleted $count items")
-            refresh()
+            invalidateCache(_uiState.value.currentPath)
+            refreshCurrentDirectory()
         }
     }
 

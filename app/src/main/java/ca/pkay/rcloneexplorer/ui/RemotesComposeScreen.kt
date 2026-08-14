@@ -34,7 +34,6 @@ fun RemotesComposeScreen(
     viewModel: RemotesViewModel,
     onRemoteClick: (RemoteItem) -> Unit,
     onAddNewRemote: () -> Unit,
-    onImportConfig: () -> Unit,
     onEditRemoteConfig: (RemoteItem) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -42,7 +41,6 @@ fun RemotesComposeScreen(
 
     var selectedRemoteForProperties by remember { mutableStateOf<RemoteItem?>(null) }
     var remoteToDelete by remember { mutableStateOf<RemoteItem?>(null) }
-    var showSpeedDial by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.infoMessage) {
         uiState.infoMessage?.let {
@@ -161,34 +159,24 @@ fun RemotesComposeScreen(
 
                             if (!uiState.isSearching) {
                                 Spacer(modifier = Modifier.height(20.dp))
-                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    Button(
-                                        onClick = onAddNewRemote,
-                                        shape = RoundedCornerShape(14.dp)
-                                    ) {
-                                        Icon(Icons.Default.Add, contentDescription = null)
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text("Add Remote")
-                                    }
-                                    OutlinedButton(
-                                        onClick = onImportConfig,
-                                        shape = RoundedCornerShape(14.dp)
-                                    ) {
-                                        Icon(Icons.Default.FileUpload, contentDescription = null)
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text("Import Config")
-                                    }
+                                Button(
+                                    onClick = onAddNewRemote,
+                                    shape = RoundedCornerShape(14.dp)
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = null)
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Add Remote")
                                 }
                             }
                         }
                     }
                 } else {
                     LazyVerticalGrid(
-                        columns = GridCells.Adaptive(minSize = 320.dp),
+                        columns = GridCells.Adaptive(minSize = 300.dp),
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 100.dp),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         items(uiState.displayRemotes, key = { it.name }) { remote ->
                             RemoteCard(
@@ -208,57 +196,20 @@ fun RemotesComposeScreen(
                 }
             }
 
-            // Speed Dial FAB
-            Column(
+            // Dedicated Single Floating Action Button for Adding Remotes
+            FloatingActionButton(
+                onClick = onAddNewRemote,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(20.dp),
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                shape = RoundedCornerShape(18.dp)
             ) {
-                AnimatedVisibility(
-                    visible = showSpeedDial,
-                    enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
-                    exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 })
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.End,
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        ExtendedFloatingActionButton(
-                            onClick = {
-                                showSpeedDial = false
-                                onImportConfig()
-                            },
-                            icon = { Icon(Icons.Default.FileUpload, contentDescription = null) },
-                            text = { Text("Import Config") },
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                        ExtendedFloatingActionButton(
-                            onClick = {
-                                showSpeedDial = false
-                                onAddNewRemote()
-                            },
-                            icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                            text = { Text("Add Remote") },
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-                }
-
-                FloatingActionButton(
-                    onClick = { showSpeedDial = !showSpeedDial },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    shape = RoundedCornerShape(18.dp)
-                ) {
-                    Icon(
-                        imageVector = if (showSpeedDial) Icons.Default.Close else Icons.Default.Add,
-                        contentDescription = "Actions"
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Add Remote"
+                )
             }
         }
     }

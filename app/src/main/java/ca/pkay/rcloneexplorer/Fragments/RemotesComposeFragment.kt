@@ -64,9 +64,6 @@ class RemotesComposeFragment : Fragment() {
                             val intent = Intent(requireContext(), RemoteConfig::class.java)
                             startActivityForResult(intent, CONFIG_REQ_CODE)
                         },
-                        onImportConfig = {
-                            (activity as? MainActivity)?.importConfigFile()
-                        },
                         onEditRemoteConfig = { remote ->
                             val intent = Intent(requireContext(), RemoteConfig::class.java).apply {
                                 putExtra(CONFIG_EDIT_TARGET, remote.name)

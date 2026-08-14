@@ -39,6 +39,7 @@ import ca.pkay.rcloneexplorer.ui.components.*
 import ca.pkay.rcloneexplorer.ui.viewmodel.FileExplorerUiState
 import ca.pkay.rcloneexplorer.ui.viewmodel.FileExplorerViewModel
 import coil.compose.AsyncImage
+import coil.request.CachePolicy
 import coil.request.ImageRequest
 
 data class BreadcrumbItem(
@@ -324,6 +325,21 @@ fun FileExplorerComposeScreen(
                                 }
                             }
                         }
+                    }
+
+                    // Background Refresh Progress Bar
+                    AnimatedVisibility(
+                        visible = uiState.isRefreshing,
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        LinearProgressIndicator(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(3.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = Color.Transparent
+                        )
                     }
                 }
 
@@ -869,9 +885,14 @@ fun GridFileCard(
                 contentAlignment = Alignment.Center
             ) {
                 if (thumbnailUrl != null) {
+                    val cacheSignature = "${fileItem.remote.name}:${fileItem.path}:${fileItem.modTime}:${fileItem.size}"
                     AsyncImage(
                         model = ImageRequest.Builder(context)
                             .data(thumbnailUrl)
+                            .memoryCacheKey(cacheSignature)
+                            .diskCacheKey(cacheSignature)
+                            .memoryCachePolicy(CachePolicy.ENABLED)
+                            .diskCachePolicy(CachePolicy.ENABLED)
                             .crossfade(true)
                             .size(180, 180)
                             .build(),
@@ -1011,9 +1032,14 @@ fun ListFileCard(
                 contentAlignment = Alignment.Center
             ) {
                 if (thumbnailUrl != null) {
+                    val cacheSignature = "${fileItem.remote.name}:${fileItem.path}:${fileItem.modTime}:${fileItem.size}"
                     AsyncImage(
                         model = ImageRequest.Builder(context)
                             .data(thumbnailUrl)
+                            .memoryCacheKey(cacheSignature)
+                            .diskCacheKey(cacheSignature)
+                            .memoryCachePolicy(CachePolicy.ENABLED)
+                            .diskCachePolicy(CachePolicy.ENABLED)
                             .crossfade(true)
                             .size(180, 180)
                             .build(),

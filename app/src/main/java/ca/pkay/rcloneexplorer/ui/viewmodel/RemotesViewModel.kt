@@ -23,6 +23,7 @@ data class RemotesUiState(
     val searchQuery: String = "",
     val isSearching: Boolean = false,
     val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
     val infoMessage: String? = null,
     val errorMessage: String? = null
 )
@@ -39,9 +40,16 @@ class RemotesViewModel(application: Application) : AndroidViewModel(application)
         loadRemotes()
     }
 
-    fun loadRemotes() {
+    fun loadRemotes(force: Boolean = false) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            val hasExisting = _uiState.value.remotes.isNotEmpty()
+            _uiState.update {
+                it.copy(
+                    isLoading = !hasExisting || force,
+                    isRefreshing = hasExisting && !force,
+                    errorMessage = null
+                )
+            }
             val list = withContext(Dispatchers.IO) {
                 try {
                     val rawList = rclone.remotes ?: emptyList()
@@ -57,6 +65,7 @@ class RemotesViewModel(application: Application) : AndroidViewModel(application)
             _uiState.update {
                 it.copy(
                     isLoading = false,
+                    isRefreshing = false,
                     remotes = list,
                     displayRemotes = filterRemotes(list, it.searchQuery)
                 )
