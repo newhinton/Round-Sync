@@ -73,7 +73,7 @@ public class FilePickerAdapter extends RecyclerView.Adapter<FilePickerAdapter.Vi
             holder.fileSize.setText(sizeToHumanReadable(file.length()));
 
             String mimeType = FileItem.getMimeType("application/octet-stream", file.getPath());
-            if (mimeType != null && (mimeType.startsWith("image") || mimeType.startsWith("video"))) {
+            if (mimeType != null && mimeType.startsWith("image")) {
                 holder.fileIcon.setImageTintList(null);
                 RequestOptions glideOption = new RequestOptions()
                         .centerCrop()

@@ -142,6 +142,8 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
     private RemoteItem remote;
     private String remoteName;
     private FileExplorerRecyclerViewAdapter recyclerViewAdapter;
+    private RecyclerView recyclerView;
+    private boolean isGridView;
     private LinearLayoutManager recyclerViewLinearLayoutManager;
     private SwipeRefreshLayout swipeRefreshLayout;
     private View searchBar;
@@ -278,12 +280,19 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
         Context context = view.getContext();
 
         RecyclerView recyclerView = view.findViewById(R.id.file_explorer_list);
-        recyclerViewLinearLayoutManager = new LinearLayoutManager(context);
+        this.recyclerView = recyclerView;
+        isGridView = PreferenceManager.getDefaultSharedPreferences(context).getBoolean("pref_key_view_mode_grid", false);
+        if (isGridView) {
+            recyclerView.setLayoutManager(new androidx.recyclerview.widget.GridLayoutManager(context, 2));
+        } else {
+            recyclerViewLinearLayoutManager = new LinearLayoutManager(context);
+            recyclerView.setLayoutManager(recyclerViewLinearLayoutManager);
+        }
         recyclerView.setItemAnimator(new LandingAnimator());
-        recyclerView.setLayoutManager(recyclerViewLinearLayoutManager);
         View emptyFolderView = view.findViewById(R.id.empty_folder_view);
         View noSearchResultsView = view.findViewById(R.id.no_search_results_view);
         recyclerViewAdapter = new FileExplorerRecyclerViewAdapter(context, emptyFolderView, noSearchResultsView, this);
+        recyclerViewAdapter.setGridView(isGridView);
         recyclerViewAdapter.showThumbnails(showThumbnails);
         recyclerViewAdapter.setWrapFileNames(wrapFilenames);
         recyclerView.setAdapter(recyclerViewAdapter);
@@ -842,6 +851,10 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
     }
 
     private void setBottomBarClickListeners(final View view) {
+        if (view.findViewById(R.id.file_select_all) != null) {
+            view.findViewById(R.id.file_select_all).setOnClickListener(v -> recyclerViewAdapter.toggleSelectAll());
+        }
+
         view.findViewById(R.id.file_download).setOnClickListener(v -> {
             downloadList = new ArrayList<>(recyclerViewAdapter.getSelectedItems());
             downloadFiles();

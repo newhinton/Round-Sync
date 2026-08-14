@@ -52,6 +52,10 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
     private Context context;
     private long sizeLimit;
 
+    private boolean isGridView = false;
+    public static final int VIEW_TYPE_LIST = 0;
+    public static final int VIEW_TYPE_GRID = 1;
+
     public interface OnClickListener extends FileExplorerClickListener {
     }
 
@@ -73,10 +77,25 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
                         context.getResources().getInteger(R.integer.default_thumbnail_size_limit));
     }
 
+    public void setGridView(boolean gridView) {
+        this.isGridView = gridView;
+        notifyDataSetChanged();
+    }
+
+    public boolean isGridView() {
+        return isGridView;
+    }
+
+    @Override
+    public int getItemViewType(int position) {
+        return isGridView ? VIEW_TYPE_GRID : VIEW_TYPE_LIST;
+    }
+
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.fragment_file_explorer_item, parent, false);
+        int layoutId = (viewType == VIEW_TYPE_GRID) ? R.layout.fragment_file_explorer_item_grid : R.layout.fragment_file_explorer_item;
+        View view = LayoutInflater.from(parent.getContext()).inflate(layoutId, parent, false);
         return new ViewHolder(view);
     }
 
@@ -101,7 +120,7 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
         if (showThumbnails && !item.isDir()) {
             boolean localLoad = item.getRemote().getType() == RemoteItem.SAFW;
             String mimeType = item.getMimeType();
-            if ((mimeType != null && (mimeType.startsWith("image/") || mimeType.startsWith("video/"))) && item.getSize() <= sizeLimit) {
+            if (mimeType != null && mimeType.startsWith("image/") && item.getSize() <= sizeLimit) {
                 holder.fileIcon.setImageTintList(null);
                 String cacheSignature = item.getRemote().getName() + ":" + item.getPath() + ":" + item.getModTime() + ":" + item.getSize();
                 RequestOptions glideOption = new RequestOptions()
