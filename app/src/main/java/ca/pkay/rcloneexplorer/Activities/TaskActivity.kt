@@ -238,7 +238,7 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback{
         taskToPopulate.title = findViewById<EditText>(R.id.task_title_textfield).text.toString()
         val remotename = remoteDropdown.selectedItem.toString()
         taskToPopulate.remoteId = remotename
-        val direction = syncDirection.selectedItemPosition + 1
+        val direction = SyncDirectionObject.getDirectionFromPosition(syncDirection.selectedItemPosition)
         for (ri in rcloneInstance.remotes) {
             if (ri.name == taskToPopulate.remoteId) {
                 taskToPopulate.remoteType = ri.type
@@ -486,12 +486,13 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback{
                 position: Int,
                 id: Long
             ) {
-                updateSpinnerDescription(position + 1)
+                updateSpinnerDescription(SyncDirectionObject.getDirectionFromPosition(position))
             }
 
             override fun onNothingSelected(adapterView: AdapterView<*>?) {}
         }
-        syncDirection.setSelection((((existingTask?.direction?.minus(1)) ?: 0)) )
+        val defaultPosition = existingTask?.let { SyncDirectionObject.getPositionFromDirection(it.direction) } ?: 0
+        syncDirection.setSelection(defaultPosition)
     }
 
     private fun updateSpinnerDescription(value: Int) {
@@ -505,6 +506,10 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback{
                 getString(R.string.description_sync_direction_copy_toremote)
             SyncDirectionObject.COPY_REMOTE_TO_LOCAL -> text =
                 getString(R.string.description_sync_direction_copy_tolocal)
+            SyncDirectionObject.MOVE_LOCAL_TO_REMOTE -> text =
+                getString(R.string.description_sync_direction_move_toremote)
+            SyncDirectionObject.MOVE_REMOTE_TO_LOCAL -> text =
+                getString(R.string.description_sync_direction_move_tolocal)
             SyncDirectionObject.SYNC_BIDIRECTIONAL -> text =
                 getString(R.string.description_sync_direction_sync_bidirectional)
         }

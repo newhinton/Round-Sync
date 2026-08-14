@@ -89,13 +89,13 @@ import ca.pkay.rcloneexplorer.Services.StreamingService;
 import ca.pkay.rcloneexplorer.Services.ThumbnailsLoadingService;
 import ca.pkay.rcloneexplorer.util.ActivityHelper;
 import ca.pkay.rcloneexplorer.util.FLog;
+import ca.pkay.rcloneexplorer.util.SyncLog;
 import ca.pkay.rcloneexplorer.util.LargeParcel;
 import ca.pkay.rcloneexplorer.workmanager.EphemeralTaskManager;
 import ca.pkay.rcloneexplorer.workmanager.SyncManager;
 import de.felixnuesse.ui.BreadcrumbView;
 import es.dmoral.toasty.Toasty;
-import java9.util.stream.Collectors;
-import java9.util.stream.StreamSupport;
+import java.util.stream.Collectors;
 import jp.wasabeef.recyclerview.animators.LandingAnimator;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -142,6 +142,8 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
     private RemoteItem remote;
     private String remoteName;
     private FileExplorerRecyclerViewAdapter recyclerViewAdapter;
+    private RecyclerView recyclerView;
+    private boolean isGridView;
     private LinearLayoutManager recyclerViewLinearLayoutManager;
     private SwipeRefreshLayout swipeRefreshLayout;
     private View searchBar;
@@ -278,15 +280,35 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
         Context context = view.getContext();
 
         RecyclerView recyclerView = view.findViewById(R.id.file_explorer_list);
-        recyclerViewLinearLayoutManager = new LinearLayoutManager(context);
+        this.recyclerView = recyclerView;
+        isGridView = PreferenceManager.getDefaultSharedPreferences(context).getBoolean("pref_key_view_mode_grid", false);
+        if (isGridView) {
+            recyclerView.setLayoutManager(new androidx.recyclerview.widget.GridLayoutManager(context, 2));
+        } else {
+            recyclerViewLinearLayoutManager = new LinearLayoutManager(context);
+            recyclerView.setLayoutManager(recyclerViewLinearLayoutManager);
+        }
         recyclerView.setItemAnimator(new LandingAnimator());
-        recyclerView.setLayoutManager(recyclerViewLinearLayoutManager);
         View emptyFolderView = view.findViewById(R.id.empty_folder_view);
         View noSearchResultsView = view.findViewById(R.id.no_search_results_view);
         recyclerViewAdapter = new FileExplorerRecyclerViewAdapter(context, emptyFolderView, noSearchResultsView, this);
+        recyclerViewAdapter.setGridView(isGridView);
         recyclerViewAdapter.showThumbnails(showThumbnails);
         recyclerViewAdapter.setWrapFileNames(wrapFilenames);
         recyclerView.setAdapter(recyclerViewAdapter);
+        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(@NonNull RecyclerView rv, int newState) {
+                super.onScrollStateChanged(rv, newState);
+                if (isAdded() && getContext() != null) {
+                    if (newState == RecyclerView.SCROLL_STATE_SETTLING) {
+                        com.bumptech.glide.Glide.with(getContext()).pauseRequests();
+                    } else {
+                        com.bumptech.glide.Glide.with(getContext()).resumeRequests();
+                    }
+                }
+            }
+        });
 
         if (remote.isRemoteType(RemoteItem.SFTP) && !goToDefaultSet & savedInstanceState == null) {
             showSFTPgoToDialog();
@@ -829,6 +851,10 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
     }
 
     private void setBottomBarClickListeners(final View view) {
+        if (view.findViewById(R.id.file_select_all) != null) {
+            view.findViewById(R.id.file_select_all).setOnClickListener(v -> recyclerViewAdapter.toggleSelectAll());
+        }
+
         view.findViewById(R.id.file_download).setOnClickListener(v -> {
             downloadList = new ArrayList<>(recyclerViewAdapter.getSelectedItems());
             downloadFiles();
@@ -1857,6 +1883,10 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
             super.onPostExecute(status);
             Dialogs.dismissSilently(loadingDialog);
             if (!status) {
+                if (context != null) {
+                    Toasty.error(context, "Failed to open file. Check logs for details.", Toast.LENGTH_LONG, true).show();
+                    SyncLog.error(context, "File Open Error", "Failed to download file from " + (remote != null ? remote.getName() : "remote") + " (" + fileLocation + ")");
+                }
                 return;
             }
             if (null == context) {
@@ -1969,7 +1999,7 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
 
                     if(BuildConfig.DEBUG) {
                         Map<String, List<String>> headerFields =  response.headers().toMultimap();
-                        String headers = StreamSupport.stream(headerFields.keySet())
+                        String headers = headerFields.keySet().stream()
                                 .map(k -> k + '=' + headerFields.get(k))
                                 .collect(Collectors.joining(",", "{", "}"));
                         FLog.v(TAG, "doInBackground: Response %s", headers);

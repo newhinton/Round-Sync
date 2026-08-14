@@ -10,6 +10,8 @@
     <string name="pref_key_app_notification_reports" translatable="false">pref_key_app_notification_reports</string>
     <string name="pref_key_show_thumbnails" translatable="false">pref_key_show_thumbnails</string>
     <string name="pref_key_thumbnail_size_limit" translatable="false">thumbnail_max_size</string>
+    <string name="pref_key_thumbnail_cache_budget" translatable="false">pref_key_thumbnail_cache_budget</string>
+    <string name="pref_key_clear_thumbnail_cache" translatable="false">pref_key_clear_thumbnail_cache</string>
     <string name="pref_key_wifi_only_transfers" translatable="false">pref_key_wifi_only_transfers</string>
     <string name="pref_key_version_code" translatable="false">pref_key_version_code</string>
     <string name="pref_key_version_name" translatable="false">pref_key_version_name</string>

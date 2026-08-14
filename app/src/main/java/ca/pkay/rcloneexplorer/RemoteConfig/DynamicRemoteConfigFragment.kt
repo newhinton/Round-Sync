@@ -3,7 +3,6 @@ package ca.pkay.rcloneexplorer.RemoteConfig
 import android.app.ActionBar.LayoutParams
 import android.content.Context
 import android.graphics.Typeface
-import android.os.AsyncTask
 import android.os.Bundle
 import android.text.Editable
 import android.text.InputType
@@ -59,7 +58,7 @@ class DynamicRemoteConfigFragment(private val mProviderTitle: String, private va
     private var mShowAdvanced = false
     private var mIsEditTask = false
     private var mOptionMap = hashMapOf<String, String>()
-    private var mAuthTask: AsyncTask<Void?, Void?, Boolean>? = null
+    private var mAuthTask: ConfigCreate? = null
     private var mUseOauth = false
     private var mOptionFilter = ""
 

@@ -37,9 +37,7 @@
             android:contentDescription="@string/app_icon"
             android:elevation="2dp"
             android:paddingTop="@dimen/nav_header_vertical_spacing"
-            app:srcCompat="@drawable/appicon"
-            app:iconTint="@color/md_theme_dark_onPrimary"
-            app:tint="@color/md_theme_dark_onPrimary" />
+            app:srcCompat="@drawable/app_logo" />
     </LinearLayout>
 
     <TextView

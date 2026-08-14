@@ -203,13 +203,15 @@ public class TriggerService extends Service {
             notification = new Notification.Builder(this, CHANNEL_ID)
                     .setContentTitle(getText(R.string.notification_triggerservice_title))
                     .setContentText(getText(R.string.notification_triggerservice_description))
-                    .setSmallIcon(R.drawable.ic_launcher_foreground)
+                    .setSmallIcon(R.drawable.ic_twotone_rounded_cloud_sync_24)
+                    .setLargeIcon(android.graphics.BitmapFactory.decodeResource(getResources(), R.drawable.app_logo))
                     .build();
         } else {
             NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this)
                     .setContentTitle(getText(R.string.notification_triggerservice_title))
                     .setContentText(getText(R.string.notification_triggerservice_description))
-                    .setSmallIcon(R.drawable.ic_launcher_foreground);
+                    .setSmallIcon(R.drawable.ic_twotone_rounded_cloud_sync_24)
+                    .setLargeIcon(android.graphics.BitmapFactory.decodeResource(getResources(), R.drawable.app_logo));
             notification = notificationBuilder.build();
         }
         startForeground(SERVICE_NOTIFICATION_ID, notification);

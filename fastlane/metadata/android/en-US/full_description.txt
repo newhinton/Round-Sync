@@ -1,7 +1,0 @@
-Round Sync helps you to mange your files, everywhere you go, on your local device or on most cloud providers.
-
-* <b>File Management:</b> You can list, view, download, upload, move, rename, delete files and folders
-* <b>Streaming:</b> Stream media files, serve files and directories over FTP, HTTP, WebDAV or DLNA
-* <b>Syncing:</b> You can create tasks to automatically schedule syncs of your files
-* <b>Material Design:</b> Supports automatic dark theme in the style of material you!
-* <b>Access everything:</b> Supports Storage Access Framework (SAF) for SD card and USB device access, regular storage devices and of course any cloud compatible with rclone.

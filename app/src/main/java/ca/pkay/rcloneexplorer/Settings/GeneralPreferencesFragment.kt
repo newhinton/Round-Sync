@@ -21,6 +21,10 @@ import de.felixnuesse.extract.extensions.TAG
 import de.felixnuesse.extract.settings.language.LanguagePicker
 import de.felixnuesse.extract.settings.preferences.FilesizePreference
 import es.dmoral.toasty.Toasty
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class GeneralPreferencesFragment : PreferenceFragmentCompat() {
 
@@ -40,9 +44,35 @@ class GeneralPreferencesFragment : PreferenceFragmentCompat() {
             Preference.SummaryProvider<FilesizePreference> { preference ->
                 val size = preference.getValue()
                 val sizeMb = (size / 1024 / 1024)
-                Log.e(TAG(), "test: $sizeMb")
                 resources.getString(R.string.pref_thumbnails_size_summary, sizeMb.toFloat())
             }
+
+        val budgetKey = getString(R.string.pref_key_thumbnail_cache_budget)
+        val budgetPreference = findPreference(budgetKey) as FilesizePreference?
+        budgetPreference?.summaryProvider =
+            Preference.SummaryProvider<FilesizePreference> { preference ->
+                val size = preference.getValue()
+                val sizeMb = (size / 1024 / 1024)
+                "$sizeMb MB"
+            }
+
+        val clearCachePreference = findPreference(getString(R.string.pref_key_clear_thumbnail_cache)) as Preference?
+        clearCachePreference?.setOnPreferenceClickListener {
+            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                try {
+                    com.bumptech.glide.Glide.get(requireContext().applicationContext).clearDiskCache()
+                    withContext(Dispatchers.Main) {
+                        com.bumptech.glide.Glide.get(requireContext().applicationContext).clearMemory()
+                        Toasty.success(requireContext(), getString(R.string.thumbnail_cache_cleared), Toast.LENGTH_SHORT, true).show()
+                    }
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        Toasty.error(requireContext(), "Failed to clear cache: ${e.localizedMessage}", Toast.LENGTH_SHORT, true).show()
+                    }
+                }
+            }
+            true
+        }
 
         val shortcutsPreference = findPreference("AppShortcutTempKey") as Preference?
         shortcutsPreference?.setOnPreferenceClickListener {

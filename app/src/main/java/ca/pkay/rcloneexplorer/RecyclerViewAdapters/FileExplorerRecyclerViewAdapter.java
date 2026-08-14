@@ -16,9 +16,11 @@ import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.DecodeFormat;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.load.model.GlideUrl;
 import com.bumptech.glide.request.RequestOptions;
+import com.bumptech.glide.signature.ObjectKey;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -38,7 +40,7 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
     private List<FileItem> files;
     private View emptyView;
     private View noSearchResultsView;
-    private OnClickListener listener;
+    private FileExplorerClickListener listener;
     private boolean isInSelectMode;
     private List<FileItem> selectedItems;
     private boolean isInMoveMode;
@@ -50,16 +52,14 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
     private Context context;
     private long sizeLimit;
 
-    public interface OnClickListener {
-        void onFileClicked(FileItem fileItem);
-        void onDirectoryClicked(FileItem fileItem, int position);
-        void onFilesSelected();
-        void onFileDeselected();
-        void onFileOptionsClicked(View view, FileItem fileItem);
-        String[] getThumbnailServerParams();
+    private boolean isGridView = false;
+    public static final int VIEW_TYPE_LIST = 0;
+    public static final int VIEW_TYPE_GRID = 1;
+
+    public interface OnClickListener extends FileExplorerClickListener {
     }
 
-    public FileExplorerRecyclerViewAdapter(Context context, View emptyView, View noSearchResultsView, OnClickListener listener) {
+    public FileExplorerRecyclerViewAdapter(Context context, View emptyView, View noSearchResultsView, FileExplorerClickListener listener) {
         files = new ArrayList<>();
         this.context = context;
         this.emptyView = emptyView;
@@ -77,10 +77,25 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
                         context.getResources().getInteger(R.integer.default_thumbnail_size_limit));
     }
 
+    public void setGridView(boolean gridView) {
+        this.isGridView = gridView;
+        notifyDataSetChanged();
+    }
+
+    public boolean isGridView() {
+        return isGridView;
+    }
+
+    @Override
+    public int getItemViewType(int position) {
+        return isGridView ? VIEW_TYPE_GRID : VIEW_TYPE_LIST;
+    }
+
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.fragment_file_explorer_item, parent, false);
+        int layoutId = (viewType == VIEW_TYPE_GRID) ? R.layout.fragment_file_explorer_item_grid : R.layout.fragment_file_explorer_item;
+        View view = LayoutInflater.from(parent.getContext()).inflate(layoutId, parent, false);
         return new ViewHolder(view);
     }
 
@@ -103,30 +118,43 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
         }
 
         if (showThumbnails && !item.isDir()) {
-            String server = "http://127.0.0.1:29179/";
             boolean localLoad = item.getRemote().getType() == RemoteItem.SAFW;
             String mimeType = item.getMimeType();
-            if ((mimeType.startsWith("image/") || mimeType.startsWith("video/")) && item.getSize() <= sizeLimit) {
+            if (mimeType != null && mimeType.startsWith("image/") && item.getSize() <= sizeLimit) {
+                holder.fileIcon.setImageTintList(null);
+                String cacheSignature = item.getRemote().getName() + ":" + item.getPath() + ":" + item.getModTime() + ":" + item.getSize();
                 RequestOptions glideOption = new RequestOptions()
                         .centerCrop()
-                        .diskCacheStrategy(DiskCacheStrategy.ALL)
-                        .placeholder(R.drawable.ic_file);
+                        .override(180, 180)
+                        .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
+                        .signature(new ObjectKey(cacheSignature))
+                        .placeholder(R.drawable.ic_file)
+                        .error(R.drawable.ic_file);
                 if(localLoad) {
                     bindSafFile(holder, item, glideOption);
                 } else {
                     String[] serverParams = listener.getThumbnailServerParams();
-                    String hiddenPath = serverParams[0];
-                    int serverPort = Integer.parseInt(serverParams[1]);
-                    String url = "http://127.0.0.1:" + serverPort + "/" + hiddenPath + '/' + item.getPath();
-                    Glide
-                            .with(context)
-                            .load(new PersistentGlideUrl(url))
-                            .apply(glideOption)
-                            .thumbnail(0.1f)
-                            .into(holder.fileIcon);
+                    if (serverParams != null && serverParams.length >= 2) {
+                        String hiddenPath = serverParams[0];
+                        int serverPort = Integer.parseInt(serverParams[1]);
+                        String url = "http://127.0.0.1:" + serverPort + "/" + hiddenPath + '/' + item.getPath();
+                        Glide
+                                .with(context)
+                                .load(new PersistentGlideUrl(url))
+                                .apply(glideOption)
+                                .into(holder.fileIcon);
+                    }
                 }
 
             } else {
+                Glide.with(context).clear(holder.fileIcon);
+                holder.fileIcon.setImageTintList(null);
+                holder.fileIcon.setImageResource(R.drawable.ic_file);
+            }
+        } else {
+            Glide.with(context).clear(holder.fileIcon);
+            if (!item.isDir()) {
+                holder.fileIcon.setImageTintList(null);
                 holder.fileIcon.setImageResource(R.drawable.ic_file);
             }
         }
@@ -200,6 +228,12 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
         });
     }
 
+    @Override
+    public void onViewRecycled(@NonNull ViewHolder holder) {
+        super.onViewRecycled(holder);
+        Glide.with(context).clear(holder.fileIcon);
+    }
+
     private void bindSafFile(@NonNull ViewHolder holder, FileItem item, RequestOptions glideOption) {
         try {
             Uri contentUri = SafAccessProvider.getDirectServer(context).getDocumentUri('/'+ item.getPath());
@@ -207,7 +241,6 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
                     .with(context)
                     .load(contentUri)
                     .apply(glideOption)
-                    .thumbnail(0.1f)
                     .into(holder.fileIcon);
         } catch (FileAccessError e) {
             FLog.e(TAG, "onBindViewHolder: SAF error", e);
@@ -226,8 +259,15 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
             try {
                 URL url = super.toURL();
                 String path = url.getPath();
-                return path.substring(path.indexOf('/', 1));
-            } catch (MalformedURLException e) {
+                if (path != null) {
+                    int secondSlash = path.indexOf('/', 1);
+                    if (secondSlash >= 0) {
+                        return path.substring(secondSlash);
+                    }
+                    return path;
+                }
+                return super.getCacheKey();
+            } catch (Exception e) {
                 return super.getCacheKey();
             }
         }
