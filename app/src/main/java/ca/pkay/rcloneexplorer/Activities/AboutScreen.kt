@@ -384,7 +384,7 @@ fun AboutScreen(
                         icon = Icons.Default.BugReport,
                         title = "Report an Issue",
                         subtitle = "Submit bugs or feature requests on GitHub",
-                        onClick = { openUrl(context, "https://github.com/neubofy/Remote-Manager/issues/new") }
+                        onClick = { openUrl(context, "https://github.com/neubofy/Remote-Manager/issues") }
                     )
                 }
             }
@@ -439,7 +439,9 @@ private fun ActionRow(
 
 private fun openUrl(context: Context, url: String) {
     try {
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
         context.startActivity(intent)
     } catch (e: Exception) {
         // Fallback ignore

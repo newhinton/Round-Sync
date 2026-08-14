@@ -46,7 +46,8 @@ data class FileExplorerUiState(
     val isDedupeSheetOpen: Boolean = false,
     val isScanningDuplicates: Boolean = false,
     val duplicateGroups: List<DuplicateGroup> = emptyList(),
-    val isBatchRenameOpen: Boolean = false,
+    val isSortSheetOpen: Boolean = false,
+    val sortOrder: Int = SortDialog.ALPHA_ASCENDING,
     val isBookmarksOpen: Boolean = false,
     val bookmarks: List<BookmarkItem> = emptyList(),
     val isCreateFolderDialogOpen: Boolean = false,
@@ -86,6 +87,7 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
                 remote = remote,
                 currentPath = rootPath,
                 showHiddenFiles = showHidden,
+                sortOrder = sortOrder,
                 showThumbnails = prefs.getBoolean(getApplication<Application>().getString(R.string.pref_key_show_thumbnails), true),
                 isGridView = prefs.getBoolean("pref_key_file_grid_view", false)
             )
@@ -473,29 +475,55 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
-    fun openBatchRename() {
-        _uiState.update { it.copy(isBatchRenameOpen = true) }
+
+    fun openSortSheet() {
+        _uiState.update { it.copy(isSortSheetOpen = true) }
     }
 
-    fun closeBatchRename() {
-        _uiState.update { it.copy(isBatchRenameOpen = false) }
+    fun closeSortSheet() {
+        _uiState.update { it.copy(isSortSheetOpen = false) }
     }
 
-    fun executeBatchRename(rule: BatchRenameRule) {
-        val items = _uiState.value.selectedItems.toList()
-        val remote = _uiState.value.remote ?: return
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, isBatchRenameOpen = false) }
-            withContext(Dispatchers.IO) {
-                RcloneExtensions.batchRename(rclone, remote, items, rule)
-            }
-            DirectoryCacheRepository.remove(remote.name, _uiState.value.currentPath)
-            loadDirectory(_uiState.value.currentPath, clearSearch = false, forceRefresh = true)
+    fun applySortOrder(newOrder: Int) {
+        sortOrder = newOrder
+        prefs.edit().putInt("ca.pkay.rcexplorer.sort_order", newOrder).apply()
+        val currentRaw = _uiState.value.rawFiles
+        val sorted = sortFiles(currentRaw, newOrder)
+        val filtered = applyFiltersAndSearch(
+            sorted,
+            _uiState.value.searchQuery,
+            _uiState.value.typeFilter,
+            _uiState.value.showHiddenFiles
+        )
+        _uiState.update {
+            it.copy(
+                sortOrder = newOrder,
+                isSortSheetOpen = false,
+                rawFiles = sorted,
+                displayFiles = filtered
+            )
         }
     }
 
     fun openDedupeSheet() {
-        _uiState.update { it.copy(isDedupeSheetOpen = true) }
+        val currentDisplay = _uiState.value.displayFiles
+        _uiState.update { it.copy(isDedupeSheetOpen = true, isScanningDuplicates = true, duplicateGroups = emptyList()) }
+        viewModelScope.launch {
+            val groups = withContext(Dispatchers.Default) {
+                // Group by exact same name and size in current folder
+                val filesOnly = currentDisplay.filter { !it.isDir }
+                filesOnly.groupBy { "${it.name.lowercase()}_${it.size}" }
+                    .filter { it.value.size > 1 }
+                    .map { (key, list) ->
+                        DuplicateGroup(
+                            hashOrKey = key,
+                            size = list.first().size,
+                            items = list
+                        )
+                    }
+            }
+            _uiState.update { it.copy(isScanningDuplicates = false, duplicateGroups = groups) }
+        }
     }
 
     fun closeDedupeSheet() {

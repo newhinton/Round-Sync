@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ca.pkay.rcloneexplorer.Items.FileItem
 import ca.pkay.rcloneexplorer.Items.RemoteItem
+import ca.pkay.rcloneexplorer.Rclone
 import ca.pkay.rcloneexplorer.data.*
 import ca.pkay.rcloneexplorer.ui.components.*
 import ca.pkay.rcloneexplorer.ui.viewmodel.FileExplorerUiState
@@ -84,6 +85,8 @@ fun FileExplorerComposeScreen(
     }
 
     var showOverflowMenu by remember { mutableStateOf(false) }
+    var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
+    var itemsToDelete by remember { mutableStateOf<List<FileItem>>(emptyList()) }
 
     val isInSelectMode = uiState.selectedItems.isNotEmpty()
 
@@ -108,7 +111,115 @@ fun FileExplorerComposeScreen(
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp, vertical = 8.dp)
                     ) {
-                        if (uiState.isSearching) {
+                        if (isInSelectMode) {
+                            // Dedicated Contextual Top Bar for Selection Mode
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    IconButton(
+                                        onClick = { viewModel.deselectAll() },
+                                        modifier = Modifier.size(36.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Close,
+                                            contentDescription = "Cancel Selection",
+                                            tint = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "${uiState.selectedItems.size} selected",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    IconButton(
+                                        onClick = {
+                                            if (uiState.selectedItems.size == uiState.displayFiles.size) {
+                                                viewModel.deselectAll()
+                                            } else {
+                                                viewModel.selectAll()
+                                            }
+                                        }
+                                    ) {
+                                        Icon(
+                                            if (uiState.selectedItems.size == uiState.displayFiles.size) Icons.Default.Deselect else Icons.Default.SelectAll,
+                                            contentDescription = "Select All",
+                                            tint = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                    IconButton(onClick = { viewModel.copySelected() }) {
+                                        Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = MaterialTheme.colorScheme.onSurface)
+                                    }
+                                    IconButton(onClick = { viewModel.cutSelected() }) {
+                                        Icon(Icons.Default.ContentCut, contentDescription = "Cut", tint = MaterialTheme.colorScheme.onSurface)
+                                    }
+                                    IconButton(onClick = { onDownloadSelected(uiState.selectedItems.toList()) }) {
+                                        Icon(Icons.Default.Download, contentDescription = "Download", tint = MaterialTheme.colorScheme.onSurface)
+                                    }
+                                    IconButton(
+                                        onClick = {
+                                            itemsToDelete = uiState.selectedItems.toList()
+                                            showDeleteConfirmationDialog = true
+                                        }
+                                    ) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                                    }
+
+                                    var showSelectionMenu by remember { mutableStateOf(false) }
+                                    Box {
+                                        IconButton(onClick = { showSelectionMenu = true }) {
+                                            Icon(Icons.Default.MoreVert, contentDescription = "More selection options", tint = MaterialTheme.colorScheme.onSurface)
+                                        }
+                                        DropdownMenu(
+                                            expanded = showSelectionMenu,
+                                            onDismissRequest = { showSelectionMenu = false }
+                                        ) {
+                                            if (uiState.selectedItems.size == 1) {
+                                                DropdownMenuItem(
+                                                    text = { Text("Rename") },
+                                                    leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                                                    onClick = {
+                                                        showSelectionMenu = false
+                                                        val item = uiState.selectedItems.first()
+                                                        viewModel.deselectAll()
+                                                        fileToRename = item
+                                                    }
+                                                )
+                                            }
+                                            DropdownMenuItem(
+                                                text = { Text("Duplicate") },
+                                                leadingIcon = { Icon(Icons.Default.CopyAll, contentDescription = null) },
+                                                onClick = {
+                                                    showSelectionMenu = false
+                                                    viewModel.duplicateSelected()
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Invert Selection") },
+                                                leadingIcon = { Icon(Icons.Default.FlipToBack, contentDescription = null) },
+                                                onClick = {
+                                                    showSelectionMenu = false
+                                                    viewModel.invertSelection()
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        } else if (uiState.isSearching) {
                             Column(modifier = Modifier.fillMaxWidth()) {
                                 OutlinedTextField(
                                     value = uiState.searchQuery,
@@ -225,7 +336,7 @@ fun FileExplorerComposeScreen(
                                                 leadingIcon = { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null) },
                                                 onClick = {
                                                     showOverflowMenu = false
-                                                    onSortClicked()
+                                                    viewModel.openSortSheet()
                                                 }
                                             )
                                             DropdownMenuItem(
@@ -737,16 +848,18 @@ fun FileExplorerComposeScreen(
                                 IconButton(onClick = { viewModel.duplicateSelected() }) {
                                     Icon(Icons.Default.CopyAll, contentDescription = "Duplicate", tint = MaterialTheme.colorScheme.onSurface)
                                 }
-                                IconButton(onClick = { viewModel.openBatchRename() }) {
-                                    Icon(Icons.Default.DriveFileRenameOutline, contentDescription = "Batch Rename", tint = MaterialTheme.colorScheme.onSurface)
-                                }
                                 IconButton(onClick = { onDownloadSelected(uiState.selectedItems.toList()) }) {
                                     Icon(Icons.Default.Download, contentDescription = "Download", tint = MaterialTheme.colorScheme.onSurface)
                                 }
                                 IconButton(onClick = { onMoveSelected(uiState.selectedItems.toList()) }) {
                                     Icon(Icons.AutoMirrored.Filled.DriveFileMove, contentDescription = "Move", tint = MaterialTheme.colorScheme.onSurface)
                                 }
-                                IconButton(onClick = { viewModel.deleteSelected() }) {
+                                IconButton(
+                                    onClick = {
+                                        itemsToDelete = uiState.selectedItems.toList()
+                                        showDeleteConfirmationDialog = true
+                                    }
+                                ) {
                                     Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
                                 }
                                 IconButton(onClick = { viewModel.deselectAll() }) {
@@ -762,12 +875,12 @@ fun FileExplorerComposeScreen(
 
     // --- Modals & Sheets ---
 
-    // Batch Rename Dialog
-    if (uiState.isBatchRenameOpen) {
-        BatchRenameDialog(
-            selectedItems = uiState.selectedItems.toList(),
-            onDismiss = { viewModel.closeBatchRename() },
-            onConfirm = { rule -> viewModel.executeBatchRename(rule) }
+    // Sort Sheet
+    if (uiState.isSortSheetOpen) {
+        SortBottomSheet(
+            currentSortOrder = uiState.sortOrder,
+            onDismiss = { viewModel.closeSortSheet() },
+            onApplySort = { order -> viewModel.applySortOrder(order) }
         )
     }
 
@@ -940,12 +1053,70 @@ fun FileExplorerComposeScreen(
                     leadingContent = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
                     modifier = Modifier.clickable {
                         itemForOptionSheet = null
-                        viewModel.toggleSelection(file)
-                        viewModel.deleteSelected()
+                        itemsToDelete = listOf(file)
+                        showDeleteConfirmationDialog = true
                     }
                 )
             }
         }
+    }
+
+    // Delete Confirmation Dialog
+    if (showDeleteConfirmationDialog && itemsToDelete.isNotEmpty()) {
+        val count = itemsToDelete.size
+        val itemName = if (count == 1) itemsToDelete.first().name else "$count items"
+        AlertDialog(
+            onDismissRequest = {
+                showDeleteConfirmationDialog = false
+                itemsToDelete = emptyList()
+            },
+            icon = {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(32.dp)
+                )
+            },
+            title = { Text("Delete $itemName?") },
+            text = {
+                Text(
+                    if (count == 1) {
+                        "Are you sure you want to permanently delete \"$itemName\" from ${uiState.remote?.displayName ?: "this remote"}? This action cannot be undone."
+                    } else {
+                        "Are you sure you want to permanently delete these $count items from ${uiState.remote?.displayName ?: "this remote"}? This action cannot be undone."
+                    }
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val targets = itemsToDelete
+                        showDeleteConfirmationDialog = false
+                        itemsToDelete = emptyList()
+                        if (targets.size == 1) {
+                            viewModel.deleteSingleFile(targets.first())
+                        } else {
+                            viewModel.deleteSelectedFiles()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Delete", color = MaterialTheme.colorScheme.onError, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteConfirmationDialog = false
+                        itemsToDelete = emptyList()
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     // Rename Single File / Folder Dialog
@@ -1009,7 +1180,17 @@ fun GridFileCard(
         if (!showThumbnails || !isPhoto) {
             null
         } else if (isLocal) {
-            java.io.File(fileItem.path)
+            val localPrefix = try { Rclone.getLocalRemotePathPrefix(fileItem.remote, context) } catch (e: Exception) { "" }
+            val rawFile = java.io.File(fileItem.path)
+            if (rawFile.exists() && rawFile.isAbsolute) {
+                rawFile
+            } else if (localPrefix.isNotEmpty() && java.io.File(localPrefix, fileItem.path).exists()) {
+                java.io.File(localPrefix, fileItem.path)
+            } else {
+                val extStorage = android.os.Environment.getExternalStorageDirectory()
+                val fallback = java.io.File(extStorage, fileItem.path)
+                if (fallback.exists()) fallback else if (localPrefix.isNotEmpty()) java.io.File(localPrefix, fileItem.path) else rawFile
+            }
         } else if (isSaf) {
             try {
                 SafAccessProvider.getDirectServer(context).getDocumentUri('/' + fileItem.path)
@@ -1171,7 +1352,17 @@ fun ListFileCard(
         if (!showThumbnails || !isPhoto) {
             null
         } else if (isLocal) {
-            java.io.File(fileItem.path)
+            val localPrefix = try { Rclone.getLocalRemotePathPrefix(fileItem.remote, context) } catch (e: Exception) { "" }
+            val rawFile = java.io.File(fileItem.path)
+            if (rawFile.exists() && rawFile.isAbsolute) {
+                rawFile
+            } else if (localPrefix.isNotEmpty() && java.io.File(localPrefix, fileItem.path).exists()) {
+                java.io.File(localPrefix, fileItem.path)
+            } else {
+                val extStorage = android.os.Environment.getExternalStorageDirectory()
+                val fallback = java.io.File(extStorage, fileItem.path)
+                if (fallback.exists()) fallback else if (localPrefix.isNotEmpty()) java.io.File(localPrefix, fileItem.path) else rawFile
+            }
         } else if (isSaf) {
             try {
                 SafAccessProvider.getDirectServer(context).getDocumentUri('/' + fileItem.path)

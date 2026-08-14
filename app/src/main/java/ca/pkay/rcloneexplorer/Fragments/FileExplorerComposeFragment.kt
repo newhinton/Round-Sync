@@ -210,7 +210,18 @@ class FileExplorerComposeFragment : Fragment(), SortDialog.OnClickListener, Serv
 
         if (currentRemote.isRemoteType(RemoteItem.LOCAL, RemoteItem.SAFW) || currentRemote.isPathAlias) {
             try {
-                val localFile = File(fileItem.path)
+                val localPrefix = try { Rclone.getLocalRemotePathPrefix(currentRemote, ctx) } catch (e: Exception) { "" }
+                val rawFile = File(fileItem.path)
+                val localFile = if (rawFile.exists() && rawFile.isAbsolute) {
+                    rawFile
+                } else if (localPrefix.isNotEmpty() && File(localPrefix, fileItem.path).exists()) {
+                    File(localPrefix, fileItem.path)
+                } else {
+                    val extStorage = android.os.Environment.getExternalStorageDirectory()
+                    val fallback = File(extStorage, fileItem.path)
+                    if (fallback.exists()) fallback else if (localPrefix.isNotEmpty()) File(localPrefix, fileItem.path) else rawFile
+                }
+
                 if (localFile.exists()) {
                     val sharedFileUri = FileProvider.getUriForFile(ctx, BuildConfig.APPLICATION_ID + ".fileprovider", localFile)
                     val intent = Intent(Intent.ACTION_VIEW).apply {
