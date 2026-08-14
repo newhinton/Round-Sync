@@ -57,10 +57,11 @@ import ca.pkay.rcloneexplorer.Services.ThumbnailsLoadingService;
 import ca.pkay.rcloneexplorer.util.FLog;
 import ca.pkay.rcloneexplorer.util.LargeParcel;
 import de.felixnuesse.ui.BreadcrumbView;
+import ca.pkay.rcloneexplorer.RecyclerViewAdapters.FileExplorerClickListener;
 import es.dmoral.toasty.Toasty;
 import jp.wasabeef.recyclerview.animators.LandingAnimator;
 
-public class RemoteFolderPickerFragment extends Fragment implements   FileExplorerRecyclerViewAdapter.OnClickListener,
+public class RemoteFolderPickerFragment extends Fragment implements   FileExplorerClickListener,
                                                                             SwipeRefreshLayout.OnRefreshListener,
                                                                             BreadcrumbView.OnClickListener,
                                                                             SortDialog.OnClickListener,

@@ -8,7 +8,6 @@ import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
-import androidx.activity.enableEdgeToEdge
 import androidx.core.view.WindowCompat
 import androidx.fragment.app.Fragment
 import androidx.preference.PreferenceManager
@@ -16,19 +15,14 @@ import ca.pkay.rcloneexplorer.R
 import ca.pkay.rcloneexplorer.util.PermissionManager
 import com.github.appintro.AppIntro2
 import de.felixnuesse.extract.onboarding.IdentifiableAppIntroFragment
-import de.felixnuesse.extract.onboarding.IdentifiableSwitchAppIntroFragment
 import de.felixnuesse.extract.onboarding.SlideLeaveInterface
-import de.felixnuesse.extract.onboarding.SlideSwitchCallback
-import de.felixnuesse.extract.updates.UpdateChecker
 
-
-class OnboardingActivity : AppIntro2(), SlideLeaveInterface, SlideSwitchCallback {
+class OnboardingActivity : AppIntro2(), SlideLeaveInterface {
 
     companion object {
         private const val intro_v1_12_0_completed = "intro_v1_12_0_completed"
         private const val intro_v2_5_2_completed = "intro_v2_5_2_completed"
 
-        // please add all intro versions to onDonePressed.
         private const val latest_intro = intro_v2_5_2_completed
 
         private const val SLIDE_ID_WELCOME = "SLIDE_ID_WELCOME"
@@ -39,12 +33,10 @@ class OnboardingActivity : AppIntro2(), SlideLeaveInterface, SlideSwitchCallback
         private const val SLIDE_ID_BATTERY_OPTIMIZATION = "SLIDE_ID_BATTERY_OPTIMIZATION"
         private const val SLIDE_ID_ALARMS = "SLIDE_ID_ALARMS"
         private const val SLIDE_ID_SUCCESS = "SLIDE_ID_SUCCESS"
-        private const val SLIDE_ID_UPDATECHECK = "SLIDE_ID_UPDATECHECK"
 
         fun completedIntro(context: Context): Boolean {
             val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-            // if it is a managed installation, dont show the intro screen for updates.
-            return prefs.getBoolean(latest_intro, UpdateChecker(context).isManagedInstallation())
+            return prefs.getBoolean(latest_intro, false)
         }
     }
 
@@ -54,7 +46,6 @@ class OnboardingActivity : AppIntro2(), SlideLeaveInterface, SlideSwitchCallback
     private var color = R.color.intro_color1
 
     override fun onResume() {
-        enableEdgeToEdge()
         super.onResume()
         setImmersiveMode()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -71,21 +62,9 @@ class OnboardingActivity : AppIntro2(), SlideLeaveInterface, SlideSwitchCallback
         mPreferences = PreferenceManager.getDefaultSharedPreferences(this)
         isWizardMode = true
         isColorTransitionsEnabled = true
-
-        // dont allow the intro to be bypassed
         isSystemBackButtonLocked = true
 
-
         val v1_12_0 = mPreferences.getBoolean(intro_v1_12_0_completed, false)
-        val v2_5_2 = mPreferences.getBoolean(intro_v2_5_2_completed, false)
-        // fix Opt-In updatecheck in 2.5.1
-        // i forcefully reset the appupdate check, so that it will be off, going forward.
-        // later we ask for permission again.
-
-        if(v1_12_0 && !v2_5_2) {
-            // only if the app has been set up, and before v2.5.2.
-            mPreferences.edit().putBoolean(getString(R.string.pref_key_app_updates), false).apply()
-        }
 
         if (!v1_12_0) {
             addSlide(
@@ -106,7 +85,7 @@ class OnboardingActivity : AppIntro2(), SlideLeaveInterface, SlideSwitchCallback
                     backgroundColorRes = color,
                     id = SLIDE_ID_COMMUNITY,
                     callback = this
-                    ))
+                ))
             switchColor()
         } else {
             addSlide(
@@ -117,12 +96,11 @@ class OnboardingActivity : AppIntro2(), SlideLeaveInterface, SlideSwitchCallback
                     backgroundColorRes = color,
                     id = SLIDE_ID_PERMCHANGE,
                     callback = this
-                    ))
+                ))
             switchColor()
         }
 
-
-        if(!mPermissions.grantedStorage()) {
+        if (!mPermissions.grantedStorage()) {
             addSlide(
                 IdentifiableAppIntroFragment.createInstance(
                     title = getString(R.string.intro_storage_title),
@@ -136,7 +114,7 @@ class OnboardingActivity : AppIntro2(), SlideLeaveInterface, SlideSwitchCallback
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if(!mPermissions.grantedNotifications()) {
+            if (!mPermissions.grantedNotifications()) {
                 addSlide(
                     IdentifiableAppIntroFragment.createInstance(
                         title = getString(R.string.intro_notifications_title),
@@ -150,9 +128,8 @@ class OnboardingActivity : AppIntro2(), SlideLeaveInterface, SlideSwitchCallback
             }
         }
 
-        //Todo: Check if that build version check can be removed because mPermissions checks it
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if(!mPermissions.grantedAlarms()) {
+            if (!mPermissions.grantedAlarms()) {
                 addSlide(
                     IdentifiableAppIntroFragment.createInstance(
                         title = getString(R.string.intro_alarms_title),
@@ -166,7 +143,7 @@ class OnboardingActivity : AppIntro2(), SlideLeaveInterface, SlideSwitchCallback
             }
         }
 
-        if(!mPermissions.grantedBatteryOptimizationExemption()) {
+        if (!mPermissions.grantedBatteryOptimizationExemption()) {
             addSlide(
                 IdentifiableAppIntroFragment.createInstance(
                     title = getString(R.string.intro_battery_optimizations_title),
@@ -175,21 +152,6 @@ class OnboardingActivity : AppIntro2(), SlideLeaveInterface, SlideSwitchCallback
                     backgroundColorRes = color,
                     id = SLIDE_ID_BATTERY_OPTIMIZATION,
                     callback = this
-                ))
-            switchColor()
-        }
-
-        val updatesAlreadyEnabled = mPreferences.getBoolean(getString(R.string.pref_key_app_updates), false)
-        if(!UpdateChecker(this.applicationContext).isManagedInstallation() && !updatesAlreadyEnabled) {
-            addSlide(
-                IdentifiableSwitchAppIntroFragment.createInstance(
-                    title = getString(R.string.intro_update_checks_title),
-                    description = getString(R.string.intro_update_checks_description),
-                    imageDrawable = R.drawable.undraw_update,
-                    backgroundColorRes = color,
-                    id = SLIDE_ID_UPDATECHECK,
-                    callback = this,
-                    switchCallback = this
                 ))
             switchColor()
         }
@@ -221,7 +183,7 @@ class OnboardingActivity : AppIntro2(), SlideLeaveInterface, SlideSwitchCallback
     private var mNotificationsRequested = false
 
     override fun allowSlideLeave(id: String): Boolean {
-        return when(id) {
+        return when (id) {
             SLIDE_ID_BATTERY_OPTIMIZATION -> mOptimizationRequested
             SLIDE_ID_ALARMS -> mAlarmsRequested
             SLIDE_ID_NOTIFICATIONS -> mNotificationsRequested
@@ -230,9 +192,9 @@ class OnboardingActivity : AppIntro2(), SlideLeaveInterface, SlideSwitchCallback
         }
     }
 
-    @SuppressLint("InlinedApi") // If the permission is not reqired, notificationPermission is null anyway.
+    @SuppressLint("InlinedApi")
     override fun onSlideLeavePrevented(id: String) {
-        when(id) {
+        when (id) {
             SLIDE_ID_STORAGE -> mPermissions.requestStorage(this)
             SLIDE_ID_BATTERY_OPTIMIZATION -> {
                 mPermissions.requestBatteryOptimizationException()
@@ -257,19 +219,10 @@ class OnboardingActivity : AppIntro2(), SlideLeaveInterface, SlideSwitchCallback
     }
 
     private fun switchColor() {
-        if(color == R.color.intro_color1) {
+        if (color == R.color.intro_color1) {
             color = R.color.intro_color2
         } else {
             color = R.color.intro_color1
-        }
-    }
-
-    override fun switchChanged(id: String, isChecked: Boolean) {
-        when(id) {
-            SLIDE_ID_UPDATECHECK -> {
-                mPreferences.edit().putBoolean(getString(R.string.pref_key_app_updates), isChecked).apply()
-            }
-            else -> {}
         }
     }
 }

@@ -74,6 +74,7 @@ public class FilePickerAdapter extends RecyclerView.Adapter<FilePickerAdapter.Vi
 
             String mimeType = FileItem.getMimeType("application/octet-stream", file.getPath());
             if (mimeType != null && (mimeType.startsWith("image") || mimeType.startsWith("video"))) {
+                holder.fileIcon.setImageTintList(null);
                 RequestOptions glideOption = new RequestOptions()
                         .centerCrop()
                         .placeholder(R.drawable.ic_file);
@@ -83,6 +84,8 @@ public class FilePickerAdapter extends RecyclerView.Adapter<FilePickerAdapter.Vi
                         .apply(glideOption)
                         .into(holder.fileIcon);
             } else {
+                Glide.with(context).clear(holder.fileIcon);
+                holder.fileIcon.setImageTintList(null);
                 holder.fileIcon.setImageResource(R.drawable.ic_file);
             }
         }

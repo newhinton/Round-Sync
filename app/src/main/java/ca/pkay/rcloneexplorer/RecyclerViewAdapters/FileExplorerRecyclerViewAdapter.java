@@ -40,7 +40,7 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
     private List<FileItem> files;
     private View emptyView;
     private View noSearchResultsView;
-    private OnClickListener listener;
+    private FileExplorerClickListener listener;
     private boolean isInSelectMode;
     private List<FileItem> selectedItems;
     private boolean isInMoveMode;
@@ -52,16 +52,10 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
     private Context context;
     private long sizeLimit;
 
-    public interface OnClickListener {
-        void onFileClicked(FileItem fileItem);
-        void onDirectoryClicked(FileItem fileItem, int position);
-        void onFilesSelected();
-        void onFileDeselected();
-        void onFileOptionsClicked(View view, FileItem fileItem);
-        String[] getThumbnailServerParams();
+    public interface OnClickListener extends FileExplorerClickListener {
     }
 
-    public FileExplorerRecyclerViewAdapter(Context context, View emptyView, View noSearchResultsView, OnClickListener listener) {
+    public FileExplorerRecyclerViewAdapter(Context context, View emptyView, View noSearchResultsView, FileExplorerClickListener listener) {
         files = new ArrayList<>();
         this.context = context;
         this.emptyView = emptyView;
@@ -108,11 +102,11 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
             boolean localLoad = item.getRemote().getType() == RemoteItem.SAFW;
             String mimeType = item.getMimeType();
             if ((mimeType != null && (mimeType.startsWith("image/") || mimeType.startsWith("video/"))) && item.getSize() <= sizeLimit) {
+                holder.fileIcon.setImageTintList(null);
                 String cacheSignature = item.getRemote().getName() + ":" + item.getPath() + ":" + item.getModTime() + ":" + item.getSize();
                 RequestOptions glideOption = new RequestOptions()
                         .centerCrop()
                         .override(180, 180)
-                        .format(DecodeFormat.PREFER_RGB_565)
                         .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
                         .signature(new ObjectKey(cacheSignature))
                         .placeholder(R.drawable.ic_file)
@@ -129,18 +123,19 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
                                 .with(context)
                                 .load(new PersistentGlideUrl(url))
                                 .apply(glideOption)
-                                .thumbnail(0.1f)
                                 .into(holder.fileIcon);
                     }
                 }
 
             } else {
                 Glide.with(context).clear(holder.fileIcon);
+                holder.fileIcon.setImageTintList(null);
                 holder.fileIcon.setImageResource(R.drawable.ic_file);
             }
         } else {
             Glide.with(context).clear(holder.fileIcon);
             if (!item.isDir()) {
+                holder.fileIcon.setImageTintList(null);
                 holder.fileIcon.setImageResource(R.drawable.ic_file);
             }
         }
@@ -227,7 +222,6 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
                     .with(context)
                     .load(contentUri)
                     .apply(glideOption)
-                    .thumbnail(0.1f)
                     .into(holder.fileIcon);
         } catch (FileAccessError e) {
             FLog.e(TAG, "onBindViewHolder: SAF error", e);

@@ -7,7 +7,7 @@ on:
         description: 'Make this build the LATEST release'
         required: false
         type: boolean
-        default: true
+        default: false
   push:
     branches:
       - master

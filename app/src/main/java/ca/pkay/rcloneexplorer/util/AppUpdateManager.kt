@@ -19,9 +19,9 @@ import java.net.URL
 import java.util.concurrent.TimeUnit
 
 /**
- * Professional app updater via GitHub Releases matching Neubofy Watch app.
- * Features: Timestamp detection against BuildConfig.BUILD_TIMESTAMP, semantic version fallback,
- * and Azhon DownloadManager with notification progress & package installer integration.
+ * Clean, modern app updater via GitHub Releases matching Neubofy Watch app.
+ * Features: Timestamp detection against BuildConfig.BUILD_TIMESTAMP, semantic version comparison,
+ * and Azhon DownloadManager with system notification progress and automatic package install prompt.
  */
 object AppUpdateManager {
     private const val TAG = "AppUpdateManager"
@@ -29,7 +29,9 @@ object AppUpdateManager {
     private const val KEY_LAST_CHECK_TIME = "last_check_time"
     private const val CHECK_INTERVAL_DAYS = 7L
 
-    private const val GITHUB_API_URL = "https://api.github.com/repos/neubofy/Remote-Manager/releases"
+    private val GITHUB_API_URLS = listOf(
+        "https://api.github.com/repos/neubofy/Remote-Manager/releases"
+    )
 
     /**
      * Check for updates.
@@ -66,15 +68,15 @@ object AppUpdateManager {
 
                     for (r in 0 until releases.length()) {
                         val release = releases.getJSONObject(r)
-                        val isPrerelease = release.getBoolean("prerelease")
+                        val isPrerelease = release.optBoolean("prerelease", false)
 
                         if (isPrerelease == isBeta) {
-                            val assetsArray = release.getJSONArray("assets")
+                            val assetsArray = release.optJSONArray("assets") ?: JSONArray()
                             val version = release.optString("tag_name", "Unknown").replace("v", "")
 
                             for (i in 0 until assetsArray.length()) {
                                 val asset = assetsArray.getJSONObject(i)
-                                val name = asset.getString("name")
+                                val name = asset.optString("name", "")
                                 if (name.endsWith(".apk")) {
                                     val match = regex.find(name)
                                     if (match != null) {
@@ -136,19 +138,27 @@ object AppUpdateManager {
     }
 
     private fun fetchGitHubReleases(): JSONArray? {
-        return try {
-            val url = URL(GITHUB_API_URL)
-            val connection = url.openConnection() as HttpURLConnection
-            connection.requestMethod = "GET"
-            connection.connectTimeout = 10000
-            connection.readTimeout = 10000
+        for (apiUrl in GITHUB_API_URLS) {
+            try {
+                val url = URL(apiUrl)
+                val connection = url.openConnection() as HttpURLConnection
+                connection.requestMethod = "GET"
+                connection.connectTimeout = 10000
+                connection.readTimeout = 10000
+                connection.setRequestProperty("User-Agent", "RemoteManager-Android")
 
-            val content = connection.inputStream.bufferedReader().use { it.readText() }
-            JSONArray(content)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to fetch GitHub releases", e)
-            null
+                if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                    val content = connection.inputStream.bufferedReader().use { it.readText() }
+                    val array = JSONArray(content)
+                    if (array.length() > 0) {
+                        return array
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed fetching from $apiUrl: ${e.message}")
+            }
         }
+        return null
     }
 
     private fun isNewerVersion(latest: String, current: String): Boolean {
@@ -169,21 +179,29 @@ object AppUpdateManager {
     }
 
     private fun showUpdateDialog(context: Context, version: String, url: String, notes: String) {
-        if (context !is Activity) {
-            Log.e(TAG, "Context must be an Activity to show update dialog")
+        val activity = when (context) {
+            is Activity -> context
+            else -> null
+        }
+
+        if (activity == null || activity.isFinishing) {
+            Log.w(TAG, "Activity not available, cannot display update dialog")
             return
         }
 
-        AlertDialog.Builder(context)
+        AlertDialog.Builder(activity)
             .setTitle("Update Available")
             .setMessage("Version $version is available.\n\nRelease Notes:\n$notes\n\nDo you want to update now?")
             .setPositiveButton("Update") { _, _ ->
-                val manager = DownloadManager.Builder(context).apply {
+                val manager = DownloadManager.Builder(activity).apply {
                     apkUrl(url)
                     apkName("RemoteManager-v$version.apk")
                     smallIcon(R.mipmap.ic_launcher)
+                    showNewerToast(true)
+                    showNotification(true)
                     apkVersionName(version)
                     apkDescription(notes)
+                    jumpInstallPage(true)
                 }.build()
                 manager.download()
             }

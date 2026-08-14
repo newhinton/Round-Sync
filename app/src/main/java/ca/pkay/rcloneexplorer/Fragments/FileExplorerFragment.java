@@ -89,6 +89,7 @@ import ca.pkay.rcloneexplorer.Services.StreamingService;
 import ca.pkay.rcloneexplorer.Services.ThumbnailsLoadingService;
 import ca.pkay.rcloneexplorer.util.ActivityHelper;
 import ca.pkay.rcloneexplorer.util.FLog;
+import ca.pkay.rcloneexplorer.util.SyncLog;
 import ca.pkay.rcloneexplorer.util.LargeParcel;
 import ca.pkay.rcloneexplorer.workmanager.EphemeralTaskManager;
 import ca.pkay.rcloneexplorer.workmanager.SyncManager;
@@ -1869,6 +1870,10 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
             super.onPostExecute(status);
             Dialogs.dismissSilently(loadingDialog);
             if (!status) {
+                if (context != null) {
+                    Toasty.error(context, "Failed to open file. Check logs for details.", Toast.LENGTH_LONG, true).show();
+                    SyncLog.error(context, "File Open Error", "Failed to download file from " + (remote != null ? remote.getName() : "remote") + " (" + fileLocation + ")");
+                }
                 return;
             }
             if (null == context) {

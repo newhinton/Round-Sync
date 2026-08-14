@@ -80,7 +80,6 @@ import ca.pkay.rcloneexplorer.util.ActivityHelper;
 import ca.pkay.rcloneexplorer.util.FLog;
 import ca.pkay.rcloneexplorer.util.PermissionManager;
 import ca.pkay.rcloneexplorer.util.SharedPreferencesUtil;
-import de.felixnuesse.extract.updates.UpdateChecker;
 import es.dmoral.toasty.Toasty;
 
 public class MainActivity extends AppCompatActivity
@@ -216,7 +215,6 @@ public class MainActivity extends AppCompatActivity
         TriggerService triggerService = new TriggerService(context);
         triggerService.queueTrigger();
 
-        (new UpdateChecker(this)).schedule();
         ca.pkay.rcloneexplorer.util.AppUpdateManager.INSTANCE.checkForUpdates(this, true, false, null);
     }
 

@@ -30,9 +30,6 @@ class RemoteManagerGlideModule : AppGlideModule() {
         )
 
         builder.setMemoryCache(LruResourceCache(20L * 1024L * 1024L))
-        builder.setDefaultRequestOptions(
-            RequestOptions().format(DecodeFormat.PREFER_RGB_565)
-        )
     }
 
     override fun isManifestParsingEnabled(): Boolean = false
