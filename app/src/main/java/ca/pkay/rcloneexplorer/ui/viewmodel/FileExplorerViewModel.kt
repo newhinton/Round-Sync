@@ -99,6 +99,15 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
         _uiState.update { it.copy(thumbnailServerAuth = auth, thumbnailServerPort = port) }
     }
 
+    private fun normalizeRclonePath(remoteName: String, path: String): String {
+        val root = "//$remoteName"
+        if (path == root || path.isEmpty()) {
+            return root
+        }
+        val clean = path.removePrefix(root).trimStart('/')
+        return if (clean.isEmpty()) root else clean
+    }
+
     fun loadDirectory(
         path: String,
         clearSearch: Boolean = true,
@@ -108,6 +117,7 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
         val currentRemote = _uiState.value.remote ?: return
         val cachedFiles = DirectoryCacheRepository.get(currentRemote.name, path)
         val showHidden = _uiState.value.showHiddenFiles
+        val rclonePath = normalizeRclonePath(currentRemote.name, path)
 
         // Always cancel previous background refresh job when navigating
         backgroundRefreshJob?.cancel()
@@ -151,7 +161,7 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
                         _uiState.update { it.copy(isRefreshing = true) }
                         val freshItems = withContext(Dispatchers.IO) {
                             try {
-                                rclone.getDirectoryContent(currentRemote, path, false)
+                                rclone.getDirectoryContent(currentRemote, rclonePath, false)
                             } catch (e: Exception) {
                                 FLog.e(TAG, "Background directory refresh error", e)
                                 null
@@ -202,7 +212,7 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
 
                 val result = withContext(Dispatchers.IO) {
                     try {
-                        rclone.getDirectoryContent(currentRemote, path, false)
+                        rclone.getDirectoryContent(currentRemote, rclonePath, false)
                     } catch (e: Exception) {
                         FLog.e(TAG, "Error loading directory", e)
                         null
@@ -281,13 +291,13 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
     }
 
     fun navigateInto(folder: FileItem) {
-        val newPath = if (_uiState.value.currentPath == "//${_uiState.value.remote?.name}") {
-            "//${_uiState.value.remote?.name}/${folder.name}"
-        } else {
-            "${_uiState.value.currentPath}/${folder.name}"
-        }
-        pathStack.push(newPath)
-        loadDirectory(newPath, clearSearch = true, forceRefresh = false, isNavigatingBack = false)
+        val currentRemote = _uiState.value.remote ?: return
+        val rootPath = "//${currentRemote.name}"
+        val folderRelPath = folder.path.removePrefix(rootPath).trimStart('/')
+        val targetPath = if (folderRelPath.isEmpty()) rootPath else "$rootPath/$folderRelPath"
+
+        pathStack.push(targetPath)
+        loadDirectory(targetPath, clearSearch = true, forceRefresh = false, isNavigatingBack = false)
     }
 
     fun navigateUp(): Boolean {
