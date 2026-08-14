@@ -92,6 +92,13 @@ android {
         }
     }
 
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            def timestamp = defaultConfig.buildConfigFields["BUILD_TIMESTAMP"]?.value?.replace("L", "") ?: ""
+            output.outputFileName = "Remote-Manager-v${variant.versionName}-${timestamp}-${variant.buildType.name}.apk"
+        }
+    }
+
     sourceSets {
         configureEach {
             jniLibs.srcDirs = ["lib"]

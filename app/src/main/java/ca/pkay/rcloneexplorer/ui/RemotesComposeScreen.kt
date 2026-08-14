@@ -218,10 +218,14 @@ fun RemotesComposeScreen(
                         }
                     }
 
-                    PullToRefreshContainer(
-                        state = pullRefreshState,
-                        modifier = Modifier.align(Alignment.TopCenter)
-                    )
+                    if (pullRefreshState.isRefreshing || pullRefreshState.verticalOffset > 0.5f) {
+                        PullToRefreshContainer(
+                            state = pullRefreshState,
+                            modifier = Modifier.align(Alignment.TopCenter),
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            contentColor = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             }
 

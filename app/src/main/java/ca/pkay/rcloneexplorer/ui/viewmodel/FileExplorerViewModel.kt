@@ -22,7 +22,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.*
-import java.util.concurrent.ConcurrentHashMap
 
 data class FileExplorerUiState(
     val remote: RemoteItem? = null,
@@ -31,6 +30,7 @@ data class FileExplorerUiState(
     val rawFiles: List<FileItem> = emptyList(),
     val displayFiles: List<FileItem> = emptyList(),
     val selectedItems: Set<FileItem> = emptySet(),
+    val moveModeItems: List<FileItem> = emptyList(),
     val isGridView: Boolean = false,
     val isSearching: Boolean = false,
     val searchQuery: String = "",
@@ -67,7 +67,6 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
 
     private var sortOrder: Int = prefs.getInt("ca.pkay.rcexplorer.sort_order", SortDialog.ALPHA_ASCENDING)
     private val pathStack = Stack<String>()
-    private val directoryCache = ConcurrentHashMap<String, List<FileItem>>()
     private var backgroundRefreshJob: Job? = null
 
     init {
@@ -81,6 +80,7 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
     fun initRemote(remote: RemoteItem) {
         val rootPath = "//${remote.name}"
         val showHidden = prefs.getBoolean("pref_key_show_hidden_files", false)
+        sortOrder = prefs.getInt("ca.pkay.rcexplorer.sort_order", SortDialog.ALPHA_ASCENDING)
         _uiState.update {
             it.copy(
                 remote = remote,
@@ -106,8 +106,7 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
         isNavigatingBack: Boolean = false
     ) {
         val currentRemote = _uiState.value.remote ?: return
-        val cacheKey = "${currentRemote.name}:$path"
-        val cachedFiles = directoryCache[cacheKey]
+        val cachedFiles = DirectoryCacheRepository.get(currentRemote.name, path)
         val showHidden = _uiState.value.showHiddenFiles
 
         // Always cancel previous background refresh job when navigating
@@ -162,7 +161,7 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
                         if (!isActive || _uiState.value.currentPath != path) return@launch
 
                         if (freshItems != null) {
-                            directoryCache[cacheKey] = freshItems
+                            DirectoryCacheRepository.put(currentRemote.name, path, freshItems)
                             val freshSorted = sortFiles(freshItems, sortOrder)
                             val freshFiltered = applyFiltersAndSearch(
                                 freshSorted,
@@ -201,27 +200,33 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
                     )
                 }
 
-                val items = withContext(Dispatchers.IO) {
+                val result = withContext(Dispatchers.IO) {
                     try {
                         rclone.getDirectoryContent(currentRemote, path, false)
                     } catch (e: Exception) {
-                        FLog.e(TAG, "Failed loading directory", e)
+                        FLog.e(TAG, "Error loading directory", e)
                         null
                     }
                 }
 
-                if (items != null) {
-                    directoryCache[cacheKey] = items
-                    val sorted = sortFiles(items, sortOrder)
-                    val filtered = applyFiltersAndSearch(sorted, _uiState.value.searchQuery, _uiState.value.typeFilter, _uiState.value.showHiddenFiles)
+                if (result != null) {
+                    DirectoryCacheRepository.put(currentRemote.name, path, result)
+                    val sorted = sortFiles(result, sortOrder)
+                    val filtered = applyFiltersAndSearch(
+                        sorted,
+                        _uiState.value.searchQuery,
+                        _uiState.value.typeFilter,
+                        _uiState.value.showHiddenFiles
+                    )
+                    val hasImages = filtered.any { !it.isDir && it.mimeType?.startsWith("image/") == true }
+
                     _uiState.update {
                         it.copy(
                             isLoading = false,
                             isRefreshing = false,
-                            rawFiles = items,
+                            rawFiles = result,
                             displayFiles = filtered,
-                            hasImagesInFolder = filtered.any { item -> !item.isDir && item.mimeType?.startsWith("image/") == true },
-                            errorMessage = null
+                            hasImagesInFolder = hasImages
                         )
                     }
                 } else {
@@ -229,7 +234,7 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
                         it.copy(
                             isLoading = false,
                             isRefreshing = false,
-                            errorMessage = if (cachedFiles == null) "Could not load folder contents" else null
+                            errorMessage = if (cachedFiles == null) "Failed to load directory" else null
                         )
                     }
                 }
@@ -237,41 +242,50 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
-    fun toggleShowHiddenFiles() {
-        val newState = !_uiState.value.showHiddenFiles
-        prefs.edit().putBoolean("pref_key_show_hidden_files", newState).apply()
-        val filtered = applyFiltersAndSearch(_uiState.value.rawFiles, _uiState.value.searchQuery, _uiState.value.typeFilter, newState)
-        _uiState.update {
-            it.copy(
-                showHiddenFiles = newState,
-                displayFiles = filtered,
-                hasImagesInFolder = filtered.any { item -> !item.isDir && item.mimeType?.startsWith("image/") == true }
-            )
-        }
-    }
-
-    fun refreshCurrentDirectory() {
+    fun refresh() {
         val currentPath = _uiState.value.currentPath
         if (currentPath.isNotEmpty()) {
             loadDirectory(currentPath, clearSearch = false, forceRefresh = true, isNavigatingBack = false)
         }
     }
 
-    fun invalidateCache(path: String? = null) {
-        val remoteName = _uiState.value.remote?.name ?: return
-        if (path != null) {
-            directoryCache.remove("$remoteName:$path")
-        } else {
-            directoryCache.clear()
+    fun setSortOrder(order: Int) {
+        sortOrder = order
+        prefs.edit().putInt("ca.pkay.rcexplorer.sort_order", order).apply()
+        val sorted = sortFiles(_uiState.value.rawFiles, order)
+        val filtered = applyFiltersAndSearch(
+            sorted,
+            _uiState.value.searchQuery,
+            _uiState.value.typeFilter,
+            _uiState.value.showHiddenFiles
+        )
+        _uiState.update {
+            it.copy(
+                rawFiles = sorted,
+                displayFiles = filtered
+            )
         }
     }
 
-    fun refresh() {
-        refreshCurrentDirectory()
+    private fun sortFiles(files: List<FileItem>, order: Int): List<FileItem> {
+        val comparator = when (order) {
+            SortDialog.ALPHA_ASCENDING -> FileComparators.SortAlphaAscending()
+            SortDialog.ALPHA_DESCENDING -> FileComparators.SortAlphaDescending()
+            SortDialog.SIZE_ASCENDING -> FileComparators.SortSizeAscending()
+            SortDialog.SIZE_DESCENDING -> FileComparators.SortSizeDescending()
+            SortDialog.MOD_TIME_ASCENDING -> FileComparators.SortModTimeAscending()
+            SortDialog.MOD_TIME_DESCENDING -> FileComparators.SortModTimeDescending()
+            else -> FileComparators.SortAlphaAscending()
+        }
+        return files.sortedWith(comparator)
     }
 
-    fun navigateInto(dirItem: FileItem) {
-        val newPath = dirItem.path
+    fun navigateInto(folder: FileItem) {
+        val newPath = if (_uiState.value.currentPath == "//${_uiState.value.remote?.name}") {
+            "//${_uiState.value.remote?.name}/${folder.name}"
+        } else {
+            "${_uiState.value.currentPath}/${folder.name}"
+        }
         pathStack.push(newPath)
         loadDirectory(newPath, clearSearch = true, forceRefresh = false, isNavigatingBack = false)
     }
@@ -279,71 +293,79 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
     fun navigateUp(): Boolean {
         if (pathStack.size > 1) {
             pathStack.pop()
-            val prevPath = pathStack.peek()
-            loadDirectory(prevPath, clearSearch = true, forceRefresh = false, isNavigatingBack = true)
+            val parentPath = pathStack.peek()
+            // Navigate back silently using cached data (zero background refresh)
+            loadDirectory(parentPath, clearSearch = true, forceRefresh = false, isNavigatingBack = true)
             return true
         }
         return false
     }
 
-    fun navigateToBreadcrumb(path: String) {
+    fun navigateToBreadcrumb(breadcrumb: BreadcrumbItem) {
+        val targetPath = breadcrumb.path
+        if (targetPath != _uiState.value.currentPath) {
+            while (pathStack.size > 1 && pathStack.peek() != targetPath) {
+                pathStack.pop()
+            }
+            if (pathStack.isEmpty() || pathStack.peek() != targetPath) {
+                pathStack.push(targetPath)
+            }
+            loadDirectory(targetPath, clearSearch = true, forceRefresh = false, isNavigatingBack = false)
+        }
+    }
+
+    fun startMoveMode(items: List<FileItem>) {
+        _uiState.update {
+            it.copy(
+                moveModeItems = items,
+                selectedItems = emptySet()
+            )
+        }
+    }
+
+    fun cancelMoveMode() {
+        _uiState.update { it.copy(moveModeItems = emptyList()) }
+    }
+
+    fun executeMoveHere() {
+        val itemsToMove = _uiState.value.moveModeItems
+        if (itemsToMove.isEmpty()) return
         val currentRemote = _uiState.value.remote ?: return
-        rebuildStack(currentRemote.name, path)
-        loadDirectory(path, clearSearch = true, forceRefresh = false, isNavigatingBack = false)
-    }
+        val destinationPath = _uiState.value.currentPath
 
-    fun toggleViewMode() {
-        val newMode = !_uiState.value.isGridView
-        prefs.edit().putBoolean("pref_key_file_grid_view", newMode).apply()
-        _uiState.update { it.copy(isGridView = newMode) }
-    }
-
-    fun toggleSearch() {
-        val currentlySearching = _uiState.value.isSearching
-        _uiState.update {
-            val nextState = !currentlySearching
-            val query = if (nextState) it.searchQuery else ""
-            val filtered = applyFiltersAndSearch(it.rawFiles, query, it.typeFilter, it.showHiddenFiles)
-            it.copy(
-                isSearching = nextState,
-                searchQuery = query,
-                displayFiles = filtered,
-                hasImagesInFolder = filtered.any { item -> !item.isDir && item.mimeType?.startsWith("image/") == true }
-            )
-        }
-    }
-
-    fun onSearchQueryChanged(query: String) {
-        _uiState.update {
-            val filtered = applyFiltersAndSearch(it.rawFiles, query, it.typeFilter, it.showHiddenFiles)
-            it.copy(
-                searchQuery = query,
-                displayFiles = filtered,
-                hasImagesInFolder = filtered.any { item -> !item.isDir && item.mimeType?.startsWith("image/") == true }
-            )
-        }
-    }
-
-    fun onTypeFilterChanged(filter: FileTypeFilter) {
-        _uiState.update {
-            val filtered = applyFiltersAndSearch(it.rawFiles, it.searchQuery, filter, it.showHiddenFiles)
-            it.copy(
-                typeFilter = filter,
-                displayFiles = filtered,
-                hasImagesInFolder = filtered.any { item -> !item.isDir && item.mimeType?.startsWith("image/") == true }
-            )
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, moveModeItems = emptyList()) }
+            var successCount = 0
+            withContext(Dispatchers.IO) {
+                for (item in itemsToMove) {
+                    try {
+                        val target = if (destinationPath.endsWith("/")) destinationPath + item.name else "$destinationPath/${item.name}"
+                        val cleanOld = item.path.removePrefix("//${currentRemote.name}/").removePrefix("//${currentRemote.name}")
+                        val cleanNew = target.removePrefix("//${currentRemote.name}/").removePrefix("//${currentRemote.name}")
+                        val moved = rclone.moveTo(currentRemote, cleanOld, cleanNew)
+                        if (moved != null && moved) {
+                            successCount++
+                        }
+                    } catch (e: Exception) {
+                        FLog.e(TAG, "Failed moving file ${item.name}", e)
+                    }
+                }
+            }
+            DirectoryCacheRepository.remove(currentRemote.name, destinationPath)
+            _uiState.update { it.copy(infoMessage = "Moved $successCount item(s)") }
+            loadDirectory(destinationPath, clearSearch = false, forceRefresh = true, isNavigatingBack = false)
         }
     }
 
     fun toggleSelection(item: FileItem) {
         _uiState.update {
-            val currentSelected = it.selectedItems.toMutableSet()
-            if (currentSelected.contains(item)) {
-                currentSelected.remove(item)
+            val next = it.selectedItems.toMutableSet()
+            if (next.contains(item)) {
+                next.remove(item)
             } else {
-                currentSelected.add(item)
+                next.add(item)
             }
-            it.copy(selectedItems = currentSelected)
+            it.copy(selectedItems = next)
         }
     }
 
@@ -353,124 +375,93 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
-    fun deselectAll() {
+    fun invertSelection() {
         _uiState.update {
-            it.copy(selectedItems = emptySet())
+            val all = it.displayFiles.toSet()
+            val inverted = all - it.selectedItems
+            it.copy(selectedItems = inverted)
         }
     }
 
-    // --- Clipboard Operations (Copy / Cut / Paste) ---
+    fun cancelSelection() {
+        _uiState.update { it.copy(selectedItems = emptySet()) }
+    }
+
+    fun deselectAll() {
+        cancelSelection()
+    }
 
     fun copySelected() {
+        val items = _uiState.value.selectedItems.toList()
         val remote = _uiState.value.remote ?: return
-        val selected = _uiState.value.selectedItems.toList()
-        if (selected.isNotEmpty()) {
-            FileClipboardManager.copy(selected, remote, _uiState.value.currentPath)
-            deselectAll()
-            setInfoMessage("Copied ${selected.size} items to clipboard")
+        if (items.isNotEmpty()) {
+            FileClipboardManager.copy(items, remote, _uiState.value.currentPath)
+            _uiState.update { it.copy(selectedItems = emptySet(), infoMessage = "Copied ${items.size} item(s) to clipboard") }
         }
     }
 
     fun cutSelected() {
+        val items = _uiState.value.selectedItems.toList()
         val remote = _uiState.value.remote ?: return
-        val selected = _uiState.value.selectedItems.toList()
-        if (selected.isNotEmpty()) {
-            FileClipboardManager.cut(selected, remote, _uiState.value.currentPath)
-            deselectAll()
-            setInfoMessage("Cut ${selected.size} items to clipboard")
+        if (items.isNotEmpty()) {
+            FileClipboardManager.cut(items, remote, _uiState.value.currentPath)
+            _uiState.update { it.copy(selectedItems = emptySet(), infoMessage = "Cut ${items.size} item(s) to clipboard") }
         }
     }
 
     fun pasteClipboard() {
-        val clip = clipboard.value
-        val destRemote = _uiState.value.remote ?: return
-        val destPath = _uiState.value.currentPath
-        val sourceRemote = clip.sourceRemote ?: return
-
+        val clip = FileClipboardManager.clipboard.value
         if (clip.isEmpty) return
-
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            val transferId = UUID.randomUUID().toString()
-            addActiveTransfer(transferId, "Pasting ${clip.count} item(s)...")
-
-            var successCount = 0
-            for (item in clip.items) {
-                val success = if (clip.operation == ClipboardOp.COPY) {
-                    RcloneExtensions.copyItem(rclone, sourceRemote, item, destRemote, destPath)
-                } else {
-                    withContext(Dispatchers.IO) {
-                        val process = rclone.moveTo(sourceRemote, item, destPath)
-                        process?.waitFor()
-                        process != null && process.exitValue() == 0
-                    }
-                }
-                if (success) successCount++
-            }
-
-            if (clip.operation == ClipboardOp.CUT) {
-                FileClipboardManager.clear()
-            }
-            removeActiveTransfer(transferId)
-            setInfoMessage("Transferred $successCount / ${clip.count} items")
-            invalidateCache(destPath)
-            refreshCurrentDirectory()
-        }
-    }
-
-    // --- Single File Rename ---
-
-    fun renameFile(item: FileItem, newName: String) {
-        val remote = _uiState.value.remote ?: return
+        val currentRemote = _uiState.value.remote ?: return
         val currentPath = _uiState.value.currentPath
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            val cleanPath = currentPath.removePrefix("//${remote.name}").trimStart('/')
-            val destPath = if (cleanPath.isEmpty()) newName else "$cleanPath/$newName"
-
-            val success = withContext(Dispatchers.IO) {
-                val process = rclone.moveTo(remote, item, destPath)
-                process?.waitFor()
-                process != null && process.exitValue() == 0
+            withContext(Dispatchers.IO) {
+                for (item in clip.items) {
+                    try {
+                        val destLocation = if (currentPath == "//${currentRemote.name}" || currentPath.isEmpty()) {
+                            item.name
+                        } else {
+                            val clean = currentPath.removePrefix("//${currentRemote.name}/").removePrefix("//${currentRemote.name}")
+                            if (clean.isEmpty()) item.name else "$clean/${item.name}"
+                        }
+                        if (clip.operation == ClipboardOp.COPY) {
+                            RcloneExtensions.copyItem(rclone, clip.sourceRemote ?: currentRemote, item, currentRemote, currentPath)
+                        } else {
+                            val cleanOld = item.path.removePrefix("//${currentRemote.name}/").removePrefix("//${currentRemote.name}")
+                            rclone.moveTo(currentRemote, cleanOld, destLocation)
+                        }
+                    } catch (e: Exception) {
+                        FLog.e(TAG, "Paste clipboard error", e)
+                    }
+                }
             }
-
-            if (success) {
-                setInfoMessage("Renamed to $newName")
-                invalidateCache(currentPath)
-                refreshCurrentDirectory()
-            } else {
-                setErrorMessage("Failed to rename item")
+            if (clip.operation == ClipboardOp.CUT) {
+                FileClipboardManager.clear()
             }
+            DirectoryCacheRepository.remove(currentRemote.name, currentPath)
+            loadDirectory(currentPath, clearSearch = false, forceRefresh = true)
         }
     }
-
-    // --- Duplicate Operation ---
 
     fun duplicateSelected() {
+        val items = _uiState.value.selectedItems.toList()
         val remote = _uiState.value.remote ?: return
-        val selected = _uiState.value.selectedItems.toList()
-        val existingNames = _uiState.value.rawFiles.map { it.name }.toSet()
-
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            val transferId = UUID.randomUUID().toString()
-            addActiveTransfer(transferId, "Duplicating ${selected.size} item(s)...")
-
-            var successCount = 0
-            for (item in selected) {
-                val success = RcloneExtensions.duplicateItem(rclone, remote, item, existingNames)
-                if (success) successCount++
+            withContext(Dispatchers.IO) {
+                for (item in items) {
+                    try {
+                        RcloneExtensions.copyItem(rclone, remote, item, remote, _uiState.value.currentPath)
+                    } catch (e: Exception) {
+                        FLog.e(TAG, "Duplicate error", e)
+                    }
+                }
             }
-
-            removeActiveTransfer(transferId)
-            deselectAll()
-            setInfoMessage("Duplicated $successCount items")
-            invalidateCache(_uiState.value.currentPath)
-            refreshCurrentDirectory()
+            DirectoryCacheRepository.remove(remote.name, _uiState.value.currentPath)
+            loadDirectory(_uiState.value.currentPath, clearSearch = false, forceRefresh = true)
         }
     }
-
-    // --- Batch Rename ---
 
     fun openBatchRename() {
         _uiState.update { it.copy(isBatchRenameOpen = true) }
@@ -481,34 +472,20 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
     }
 
     fun executeBatchRename(rule: BatchRenameRule) {
+        val items = _uiState.value.selectedItems.toList()
         val remote = _uiState.value.remote ?: return
-        val selected = _uiState.value.selectedItems.toList()
-        closeBatchRename()
-
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            val results = RcloneExtensions.batchRename(rclone, remote, selected, rule)
-            val successCount = results.count { it.second }
-            deselectAll()
-            setInfoMessage("Renamed $successCount / ${selected.size} items")
-            invalidateCache(_uiState.value.currentPath)
-            refreshCurrentDirectory()
+            _uiState.update { it.copy(isLoading = true, isBatchRenameOpen = false) }
+            withContext(Dispatchers.IO) {
+                RcloneExtensions.batchRename(rclone, remote, items, rule)
+            }
+            DirectoryCacheRepository.remove(remote.name, _uiState.value.currentPath)
+            loadDirectory(_uiState.value.currentPath, clearSearch = false, forceRefresh = true)
         }
     }
 
-    // --- Deduplication ---
-
     fun openDedupeSheet() {
-        val remote = _uiState.value.remote ?: return
-        val path = _uiState.value.currentPath
-        _uiState.update { it.copy(isDedupeSheetOpen = true, isScanningDuplicates = true, duplicateGroups = emptyList()) }
-
-        viewModelScope.launch {
-            val groups = RcloneExtensions.scanDuplicates(rclone, remote, path)
-            _uiState.update {
-                it.copy(isScanningDuplicates = false, duplicateGroups = groups)
-            }
-        }
+        _uiState.update { it.copy(isDedupeSheetOpen = true) }
     }
 
     fun closeDedupeSheet() {
@@ -518,59 +495,20 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
     fun deleteDuplicates(files: List<FileItem>) {
         val remote = _uiState.value.remote ?: return
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            var deletedCount = 0
-            for (file in files) {
-                val success = withContext(Dispatchers.IO) {
-                    val process = rclone.deleteItems(remote, file)
-                    process?.waitFor()
-                    process != null && process.exitValue() == 0
-                }
-                if (success) deletedCount++
-            }
-            closeDedupeSheet()
-            setInfoMessage("Deleted $deletedCount duplicate files")
-            invalidateCache(_uiState.value.currentPath)
-            refreshCurrentDirectory()
-        }
-    }
-
-    // --- Drag and Drop Move / Copy ---
-
-    fun onDropItemIntoFolder(draggedItems: List<FileItem>, targetFolder: FileItem, isCopy: Boolean = false) {
-        val remote = _uiState.value.remote ?: return
-        val targetPath = targetFolder.path
-
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            val actionName = if (isCopy) "Copying" else "Moving"
-            val transferId = UUID.randomUUID().toString()
-            addActiveTransfer(transferId, "$actionName ${draggedItems.size} item(s) to ${targetFolder.name}...")
-
-            var count = 0
-            for (item in draggedItems) {
-                val success = if (isCopy) {
-                    RcloneExtensions.copyItem(rclone, remote, item, remote, targetPath)
-                } else {
-                    withContext(Dispatchers.IO) {
-                        val process = rclone.moveTo(remote, item, targetPath)
-                        process?.waitFor()
-                        process != null && process.exitValue() == 0
+            _uiState.update { it.copy(isLoading = true, isDedupeSheetOpen = false) }
+            withContext(Dispatchers.IO) {
+                for (file in files) {
+                    try {
+                        rclone.deleteItems(remote, file)?.waitFor()
+                    } catch (e: Exception) {
+                        FLog.e(TAG, "Failed deleting duplicate", e)
                     }
                 }
-                if (success) count++
             }
-
-            removeActiveTransfer(transferId)
-            deselectAll()
-            setInfoMessage("$actionName $count item(s) to ${targetFolder.name}")
-            invalidateCache(_uiState.value.currentPath)
-            invalidateCache(targetPath)
-            refreshCurrentDirectory()
+            DirectoryCacheRepository.remove(remote.name, _uiState.value.currentPath)
+            loadDirectory(_uiState.value.currentPath, clearSearch = false, forceRefresh = true)
         }
     }
-
-    // --- Bookmarks ---
 
     fun openBookmarks() {
         _uiState.update { it.copy(isBookmarksOpen = true) }
@@ -580,18 +518,17 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
         _uiState.update { it.copy(isBookmarksOpen = false) }
     }
 
+    fun removeBookmark(bookmark: BookmarkItem) {
+        bookmarksManager.removeBookmark(bookmark.remoteName, bookmark.path)
+    }
+
     fun bookmarkCurrentFolder() {
         val remote = _uiState.value.remote ?: return
-        val path = _uiState.value.currentPath
-        bookmarksManager.addBookmark(remote.name, path)
-        setInfoMessage("Folder bookmarked")
+        val currentPath = _uiState.value.currentPath
+        val name = _uiState.value.breadcrumbs.lastOrNull()?.title ?: remote.name
+        bookmarksManager.addBookmark(remote.name, currentPath, name)
+        _uiState.update { it.copy(infoMessage = "Added \"$name\" to bookmarks") }
     }
-
-    fun removeBookmark(item: BookmarkItem) {
-        bookmarksManager.removeBookmark(item.remoteName, item.path)
-    }
-
-    // --- Folder Creation & Deletion ---
 
     fun openCreateFolderDialog() {
         _uiState.update { it.copy(isCreateFolderDialogOpen = true) }
@@ -602,60 +539,193 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
     }
 
     fun createFolder(name: String) {
-        val remote = _uiState.value.remote ?: return
-        val currentPath = _uiState.value.currentPath
+        createDirectory(name)
         closeCreateFolderDialog()
+    }
+
+    fun onSearchQueryChanged(query: String) {
+        _uiState.update {
+            val filtered = applyFiltersAndSearch(
+                it.rawFiles,
+                query,
+                it.typeFilter,
+                it.showHiddenFiles
+            )
+            it.copy(
+                searchQuery = query,
+                displayFiles = filtered
+            )
+        }
+    }
+
+    fun toggleSearch() {
+        _uiState.update {
+            val next = !it.isSearching
+            val query = if (next) it.searchQuery else ""
+            val filtered = applyFiltersAndSearch(
+                it.rawFiles,
+                query,
+                it.typeFilter,
+                it.showHiddenFiles
+            )
+            it.copy(
+                isSearching = next,
+                searchQuery = query,
+                displayFiles = filtered
+            )
+        }
+    }
+
+    fun onTypeFilterChanged(filter: FileTypeFilter) {
+        _uiState.update {
+            val filtered = applyFiltersAndSearch(
+                it.rawFiles,
+                it.searchQuery,
+                filter,
+                it.showHiddenFiles
+            )
+            it.copy(
+                typeFilter = filter,
+                displayFiles = filtered
+            )
+        }
+    }
+
+    fun toggleGridView() {
+        _uiState.update {
+            val next = !it.isGridView
+            prefs.edit().putBoolean("pref_key_file_grid_view", next).apply()
+            it.copy(isGridView = next)
+        }
+    }
+
+    fun toggleViewMode() {
+        toggleGridView()
+    }
+
+    fun toggleShowHiddenFiles() {
+        _uiState.update {
+            val next = !it.showHiddenFiles
+            prefs.edit().putBoolean("pref_key_show_hidden_files", next).apply()
+            val filtered = applyFiltersAndSearch(
+                it.rawFiles,
+                it.searchQuery,
+                it.typeFilter,
+                next
+            )
+            it.copy(
+                showHiddenFiles = next,
+                displayFiles = filtered
+            )
+        }
+    }
+
+    fun deleteSelectedFiles() {
+        val selected = _uiState.value.selectedItems.toList()
+        if (selected.isEmpty()) return
+        val currentRemote = _uiState.value.remote ?: return
+        val currentPath = _uiState.value.currentPath
 
         viewModelScope.launch {
-            val relativeDir = if (currentPath == "//${remote.name}" || currentPath.isEmpty()) name else "$currentPath/$name"
-            val cleanDir = relativeDir.removePrefix("//${remote.name}").trimStart('/')
-
-            val success = withContext(Dispatchers.IO) {
-                rclone.makeDirectory(remote, cleanDir)
+            _uiState.update { it.copy(isLoading = true) }
+            var deletedCount = 0
+            withContext(Dispatchers.IO) {
+                for (item in selected) {
+                    try {
+                        val proc = rclone.deleteItems(currentRemote, item)
+                        proc?.waitFor()
+                        deletedCount++
+                    } catch (e: Exception) {
+                        FLog.e(TAG, "Error deleting item: ${item.name}", e)
+                    }
+                }
             }
-            if (success) {
-                setInfoMessage("Created folder \"$name\"")
-                invalidateCache(currentPath)
-                refreshCurrentDirectory()
-            } else {
-                setErrorMessage("Failed to create folder")
-            }
+            DirectoryCacheRepository.remove(currentRemote.name, currentPath)
+            _uiState.update { it.copy(infoMessage = "Deleted $deletedCount item(s)") }
+            loadDirectory(currentPath, clearSearch = false, forceRefresh = true, isNavigatingBack = false)
         }
     }
 
     fun deleteSelected() {
-        val remote = _uiState.value.remote ?: return
-        val selected = _uiState.value.selectedItems.toList()
+        deleteSelectedFiles()
+    }
+
+    fun deleteSingleFile(fileItem: FileItem) {
+        val currentRemote = _uiState.value.remote ?: return
+        val currentPath = _uiState.value.currentPath
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            var count = 0
-            for (item in selected) {
-                val success = withContext(Dispatchers.IO) {
-                    val process = rclone.deleteItems(remote, item)
-                    process?.waitFor()
-                    process != null && process.exitValue() == 0
+            withContext(Dispatchers.IO) {
+                try {
+                    val proc = rclone.deleteItems(currentRemote, fileItem)
+                    proc?.waitFor()
+                } catch (e: Exception) {
+                    FLog.e(TAG, "Error deleting item ${fileItem.name}", e)
                 }
-                if (success) count++
             }
-            deselectAll()
-            setInfoMessage("Deleted $count items")
-            invalidateCache(_uiState.value.currentPath)
-            refreshCurrentDirectory()
+            DirectoryCacheRepository.remove(currentRemote.name, currentPath)
+            _uiState.update { it.copy(infoMessage = "Deleted \"${fileItem.name}\"") }
+            loadDirectory(currentPath, clearSearch = false, forceRefresh = true, isNavigatingBack = false)
         }
     }
 
-    // --- Helpers ---
+    fun createDirectory(folderName: String) {
+        val currentRemote = _uiState.value.remote ?: return
+        val currentPath = _uiState.value.currentPath
+        val newDirPath = if (currentPath == "//${currentRemote.name}") {
+            folderName
+        } else {
+            val clean = currentPath.removePrefix("//${currentRemote.name}/").removePrefix("//${currentRemote.name}")
+            if (clean.isEmpty()) folderName else "$clean/$folderName"
+        }
 
-    private fun addActiveTransfer(id: String, title: String) {
-        _uiState.update {
-            it.copy(activeTransfers = it.activeTransfers + ActiveTransferItem(id = id, title = title))
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            val created = withContext(Dispatchers.IO) {
+                try {
+                    rclone.makeDirectory(currentRemote, newDirPath)
+                } catch (e: Exception) {
+                    FLog.e(TAG, "Error creating directory $folderName", e)
+                    false
+                }
+            }
+            if (created == true) {
+                DirectoryCacheRepository.remove(currentRemote.name, currentPath)
+                _uiState.update { it.copy(infoMessage = "Created folder \"$folderName\"") }
+                loadDirectory(currentPath, clearSearch = false, forceRefresh = true, isNavigatingBack = false)
+            } else {
+                _uiState.update { it.copy(isLoading = false, errorMessage = "Failed to create folder") }
+            }
         }
     }
 
-    private fun removeActiveTransfer(id: String) {
-        _uiState.update {
-            it.copy(activeTransfers = it.activeTransfers.filterNot { item -> item.id == id })
+    fun renameFile(fileItem: FileItem, newName: String) {
+        val currentRemote = _uiState.value.remote ?: return
+        val currentPath = _uiState.value.currentPath
+        if (fileItem.name == newName || newName.isBlank()) return
+
+        val cleanOld = fileItem.path.removePrefix("//${currentRemote.name}/").removePrefix("//${currentRemote.name}")
+        val cleanParent = cleanOld.substringBeforeLast('/', "")
+        val cleanNew = if (cleanParent.isEmpty()) newName else "$cleanParent/$newName"
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            val moved = withContext(Dispatchers.IO) {
+                try {
+                    rclone.moveTo(currentRemote, cleanOld, cleanNew)
+                } catch (e: Exception) {
+                    FLog.e(TAG, "Failed renaming file", e)
+                    false
+                }
+            }
+            if (moved == true) {
+                DirectoryCacheRepository.remove(currentRemote.name, currentPath)
+                _uiState.update { it.copy(infoMessage = "Renamed to \"$newName\"") }
+                loadDirectory(currentPath, clearSearch = false, forceRefresh = true, isNavigatingBack = false)
+            } else {
+                _uiState.update { it.copy(isLoading = false, errorMessage = "Failed to rename file") }
+            }
         }
     }
 
@@ -671,84 +741,47 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
         _uiState.update { it.copy(errorMessage = msg) }
     }
 
+    fun clearErrorMessage() {
+        _uiState.update { it.copy(errorMessage = null) }
+    }
+
     private fun generateBreadcrumbs(remoteName: String, path: String): List<BreadcrumbItem> {
-        val crumbs = mutableListOf<BreadcrumbItem>()
-        crumbs.add(BreadcrumbItem(title = remoteName, path = "//$remoteName"))
+        val list = mutableListOf<BreadcrumbItem>()
+        val rootPath = "//$remoteName"
+        list.add(BreadcrumbItem(title = remoteName, path = rootPath))
 
-        val cleanPath = path.removePrefix("//$remoteName").trimStart('/')
-        if (cleanPath.isNotEmpty()) {
-            val segments = cleanPath.split('/')
-            var cumulative = ""
-            for (segment in segments) {
-                if (segment.isNotEmpty()) {
-                    cumulative = if (cumulative.isEmpty()) segment else "$cumulative/$segment"
-                    crumbs.add(BreadcrumbItem(title = segment, path = cumulative))
+        val relative = path.removePrefix(rootPath).trimStart('/')
+        if (relative.isNotEmpty()) {
+            val segments = relative.split('/')
+            var cumulative = rootPath
+            for (seg in segments) {
+                if (seg.isNotBlank()) {
+                    cumulative += "/$seg"
+                    list.add(BreadcrumbItem(title = seg, path = cumulative))
                 }
             }
         }
-        return crumbs
-    }
-
-    private fun rebuildStack(remoteName: String, targetPath: String) {
-        pathStack.clear()
-        pathStack.push("//$remoteName")
-        val cleanPath = targetPath.removePrefix("//$remoteName").trimStart('/')
-        if (cleanPath.isNotEmpty()) {
-            val segments = cleanPath.split('/')
-            var cumulative = ""
-            for (segment in segments) {
-                if (segment.isNotEmpty()) {
-                    cumulative = if (cumulative.isEmpty()) segment else "$cumulative/$segment"
-                    pathStack.push(cumulative)
-                }
-            }
-        }
-    }
-
-    private fun sortFiles(items: List<FileItem>, sortOrder: Int): List<FileItem> {
-        val comparator = when (sortOrder) {
-            SortDialog.ALPHA_DESCENDING -> FileComparators.SortAlphaDescending()
-            SortDialog.SIZE_ASCENDING -> FileComparators.SortSizeAscending()
-            SortDialog.SIZE_DESCENDING -> FileComparators.SortSizeDescending()
-            SortDialog.MOD_TIME_ASCENDING -> FileComparators.SortModTimeAscending()
-            SortDialog.MOD_TIME_DESCENDING -> FileComparators.SortModTimeDescending()
-            else -> FileComparators.SortAlphaAscending()
-        }
-        return items.sortedWith(comparator)
+        return list
     }
 
     private fun applyFiltersAndSearch(
-        files: List<FileItem>,
+        rawList: List<FileItem>,
         query: String,
-        filter: FileTypeFilter,
-        showHidden: Boolean = _uiState.value.showHiddenFiles
+        typeFilter: FileTypeFilter,
+        showHidden: Boolean
     ): List<FileItem> {
-        return files.filter { item ->
-            val matchesHidden = showHidden || !item.name.startsWith(".")
-            val matchesQuery = query.isEmpty() || item.name.contains(query, ignoreCase = true)
-            val matchesType = when (filter) {
+        return rawList.filter { item ->
+            val matchesHidden = if (!showHidden) !item.name.startsWith(".") else true
+            val matchesQuery = if (query.isNotBlank()) item.name.contains(query, ignoreCase = true) else true
+            val matchesType = when (typeFilter) {
                 FileTypeFilter.ALL -> true
-                FileTypeFilter.IMAGES -> item.isDir || (item.mimeType?.startsWith("image/") == true)
-                FileTypeFilter.VIDEOS -> item.isDir || (item.mimeType?.startsWith("video/") == true)
-                FileTypeFilter.DOCUMENTS -> item.isDir || isDocMime(item)
-                FileTypeFilter.AUDIO -> item.isDir || (item.mimeType?.startsWith("audio/") == true)
-                FileTypeFilter.ARCHIVES -> item.isDir || isArchive(item.name)
+                FileTypeFilter.IMAGES -> item.isDir || item.mimeType?.startsWith("image/") == true
+                FileTypeFilter.VIDEOS -> item.isDir || item.mimeType?.startsWith("video/") == true
+                FileTypeFilter.AUDIO -> item.isDir || item.mimeType?.startsWith("audio/") == true
+                FileTypeFilter.DOCUMENTS -> item.isDir || item.mimeType?.contains("pdf") == true || item.mimeType?.contains("document") == true || item.mimeType?.contains("text") == true
+                FileTypeFilter.ARCHIVES -> item.isDir || item.mimeType?.contains("zip") == true || item.mimeType?.contains("tar") == true || item.mimeType?.contains("rar") == true || item.mimeType?.contains("7z") == true
             }
             matchesHidden && matchesQuery && matchesType
         }
-    }
-
-    private fun isDocMime(item: FileItem): Boolean {
-        val mime = item.mimeType ?: ""
-        val name = item.name.lowercase()
-        return mime.contains("pdf") || mime.contains("document") || mime.contains("text") ||
-                name.endsWith(".pdf") || name.endsWith(".docx") || name.endsWith(".txt") ||
-                name.endsWith(".xlsx") || name.endsWith(".pptx") || name.endsWith(".md")
-    }
-
-    private fun isArchive(name: String): Boolean {
-        val lower = name.lowercase()
-        return lower.endsWith(".zip") || lower.endsWith(".rar") || lower.endsWith(".7z") ||
-                lower.endsWith(".tar") || lower.endsWith(".gz") || lower.endsWith(".bz2")
     }
 }

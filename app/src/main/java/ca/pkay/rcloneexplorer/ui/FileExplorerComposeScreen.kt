@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ca.pkay.rcloneexplorer.Items.FileItem
+import ca.pkay.rcloneexplorer.Items.RemoteItem
 import ca.pkay.rcloneexplorer.data.*
 import ca.pkay.rcloneexplorer.ui.components.*
 import ca.pkay.rcloneexplorer.ui.viewmodel.FileExplorerUiState
@@ -44,6 +45,7 @@ import ca.pkay.rcloneexplorer.ui.viewmodel.FileExplorerViewModel
 import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
+import io.github.x0b.safdav.SafAccessProvider
 
 data class BreadcrumbItem(
     val title: String,
@@ -304,7 +306,7 @@ fun FileExplorerComposeScreen(
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(12.dp))
                                             .clickable {
-                                                viewModel.navigateToBreadcrumb(crumb.path)
+                                                viewModel.navigateToBreadcrumb(crumb)
                                             }
                                     ) {
                                         Row(
@@ -541,10 +543,14 @@ fun FileExplorerComposeScreen(
                         }
                     }
 
-                    PullToRefreshContainer(
-                        state = pullRefreshState,
-                        modifier = Modifier.align(Alignment.TopCenter)
-                    )
+                    if (pullRefreshState.isRefreshing || pullRefreshState.verticalOffset > 0.5f) {
+                        PullToRefreshContainer(
+                            state = pullRefreshState,
+                            modifier = Modifier.align(Alignment.TopCenter),
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            contentColor = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             }
 
@@ -554,11 +560,66 @@ fun FileExplorerComposeScreen(
                 onCancelTransfer = { /* Cancel transfer */ },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = if (isInSelectMode) 96.dp else 84.dp)
+                    .padding(bottom = if (isInSelectMode || uiState.moveModeItems.isNotEmpty()) 96.dp else 84.dp)
             )
 
+            // Move Mode Floating Bottom Bar
+            if (uiState.moveModeItems.isNotEmpty()) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    tonalElevation = 8.dp,
+                    shadowElevation = 8.dp
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Moving ${uiState.moveModeItems.size} item(s)",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Navigate to destination folder",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                onClick = { viewModel.cancelMoveMode() },
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Cancel")
+                            }
+                            Button(
+                                onClick = { viewModel.executeMoveHere() },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                            ) {
+                                Icon(Icons.Default.DriveFileMove, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Move Here")
+                            }
+                        }
+                    }
+                }
+            }
+
             // FAB for Adding (Upload & New Folder)
-            if (!isInSelectMode) {
+            if (!isInSelectMode && uiState.moveModeItems.isEmpty()) {
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
@@ -727,7 +788,7 @@ fun FileExplorerComposeScreen(
             onDismiss = { viewModel.closeBookmarks() },
             onBookmarkClick = { bookmark ->
                 viewModel.closeBookmarks()
-                viewModel.navigateToBreadcrumb(bookmark.path)
+                viewModel.navigateToBreadcrumb(BreadcrumbItem(title = bookmark.label, path = bookmark.path))
             },
             onRemoveBookmark = { bookmark -> viewModel.removeBookmark(bookmark) },
             onAddCurrentAsBookmark = { viewModel.bookmarkCurrentFolder() }
@@ -939,8 +1000,23 @@ fun GridFileCard(
     val mimeType = fileItem.mimeType
     val isPhoto = mimeType != null && mimeType.startsWith("image/")
 
-    val thumbnailUrl = remember(fileItem, thumbnailServerAuth, thumbnailServerPort) {
-        if (showThumbnails && isPhoto && thumbnailServerPort > 0 && thumbnailServerAuth.isNotEmpty()) {
+    val isLocal = fileItem.remote.isRemoteType(RemoteItem.LOCAL) || fileItem.remote.isPathAlias
+    val isSaf = fileItem.remote.isRemoteType(RemoteItem.SAFW)
+
+    val imageModel: Any? = remember(fileItem, thumbnailServerAuth, thumbnailServerPort) {
+        if (!showThumbnails || !isPhoto) {
+            null
+        } else if (isLocal) {
+            java.io.File(fileItem.path)
+        } else if (isSaf) {
+            try {
+                SafAccessProvider.getDirectServer(context).getDocumentUri('/' + fileItem.path)
+            } catch (e: Exception) {
+                if (thumbnailServerPort > 0 && thumbnailServerAuth.isNotEmpty()) {
+                    "http://127.0.0.1:$thumbnailServerPort/$thumbnailServerAuth/${fileItem.remote.name}/${fileItem.path}"
+                } else null
+            }
+        } else if (thumbnailServerPort > 0 && thumbnailServerAuth.isNotEmpty()) {
             "http://127.0.0.1:$thumbnailServerPort/$thumbnailServerAuth/${fileItem.remote.name}/${fileItem.path}"
         } else null
     }
@@ -980,14 +1056,14 @@ fun GridFileCard(
                     .fillMaxWidth()
                     .height(96.dp)
                     .clip(RoundedCornerShape(14.dp))
-                    .background(if (thumbnailUrl != null) MaterialTheme.colorScheme.surface.copy(alpha = 0.6f) else visual.backgroundColor),
+                    .background(if (imageModel != null) MaterialTheme.colorScheme.surface.copy(alpha = 0.6f) else visual.backgroundColor),
                 contentAlignment = Alignment.Center
             ) {
-                if (thumbnailUrl != null) {
+                if (imageModel != null) {
                     val cacheSignature = "${fileItem.remote.name}:${fileItem.path}:${fileItem.modTime}:${fileItem.size}"
                     AsyncImage(
                         model = ImageRequest.Builder(context)
-                            .data(thumbnailUrl)
+                            .data(imageModel)
                             .memoryCacheKey(cacheSignature)
                             .diskCacheKey(cacheSignature)
                             .memoryCachePolicy(CachePolicy.ENABLED)
@@ -1086,9 +1162,23 @@ fun ListFileCard(
     val context = LocalContext.current
     val mimeType = fileItem.mimeType
     val isPhoto = mimeType != null && mimeType.startsWith("image/")
+    val isLocal = fileItem.remote.isRemoteType(RemoteItem.LOCAL) || fileItem.remote.isPathAlias
+    val isSaf = fileItem.remote.isRemoteType(RemoteItem.SAFW)
 
-    val thumbnailUrl = remember(fileItem, thumbnailServerAuth, thumbnailServerPort) {
-        if (showThumbnails && isPhoto && thumbnailServerPort > 0 && thumbnailServerAuth.isNotEmpty()) {
+    val imageModel: Any? = remember(fileItem, thumbnailServerAuth, thumbnailServerPort) {
+        if (!showThumbnails || !isPhoto) {
+            null
+        } else if (isLocal) {
+            java.io.File(fileItem.path)
+        } else if (isSaf) {
+            try {
+                SafAccessProvider.getDirectServer(context).getDocumentUri('/' + fileItem.path)
+            } catch (e: Exception) {
+                if (thumbnailServerPort > 0 && thumbnailServerAuth.isNotEmpty()) {
+                    "http://127.0.0.1:$thumbnailServerPort/$thumbnailServerAuth/${fileItem.remote.name}/${fileItem.path}"
+                } else null
+            }
+        } else if (thumbnailServerPort > 0 && thumbnailServerAuth.isNotEmpty()) {
             "http://127.0.0.1:$thumbnailServerPort/$thumbnailServerAuth/${fileItem.remote.name}/${fileItem.path}"
         } else null
     }
@@ -1127,14 +1217,14 @@ fun ListFileCard(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(if (thumbnailUrl != null) MaterialTheme.colorScheme.surface.copy(alpha = 0.6f) else visual.backgroundColor),
+                    .background(if (imageModel != null) MaterialTheme.colorScheme.surface.copy(alpha = 0.6f) else visual.backgroundColor),
                 contentAlignment = Alignment.Center
             ) {
-                if (thumbnailUrl != null) {
+                if (imageModel != null) {
                     val cacheSignature = "${fileItem.remote.name}:${fileItem.path}:${fileItem.modTime}:${fileItem.size}"
                     AsyncImage(
                         model = ImageRequest.Builder(context)
-                            .data(thumbnailUrl)
+                            .data(imageModel)
                             .memoryCacheKey(cacheSignature)
                             .diskCacheKey(cacheSignature)
                             .memoryCachePolicy(CachePolicy.ENABLED)

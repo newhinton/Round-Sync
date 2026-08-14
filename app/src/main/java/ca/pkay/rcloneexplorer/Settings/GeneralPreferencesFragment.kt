@@ -61,6 +61,7 @@ class GeneralPreferencesFragment : PreferenceFragmentCompat() {
             viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                 try {
                     com.bumptech.glide.Glide.get(requireContext().applicationContext).clearDiskCache()
+                    ca.pkay.rcloneexplorer.data.CacheManager.clearCache(requireContext())
                     withContext(Dispatchers.Main) {
                         com.bumptech.glide.Glide.get(requireContext().applicationContext).clearMemory()
                         Toasty.success(requireContext(), getString(R.string.thumbnail_cache_cleared), Toast.LENGTH_SHORT, true).show()

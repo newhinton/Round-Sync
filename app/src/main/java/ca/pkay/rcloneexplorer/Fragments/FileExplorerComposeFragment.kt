@@ -22,6 +22,7 @@ import androidx.preference.PreferenceManager
 import ca.pkay.rcloneexplorer.BuildConfig
 import ca.pkay.rcloneexplorer.Dialogs.*
 import ca.pkay.rcloneexplorer.FilePicker
+import ca.pkay.rcloneexplorer.data.CacheManager
 import ca.pkay.rcloneexplorer.Items.FileItem
 import ca.pkay.rcloneexplorer.Items.RemoteItem
 import ca.pkay.rcloneexplorer.R
@@ -204,6 +205,29 @@ class FileExplorerComposeFragment : Fragment(), SortDialog.OnClickListener, Serv
         val isMedia = openAs == OPEN_AS_VIDEO || openAs == OPEN_AS_AUDIO ||
                 (openAs == -1 && (mime.startsWith("video/") || mime.startsWith("audio/")))
 
+        if (currentRemote.isRemoteType(RemoteItem.LOCAL, RemoteItem.SAFW) || currentRemote.isPathAlias) {
+            try {
+                val localFile = File(fileItem.path)
+                if (localFile.exists()) {
+                    val sharedFileUri = FileProvider.getUriForFile(ctx, BuildConfig.APPLICATION_ID + ".fileprovider", localFile)
+                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                        val fileMime = fileItem.mimeType
+                        if (!fileMime.isNullOrEmpty() && fileMime != "application/octet-stream") {
+                            setDataAndTypeAndNormalize(sharedFileUri, fileMime)
+                        } else {
+                            setDataAndType(sharedFileUri, "*/*")
+                        }
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    startActivity(Intent.createChooser(intent, "Open with..."))
+                    return
+                }
+            } catch (e: Exception) {
+                FLog.e("FileExplorer", "Failed direct open for local file", e)
+            }
+        }
+
         if (isMedia) {
             streamAndOpen(fileItem, currentRemote, openAs)
         } else {
@@ -334,6 +358,10 @@ class FileExplorerComposeFragment : Fragment(), SortDialog.OnClickListener, Serv
                 return@launch
             }
 
+            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                CacheManager.pruneCacheIfNeeded(ctx)
+            }
+
             try {
                 val savedFile = File(fileLocation)
                 val sharedFileUri = FileProvider.getUriForFile(ctx, BuildConfig.APPLICATION_ID + ".fileprovider", savedFile)
@@ -432,7 +460,7 @@ class FileExplorerComposeFragment : Fragment(), SortDialog.OnClickListener, Serv
             .putInt("ca.pkay.rcexplorer.sort_order", sortOrder)
             .apply()
 
-        viewModel.loadDirectory(viewModel.uiState.value.currentPath, clearSearch = false, forceRefresh = false, isNavigatingBack = false)
+        viewModel.setSortOrder(sortOrder)
     }
 
     private fun showServeDialog() {

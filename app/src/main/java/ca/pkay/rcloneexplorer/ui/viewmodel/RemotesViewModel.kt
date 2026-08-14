@@ -151,7 +151,7 @@ class RemotesViewModel(application: Application) : AndroidViewModel(application)
     fun reconnectRemote(remote: RemoteItem, context: Context) {
         viewModelScope.launch {
             _uiState.update { it.copy(infoMessage = "Re-authenticating ${remote.displayName}...") }
-            withContext(Dispatchers.IO) {
+            val success = withContext(Dispatchers.IO) {
                 try {
                     val process = rclone.reconnectRemote(remote)
                     if (process != null) {
@@ -168,13 +168,24 @@ class RemotesViewModel(application: Application) : AndroidViewModel(application)
 
                         val runner = InteractiveRunner(start, { e ->
                             FLog.e(TAG, "OAuth recipe error for ${remote.typeReadable}", e)
+                            process.destroy()
                         }, process)
                         OauthHelper.registerRunner(runner)
                         runner.runSteps()
+                        val exitCode = process.waitFor()
+                        exitCode == 0
+                    } else {
+                        false
                     }
                 } catch (e: Exception) {
                     FLog.e(TAG, "Failed reconnecting remote", e)
+                    false
                 }
+            }
+            if (success) {
+                _uiState.update { it.copy(infoMessage = "Successfully re-authenticated ${remote.displayName}") }
+            } else {
+                _uiState.update { it.copy(infoMessage = "Re-authentication cancelled or failed") }
             }
             loadRemotes(force = true)
         }
