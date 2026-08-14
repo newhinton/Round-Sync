@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Base64
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -11,7 +12,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.PreferenceManager
@@ -25,6 +25,7 @@ import ca.pkay.rcloneexplorer.Items.RemoteItem
 import ca.pkay.rcloneexplorer.R
 import ca.pkay.rcloneexplorer.Rclone
 import ca.pkay.rcloneexplorer.Services.StreamingService
+import ca.pkay.rcloneexplorer.Services.ThumbnailsLoadingService
 import ca.pkay.rcloneexplorer.ui.FileExplorerComposeScreen
 import ca.pkay.rcloneexplorer.ui.viewmodel.FileExplorerViewModel
 import ca.pkay.rcloneexplorer.util.ActivityHelper.tryStartService
@@ -33,6 +34,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.net.ServerSocket
+import java.security.SecureRandom
 import java.util.ArrayList
 
 class FileExplorerComposeFragment : Fragment(), SortDialog.OnClickListener, ServeDialog.Callback {
@@ -56,9 +59,18 @@ class FileExplorerComposeFragment : Fragment(), SortDialog.OnClickListener, Serv
     private val viewModel: FileExplorerViewModel by viewModels()
     private var pendingDownloadList: List<FileItem> = emptyList()
 
+    private var thumbnailServerAuth: String = ""
+    private var thumbnailServerPort: Int = 0
+    private var isThumbnailServiceRunning: Boolean = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        remote = arguments?.getParcelable(ARG_REMOTE)
+        remote = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            arguments?.getParcelable(ARG_REMOTE, RemoteItem::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            arguments?.getParcelable(ARG_REMOTE)
+        }
     }
 
     fun onBackButtonPressed(): Boolean {
@@ -71,6 +83,7 @@ class FileExplorerComposeFragment : Fragment(), SortDialog.OnClickListener, Serv
         savedInstanceState: Bundle?
     ): View {
         remote?.let { viewModel.initRemote(it) }
+        startThumbnailService()
 
         return ComposeView(requireContext()).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
@@ -83,13 +96,71 @@ class FileExplorerComposeFragment : Fragment(), SortDialog.OnClickListener, Serv
                         onFileLinkShareClicked = { fileItem -> showLinkDialog(fileItem) },
                         onUploadFiles = { startUploadPicker() },
                         onDownloadSelected = { list -> startDownloadPicker(list) },
-                        onMoveSelected = { list -> viewModel.cutSelected() },
+                        onMoveSelected = { viewModel.cutSelected() },
                         onSortClicked = { showSortDialog() },
                         onOpenServeDialog = { showServeDialog() }
                     )
                 }
             }
         }
+    }
+
+    private fun startThumbnailService() {
+        val currentRemote = remote ?: return
+        if (RemoteItem.SAFW == currentRemote.type) return
+        val context = context ?: return
+
+        try {
+            val random = SecureRandom()
+            val values = ByteArray(16)
+            random.nextBytes(values)
+            thumbnailServerAuth = Base64.encodeToString(values, Base64.NO_PADDING or Base64.NO_WRAP or Base64.URL_SAFE)
+            thumbnailServerPort = allocatePort(29179)
+
+            val serveIntent = Intent(context, ThumbnailsLoadingService::class.java).apply {
+                putExtra(ThumbnailsLoadingService.REMOTE_ARG, currentRemote)
+                putExtra(ThumbnailsLoadingService.HIDDEN_PATH, thumbnailServerAuth)
+                putExtra(ThumbnailsLoadingService.SERVER_PORT, thumbnailServerPort)
+            }
+            tryStartService(context, serveIntent)
+            isThumbnailServiceRunning = true
+            viewModel.setThumbnailServerInfo(thumbnailServerAuth, thumbnailServerPort)
+        } catch (e: Exception) {
+            // Ignore thumbnail server startup failure
+        }
+    }
+
+    private fun stopThumbnailService() {
+        if (isThumbnailServiceRunning) {
+            val context = context ?: return
+            try {
+                context.stopService(Intent(context, ThumbnailsLoadingService::class.java))
+            } catch (ignored: Exception) {}
+            isThumbnailServiceRunning = false
+        }
+    }
+
+    private fun allocatePort(port: Int): Int {
+        return try {
+            val serverSocket = ServerSocket(port)
+            val localPort = serverSocket.localPort
+            serverSocket.close()
+            localPort
+        } catch (e: Exception) {
+            try {
+                val serverSocket = ServerSocket(0)
+                val localPort = serverSocket.localPort
+                serverSocket.close()
+                localPort
+            } catch (e2: Exception) {
+                29179
+            }
+        }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        stopThumbnailService()
     }
 
     private fun onFileClick(fileItem: FileItem) {
@@ -212,7 +283,12 @@ class FileExplorerComposeFragment : Fragment(), SortDialog.OnClickListener, Serv
         val currentRemote = remote ?: return
 
         if (requestCode == FILE_PICKER_UPLOAD_RESULT && resultCode == Activity.RESULT_OK && data != null) {
-            val result = data.getSerializableExtra(FilePicker.FILE_PICKER_RESULT) as? ArrayList<File> ?: return
+            val result = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                data.getSerializableExtra(FilePicker.FILE_PICKER_RESULT, ArrayList::class.java) as? ArrayList<File>
+            } else {
+                @Suppress("DEPRECATION", "UNCHECKED_CAST")
+                data.getSerializableExtra(FilePicker.FILE_PICKER_RESULT) as? ArrayList<File>
+            } ?: return
             for (file in result) {
                 EphemeralTaskManager.queueUpload(context, currentRemote, file.path, viewModel.uiState.value.currentPath)
             }

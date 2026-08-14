@@ -12,7 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -240,14 +240,14 @@ fun AboutScreen(
                     )
 
                     ActionRow(
-                        icon = Icons.Default.Send,
+                        icon = Icons.AutoMirrored.Filled.Send,
                         title = "Telegram",
                         subtitle = "@pawanwashudev",
                         onClick = { openUrl(context, "https://t.me/pawanwashudev") }
                     )
 
                     ActionRow(
-                        icon = Icons.Default.Chat,
+                        icon = Icons.AutoMirrored.Filled.Chat,
                         title = "WhatsApp",
                         subtitle = "@pawanwashudev",
                         onClick = { openUrl(context, "https://wa.me/pawanwashudev") }

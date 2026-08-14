@@ -153,7 +153,7 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
     private fun handleTask() {
         mTitle = mTask.title
         mNotificationManager.setCancelId(id)
-        val remoteItem = RemoteItem(mTask.remoteId, mTask.remoteType, "")
+        val remoteItem = mRclone.getRemoteItemFromName(mTask.remoteId) ?: RemoteItem(mTask.remoteId, "")
 
         if (mTask.title == "") {
             mTitle = mTask.remotePath

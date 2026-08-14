@@ -6,6 +6,7 @@ import android.util.Log
 import android.widget.ArrayAdapter
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.ConfigurationCompat
 import androidx.core.os.LocaleListCompat
 import ca.pkay.rcloneexplorer.R
 import java.util.Locale
@@ -32,11 +33,7 @@ class LanguagePicker(private val mContext: Context) {
     }
 
     fun getCurrentLocale(): Locale? {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            mContext.resources.configuration.locales.get(0)
-        } else {
-            mContext.resources.configuration.locale
-        }
+        return ConfigurationCompat.getLocales(mContext.resources.configuration)[0]
     }
 
     private val supportedLocales: ArrayList<Locale>

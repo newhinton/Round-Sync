@@ -16,6 +16,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -55,7 +56,7 @@ fun FileExplorerComposeScreen(
     onDownloadSelected: (List<FileItem>) -> Unit,
     onMoveSelected: (List<FileItem>) -> Unit,
     onSortClicked: () -> Unit,
-    onOpenServeDialog: () -> Unit
+    onOpenServeDialog: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val clipboard by viewModel.clipboard.collectAsState()
@@ -70,6 +71,8 @@ fun FileExplorerComposeScreen(
             viewModel.clearInfoMessage()
         }
     }
+
+    var showOverflowMenu by remember { mutableStateOf(false) }
 
     val isInSelectMode = uiState.selectedItems.isNotEmpty()
 
@@ -86,15 +89,14 @@ fun FileExplorerComposeScreen(
                 // Glassmorphic Top Bar & Breadcrumbs
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
                     tonalElevation = 4.dp
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
                     ) {
-                        // Search Bar or Breadcrumb Row
                         if (uiState.isSearching) {
                             Column(modifier = Modifier.fillMaxWidth()) {
                                 OutlinedTextField(
@@ -138,66 +140,185 @@ fun FileExplorerComposeScreen(
                                 }
                             }
                         } else {
+                            // Top Row: Title + Search + 3-Dot Overflow Menu
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                // Breadcrumb chips
-                                LazyRow(
-                                    modifier = Modifier.weight(1f),
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
                                 ) {
-                                    items(uiState.breadcrumbs) { crumb ->
-                                        Surface(
-                                            shape = RoundedCornerShape(12.dp),
-                                            color = if (crumb.path == uiState.currentPath) {
-                                                MaterialTheme.colorScheme.primaryContainer
-                                            } else {
-                                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-                                            },
-                                            modifier = Modifier
-                                                .clip(RoundedCornerShape(12.dp))
-                                                .clickable {
-                                                    viewModel.navigateToBreadcrumb(crumb.path)
-                                                }
+                                    if (uiState.breadcrumbs.size > 1) {
+                                        IconButton(
+                                            onClick = { viewModel.navigateUp() },
+                                            modifier = Modifier.size(36.dp)
                                         ) {
-                                            Text(
-                                                text = crumb.title,
-                                                style = MaterialTheme.typography.labelMedium,
-                                                fontWeight = if (crumb.path == uiState.currentPath) FontWeight.Bold else FontWeight.Medium,
-                                                color = if (crumb.path == uiState.currentPath) {
-                                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                                } else {
-                                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                                },
-                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                            Icon(
+                                                Icons.AutoMirrored.Filled.ArrowBack,
+                                                contentDescription = "Back",
+                                                tint = MaterialTheme.colorScheme.onSurface
                                             )
                                         }
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                    }
+
+                                    Column {
+                                        Text(
+                                            text = uiState.remote?.displayName ?: "Remote Explorer",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = if (uiState.currentPath.isEmpty()) "Root Directory" else uiState.breadcrumbs.lastOrNull()?.title ?: uiState.currentPath,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
                                     }
                                 }
 
-                                // Action Icons (Search, Bookmarks, Dedupe, ViewMode, Sort, Serve)
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     IconButton(onClick = { viewModel.toggleSearch() }) {
                                         Icon(Icons.Default.Search, contentDescription = "Search", tint = MaterialTheme.colorScheme.onSurface)
                                     }
-                                    IconButton(onClick = { viewModel.openBookmarks() }) {
-                                        Icon(Icons.Outlined.BookmarkBorder, contentDescription = "Bookmarks", tint = MaterialTheme.colorScheme.onSurface)
+
+                                    Box {
+                                        IconButton(onClick = { showOverflowMenu = true }) {
+                                            Icon(Icons.Default.MoreVert, contentDescription = "More options", tint = MaterialTheme.colorScheme.onSurface)
+                                        }
+
+                                        DropdownMenu(
+                                            expanded = showOverflowMenu,
+                                            onDismissRequest = { showOverflowMenu = false }
+                                        ) {
+                                            DropdownMenuItem(
+                                                text = { Text(if (uiState.isGridView) "Switch to List View" else "Switch to Grid View") },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        if (uiState.isGridView) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
+                                                        contentDescription = null
+                                                    )
+                                                },
+                                                onClick = {
+                                                    showOverflowMenu = false
+                                                    viewModel.toggleViewMode()
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Sort Files...") },
+                                                leadingIcon = { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null) },
+                                                onClick = {
+                                                    showOverflowMenu = false
+                                                    onSortClicked()
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Quick Bookmarks") },
+                                                leadingIcon = { Icon(Icons.Outlined.BookmarkBorder, contentDescription = null) },
+                                                onClick = {
+                                                    showOverflowMenu = false
+                                                    viewModel.openBookmarks()
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Bookmark Current Folder") },
+                                                leadingIcon = { Icon(Icons.Default.BookmarkAdd, contentDescription = null) },
+                                                onClick = {
+                                                    showOverflowMenu = false
+                                                    viewModel.bookmarkCurrentFolder()
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Deduplicator Tool") },
+                                                leadingIcon = { Icon(Icons.Outlined.CleaningServices, contentDescription = null) },
+                                                onClick = {
+                                                    showOverflowMenu = false
+                                                    viewModel.openDedupeSheet()
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Serve HTTP / WebDAV...") },
+                                                leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) },
+                                                onClick = {
+                                                    showOverflowMenu = false
+                                                    onOpenServeDialog()
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Refresh") },
+                                                leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) },
+                                                onClick = {
+                                                    showOverflowMenu = false
+                                                    viewModel.refresh()
+                                                }
+                                            )
+                                        }
                                     }
-                                    IconButton(onClick = { viewModel.openDedupeSheet() }) {
-                                        Icon(Icons.Outlined.CleaningServices, contentDescription = "Deduplicator", tint = MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Dedicated Accessible Full-Width Breadcrumbs Bar
+                            LazyRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                items(uiState.breadcrumbs) { crumb ->
+                                    val isCurrent = crumb.path == uiState.currentPath
+                                    Surface(
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = if (isCurrent) {
+                                            MaterialTheme.colorScheme.primaryContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                                        },
+                                        border = if (isCurrent) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null,
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .clickable {
+                                                viewModel.navigateToBreadcrumb(crumb.path)
+                                            }
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                        ) {
+                                            if (crumb == uiState.breadcrumbs.firstOrNull()) {
+                                                Icon(
+                                                    Icons.Default.Cloud,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(16.dp),
+                                                    tint = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                            }
+                                            Text(
+                                                text = crumb.title,
+                                                style = MaterialTheme.typography.labelMedium,
+                                                fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,
+                                                color = if (isCurrent) {
+                                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                                } else {
+                                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                                }
+                                            )
+                                        }
                                     }
-                                    IconButton(onClick = { viewModel.toggleViewMode() }) {
+
+                                    if (crumb != uiState.breadcrumbs.lastOrNull()) {
                                         Icon(
-                                            imageVector = if (uiState.isGridView) Icons.Default.ViewList else Icons.Default.GridView,
-                                            contentDescription = "Toggle Grid/List",
-                                            tint = MaterialTheme.colorScheme.onSurface
+                                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                                         )
-                                    }
-                                    IconButton(onClick = onSortClicked) {
-                                        Icon(Icons.Default.Sort, contentDescription = "Sort", tint = MaterialTheme.colorScheme.onSurface)
                                     }
                                 }
                             }
@@ -325,7 +446,6 @@ fun FileExplorerComposeScreen(
                                 GridFileCard(
                                     fileItem = fileItem,
                                     isSelected = isSelected,
-                                    isInSelectMode = isInSelectMode,
                                     showThumbnails = uiState.showThumbnails,
                                     thumbnailServerAuth = uiState.thumbnailServerAuth,
                                     thumbnailServerPort = uiState.thumbnailServerPort,
@@ -345,7 +465,6 @@ fun FileExplorerComposeScreen(
                                 ListFileCard(
                                     fileItem = fileItem,
                                     isSelected = isSelected,
-                                    isInSelectMode = isInSelectMode,
                                     showThumbnails = uiState.showThumbnails,
                                     thumbnailServerAuth = uiState.thumbnailServerAuth,
                                     thumbnailServerPort = uiState.thumbnailServerPort,
@@ -500,7 +619,7 @@ fun FileExplorerComposeScreen(
                                     Icon(Icons.Default.Download, contentDescription = "Download", tint = MaterialTheme.colorScheme.onSurface)
                                 }
                                 IconButton(onClick = { onMoveSelected(uiState.selectedItems.toList()) }) {
-                                    Icon(Icons.Default.DriveFileMove, contentDescription = "Move", tint = MaterialTheme.colorScheme.onSurface)
+                                    Icon(Icons.AutoMirrored.Filled.DriveFileMove, contentDescription = "Move", tint = MaterialTheme.colorScheme.onSurface)
                                 }
                                 IconButton(onClick = { viewModel.deleteSelected() }) {
                                     Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
@@ -606,7 +725,7 @@ fun FileExplorerComposeScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Icon(
-                        imageVector = if (file.isDir) Icons.Default.Folder else Icons.Default.InsertDriveFile,
+                        imageVector = if (file.isDir) Icons.Default.Folder else Icons.AutoMirrored.Filled.InsertDriveFile,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(32.dp)
@@ -691,7 +810,6 @@ fun FileExplorerComposeScreen(
 fun GridFileCard(
     fileItem: FileItem,
     isSelected: Boolean,
-    isInSelectMode: Boolean,
     showThumbnails: Boolean,
     thumbnailServerAuth: String,
     thumbnailServerPort: Int,
@@ -704,7 +822,7 @@ fun GridFileCard(
     val isPhoto = mimeType != null && mimeType.startsWith("image/")
 
     val thumbnailUrl = remember(fileItem, thumbnailServerAuth, thumbnailServerPort) {
-        if (showThumbnails && isPhoto && thumbnailServerPort > 0) {
+        if (showThumbnails && isPhoto && thumbnailServerPort > 0 && thumbnailServerAuth.isNotEmpty()) {
             "http://127.0.0.1:$thumbnailServerPort/$thumbnailServerAuth/${fileItem.remote.name}/${fileItem.path}"
         } else null
     }
@@ -764,7 +882,7 @@ fun GridFileCard(
                     )
                 } else {
                     Icon(
-                        imageVector = Icons.Default.InsertDriveFile,
+                        imageVector = Icons.AutoMirrored.Filled.InsertDriveFile,
                         contentDescription = "File",
                         tint = MaterialTheme.colorScheme.secondary,
                         modifier = Modifier.size(48.dp)
@@ -839,7 +957,6 @@ fun GridFileCard(
 fun ListFileCard(
     fileItem: FileItem,
     isSelected: Boolean,
-    isInSelectMode: Boolean,
     showThumbnails: Boolean,
     thumbnailServerAuth: String,
     thumbnailServerPort: Int,
@@ -852,7 +969,7 @@ fun ListFileCard(
     val isPhoto = mimeType != null && mimeType.startsWith("image/")
 
     val thumbnailUrl = remember(fileItem, thumbnailServerAuth, thumbnailServerPort) {
-        if (showThumbnails && isPhoto && thumbnailServerPort > 0) {
+        if (showThumbnails && isPhoto && thumbnailServerPort > 0 && thumbnailServerAuth.isNotEmpty()) {
             "http://127.0.0.1:$thumbnailServerPort/$thumbnailServerAuth/${fileItem.remote.name}/${fileItem.path}"
         } else null
     }
@@ -911,7 +1028,7 @@ fun ListFileCard(
                     )
                 } else {
                     Icon(
-                        imageVector = Icons.Default.InsertDriveFile,
+                        imageVector = Icons.AutoMirrored.Filled.InsertDriveFile,
                         contentDescription = "File",
                         tint = MaterialTheme.colorScheme.secondary,
                         modifier = Modifier.size(28.dp)

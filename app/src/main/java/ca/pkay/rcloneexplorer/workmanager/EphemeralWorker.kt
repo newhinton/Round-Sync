@@ -419,68 +419,50 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
             }
         }
 
-    private fun getFileitemFromParcel(key: String): FileItem {
-
-        val sourceParcelByteArray = inputData.getByteArray(key)
-        if(sourceParcelByteArray == null){
-            log("No valid target was passed!")
-            throw NullPointerException("The passed FileItem was null. We cannot continue!")
-        }
-
+    private fun getFileitemFromParcel(key: String): FileItem? {
+        val sourceParcelByteArray = inputData.getByteArray(key) ?: return null
         val parcel = Parcel.obtain()
-        try {
+        return try {
             parcel.unmarshall(sourceParcelByteArray, 0, sourceParcelByteArray.size)
             parcel.setDataPosition(0)
-            return FileItem.CREATOR.createFromParcel(parcel)
+            FileItem.CREATOR.createFromParcel(parcel)
+        } catch (e: Exception) {
+            log("Error unmarshalling FileItem: ${e.message}")
+            null
         } finally {
             parcel.recycle()
         }
     }
 
     private fun getRemoteitemFromParcel(key: String): RemoteItem? {
-
         val sourceParcelByteArray = inputData.getByteArray(key)
-        if(sourceParcelByteArray == null){
+        if (sourceParcelByteArray == null) {
             log("No valid target was passed!")
             return null
         }
 
         val parcel = Parcel.obtain()
-        try {
+        return try {
             parcel.unmarshall(sourceParcelByteArray, 0, sourceParcelByteArray.size)
             parcel.setDataPosition(0)
-            return RemoteItem.CREATOR.createFromParcel(parcel)
+            RemoteItem.CREATOR.createFromParcel(parcel)
         } finally {
             parcel.recycle()
         }
     }
 
     private fun getCurrentFile(): FileItem {
-        return when(Type.valueOf(inputData.getString(EPHEMERAL_TYPE)?:Type.DOWNLOAD.name)){
-            Type.DOWNLOAD -> {
-                getFileitemFromParcel(DOWNLOAD_SOURCE)
-            }
+        val fallback = FileItem(RemoteItem("", ""), "", "", 0L, "modTime", "mimeType", false, false)
+        return when (Type.valueOf(inputData.getString(EPHEMERAL_TYPE) ?: Type.DOWNLOAD.name)) {
+            Type.DOWNLOAD -> getFileitemFromParcel(DOWNLOAD_SOURCE) ?: fallback
             Type.UPLOAD -> {
                 val pathAndName = inputData.getString(UPLOAD_FILE) ?: ""
-                val name = pathAndName.substring(pathAndName.lastIndexOf("/")+1, pathAndName.length)
-                val path = pathAndName.substring(0, pathAndName.lastIndexOf("/")+1)
-                // TODO: Make this work properly! All the params are guessed!
-                FileItem(
-                        RemoteItem("", ""),
-                        path,
-                        name,
-                        0L,
-                        "modTime",
-                        "mimeType",
-                        false,
-                        false)
+                val name = pathAndName.substring(pathAndName.lastIndexOf("/") + 1)
+                val path = pathAndName.substring(0, pathAndName.lastIndexOf("/") + 1)
+                FileItem(RemoteItem("", ""), path, name, 0L, "modTime", "mimeType", false, false)
             }
-            Type.MOVE -> {
-                getFileitemFromParcel(MOVE_FILE)
-            }
-            Type.DELETE -> {
-                getFileitemFromParcel(DELETE_FILE)
-            }
+            Type.MOVE -> getFileitemFromParcel(MOVE_FILE) ?: fallback
+            Type.DELETE -> getFileitemFromParcel(DELETE_FILE) ?: fallback
         }
     }
 }

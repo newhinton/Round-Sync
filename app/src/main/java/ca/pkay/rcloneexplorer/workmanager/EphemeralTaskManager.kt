@@ -58,7 +58,7 @@ class EphemeralTaskManager(private var mContext: Context) {
             remote: RemoteItem,
             currentPath: String,
             file: FileItem,
-            readablePath: String
+            _readablePath: String = ""
         ) {
 
             MoveWorkerNotification(context).generateChannels()
@@ -76,7 +76,7 @@ class EphemeralTaskManager(private var mContext: Context) {
             context: Context,
             remote: RemoteItem,
             file: FileItem,
-            currentPath: String
+            _currentPath: String = ""
         ) {
 
             DeleteWorkerNotification(context).generateChannels()

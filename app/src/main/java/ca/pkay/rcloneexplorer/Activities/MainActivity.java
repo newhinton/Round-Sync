@@ -67,6 +67,7 @@ import ca.pkay.rcloneexplorer.Fragments.FileExplorerComposeFragment;
 import ca.pkay.rcloneexplorer.Fragments.FileExplorerFragment;
 import ca.pkay.rcloneexplorer.Fragments.LogFragment;
 import ca.pkay.rcloneexplorer.Fragments.PermissionFragment;
+import ca.pkay.rcloneexplorer.Fragments.RemotesComposeFragment;
 import ca.pkay.rcloneexplorer.Fragments.RemotesFragment;
 import ca.pkay.rcloneexplorer.Fragments.TasksFragment;
 import ca.pkay.rcloneexplorer.Fragments.TriggerFragment;
@@ -487,7 +488,7 @@ public class MainActivity extends AppCompatActivity
     }
 
     public void startRemotesFragment() {
-        fragment = RemotesFragment.newInstance();
+        fragment = RemotesComposeFragment.newInstance();
         FragmentManager fragmentManager = getSupportFragmentManager();
 
         for (int i = 0; i < fragmentManager.getBackStackEntryCount(); i++) {

@@ -198,15 +198,16 @@ class GeneralPreferencesFragment : PreferenceFragmentCompat() {
 
     private fun setAppShortcuts(
         remoteItems: ArrayList<RemoteItem>,
-        appShortcuts: ArrayList<String>
+        initialShortcuts: ArrayList<String>
     ) {
-        var appShortcuts = appShortcuts
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) {
             return
         }
 
-        if (appShortcuts.size > 4) {
-            appShortcuts = ArrayList(appShortcuts.subList(0, 4))
+        val appShortcuts = if (initialShortcuts.size > 4) {
+            ArrayList(initialShortcuts.subList(0, 4))
+        } else {
+            initialShortcuts
         }
 
         val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(
@@ -215,8 +216,8 @@ class GeneralPreferencesFragment : PreferenceFragmentCompat() {
         val editor = sharedPreferences.edit()
         val savedAppShortcutIds = sharedPreferences.getStringSet(
             getString(R.string.shared_preferences_app_shortcuts),
-            HashSet()
-        )
+            emptySet()
+        ) ?: emptySet()
         val updatedAppShortcutIDds: MutableSet<String> = HashSet(savedAppShortcutIds)
 
         // Remove app shortcuts first
@@ -230,7 +231,7 @@ class GeneralPreferencesFragment : PreferenceFragmentCompat() {
             AppShortcutsHelper.removeAppShortcutIds(context, removedIds)
         }
 
-        updatedAppShortcutIDds.removeAll(removedIds)
+        updatedAppShortcutIDds.removeAll(removedIds.toSet())
 
         // add new app shortcuts
         for (appShortcut in appShortcuts) {

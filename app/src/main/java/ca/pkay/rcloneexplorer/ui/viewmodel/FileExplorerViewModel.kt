@@ -96,6 +96,8 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
                 it.copy(
                     isLoading = true,
                     currentPath = path,
+                    rawFiles = emptyList(),
+                    displayFiles = emptyList(),
                     breadcrumbs = generateBreadcrumbs(currentRemote.name, path),
                     searchQuery = if (clearSearch) "" else it.searchQuery,
                     isSearching = if (clearSearch) false else it.isSearching,

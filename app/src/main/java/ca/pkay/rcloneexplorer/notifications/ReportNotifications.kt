@@ -103,7 +103,6 @@ class ReportNotifications(var mContext: Context) {
 
 
     fun lastFailedNotification(id: Int) {
-        val prefMap = runBlocking { mContext.dataStore.data.first().asMap() }
         runBlocking {
             mContext.dataStore.edit { settings ->
                 settings[NOTIFICATION_LAST_FAIL_ID_PREFERENCE] =  id

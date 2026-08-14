@@ -157,10 +157,10 @@ class DynamicRemoteConfigFragment(private val mProviderTitle: String, private va
     }
 
     fun cancelCurrentStep() {
-        if(isEditConfig()){
+        if (isEditConfig()) {
             activity?.finish()
         } else {
-            activity?.onBackPressed()
+            activity?.onBackPressedDispatcher?.onBackPressed()
         }
     }
 
