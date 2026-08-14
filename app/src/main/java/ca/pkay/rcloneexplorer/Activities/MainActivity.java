@@ -66,7 +66,6 @@ import ca.pkay.rcloneexplorer.Dialogs.InputDialog;
 import ca.pkay.rcloneexplorer.Dialogs.LoadingDialog;
 import ca.pkay.rcloneexplorer.Fragments.BookmarksComposeFragment;
 import ca.pkay.rcloneexplorer.Fragments.FileExplorerComposeFragment;
-import ca.pkay.rcloneexplorer.Fragments.FileExplorerFragment;
 import ca.pkay.rcloneexplorer.Fragments.LogFragment;
 import ca.pkay.rcloneexplorer.Fragments.PermissionFragment;
 import ca.pkay.rcloneexplorer.Fragments.RemotesComposeFragment;
@@ -128,21 +127,13 @@ public class MainActivity extends AppCompatActivity
         if(!allPermissionsGranted || !completedIntroOnce) {
             startActivity(new Intent(this, OnboardingActivity.class));
             finish();
+            return;
         }
 
         context = this;
         drawerPinnedRemoteIds = new HashMap<>();
         availableDrawerPinnedRemoteId = 2;
         setContentView(R.layout.activity_main);
-        Toolbar toolbar = findViewById(R.id.toolbar);
-        if (toolbar != null) {
-            setSupportActionBar(toolbar);
-            ActionBar actionbar = getSupportActionBar();
-            if (actionbar != null) {
-                actionbar.setDisplayHomeAsUpEnabled(true);
-                actionbar.setHomeAsUpIndicator(R.drawable.ic_menu);
-            }
-        }
 
         getSupportFragmentManager().addOnBackStackChangedListener(() -> {
             updateBottomNavigation();
@@ -182,7 +173,7 @@ public class MainActivity extends AppCompatActivity
             askForConfigPassword();
         } else if (savedInstanceState != null) {
             fragment = getSupportFragmentManager().findFragmentByTag(FILE_EXPLORER_FRAGMENT_TAG);
-            if (fragment instanceof FileExplorerFragment) {
+            if (fragment instanceof FileExplorerComposeFragment) {
                 FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
                 transaction.replace(R.id.flFragment, fragment, FILE_EXPLORER_FRAGMENT_TAG);
                 transaction.commit();
@@ -258,7 +249,7 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == android.R.id.home && !(fragment instanceof FileExplorerFragment)) {
+        if (item.getItemId() == android.R.id.home && !(fragment instanceof FileExplorerComposeFragment)) {
             drawer.openDrawer(GravityCompat.START);
             return true;
         } else {
@@ -297,7 +288,7 @@ public class MainActivity extends AppCompatActivity
                     Toasty.error(this, getString(R.string.error_exporting_config_file), Toast.LENGTH_SHORT, true).show();
                 }
             }
-        } else if (requestCode == FileExplorerFragment.STREAMING_INTENT_RESULT) {
+        } else if (requestCode == FileExplorerComposeFragment.STREAMING_INTENT_RESULT) {
             Intent serveIntent = new Intent(this, StreamingService.class);
             context.stopService(serveIntent);
         }
@@ -336,10 +327,6 @@ public class MainActivity extends AppCompatActivity
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
         boolean superOnBackPressed = true;
 
-        // Always hide search icon when fragments go back
-        View searchButton = this.findViewById(R.id.searchButton);
-        searchButton.setVisibility(View.INVISIBLE);
-
         if (drawer.isDrawerOpen(GravityCompat.START)) {
             drawer.closeDrawer(GravityCompat.START);
         } else if (fragment != null) {
@@ -349,13 +336,7 @@ public class MainActivity extends AppCompatActivity
                 } else {
                     fragment = null;
                 }
-            } else if (fragment instanceof FileExplorerFragment) {
-                if (((FileExplorerFragment) fragment).onBackButtonPressed()) {
-                    return;
-                } else {
-                    fragment = null;
-                }
-            } else if (fragment instanceof TasksFragment) {
+            } else if (fragment instanceof TasksComposeFragment || fragment instanceof TasksFragment) {
                 startRemotesFragment();
                 superOnBackPressed = false;
             } else if (fragment instanceof TriggerFragment) {
@@ -371,11 +352,6 @@ public class MainActivity extends AppCompatActivity
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         // Handle navigation view item clicks here.
-
-        // Always hide search icon when fragments go back
-        View searchButton = this.findViewById(R.id.searchButton);
-        searchButton.setVisibility(View.INVISIBLE);
-
         int id = item.getItemId();
         navigationView.setCheckedItem(id);
         if (drawerPinnedRemoteIds.containsKey(id)) {
@@ -510,7 +486,7 @@ public class MainActivity extends AppCompatActivity
     public void updateBottomNavigation() {
         if (bottomNavComposeView == null) return;
         Fragment currentFrag = getSupportFragmentManager().findFragmentById(R.id.flFragment);
-        boolean isFileExplorer = currentFrag instanceof FileExplorerComposeFragment || currentFrag instanceof FileExplorerFragment;
+        boolean isFileExplorer = currentFrag instanceof FileExplorerComposeFragment;
 
         BottomNavBridge.setupBottomNav(
             bottomNavComposeView,
@@ -711,7 +687,7 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void startPinnedRemote(RemoteItem remoteItem) {
-        if (fragment != null && (fragment instanceof FileExplorerFragment || fragment instanceof FileExplorerComposeFragment)) {
+        if (fragment != null && fragment instanceof FileExplorerComposeFragment) {
             FragmentManager fragmentManager = getSupportFragmentManager();
 
             // this is the case when remote gets started from a shortcut

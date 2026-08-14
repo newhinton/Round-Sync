@@ -5,44 +5,6 @@
     android:layout_height="match_parent"
     tools:context="ca.pkay.rcloneexplorer.Activities.MainActivity">
 
-    <FrameLayout
-        android:id="@+id/appBar"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:visibility="gone">
-
-        <View
-            android:id="@+id/searchButton"
-            android:layout_width="0dp"
-            android:layout_height="0dp" />
-
-        <View
-            android:id="@+id/search_clear"
-            android:layout_width="0dp"
-            android:layout_height="0dp" />
-
-        <EditText
-            android:id="@+id/search_field"
-            android:layout_width="0dp"
-            android:layout_height="0dp" />
-
-        <FrameLayout
-            android:id="@+id/search_bar"
-            android:layout_width="0dp"
-            android:layout_height="0dp" />
-
-        <FrameLayout
-            android:id="@+id/breadcrumb_view"
-            android:layout_width="0dp"
-            android:layout_height="0dp" />
-
-        <FrameLayout
-            android:id="@+id/toolbar"
-            android:layout_width="0dp"
-            android:layout_height="0dp" />
-
-    </FrameLayout>
-
     <include layout="@layout/content_main" />
 
     <include layout="@layout/locked_config" />

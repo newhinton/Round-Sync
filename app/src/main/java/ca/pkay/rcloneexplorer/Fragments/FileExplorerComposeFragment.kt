@@ -44,6 +44,7 @@ class FileExplorerComposeFragment : Fragment(), SortDialog.OnClickListener, Serv
         private const val ARG_REMOTE = "remote_param"
         private const val FILE_PICKER_UPLOAD_RESULT = 186
         private const val FILE_PICKER_DOWNLOAD_RESULT = 204
+        const val STREAMING_INTENT_RESULT = 168
 
         @JvmStatic
         fun newInstance(remoteItem: RemoteItem): FileExplorerComposeFragment {
