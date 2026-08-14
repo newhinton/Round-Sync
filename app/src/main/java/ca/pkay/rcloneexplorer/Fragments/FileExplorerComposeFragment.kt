@@ -101,21 +101,11 @@ class FileExplorerComposeFragment : Fragment(), SortDialog.OnClickListener, Serv
     ): View {
         remote?.let { viewModel.initRemote(it) }
 
-        // Start/Stop thumbnail service on-demand only when directory metadata has finished loading,
-        // remote is a cloud remote, and the folder contains images
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.uiState
-                .map { !it.isLoading && it.hasImagesInFolder && it.showThumbnails }
-                .distinctUntilChanged()
-                .collect { needsThumbnails ->
-                    val currentRemote = remote
-                    val isLocalOrSaf = currentRemote != null && (currentRemote.isRemoteType(RemoteItem.LOCAL, RemoteItem.SAFW) || currentRemote.isPathAlias)
-                    if (needsThumbnails && !isLocalOrSaf) {
-                        startThumbnailService()
-                    } else {
-                        stopThumbnailService()
-                    }
-                }
+        // Start thumbnail service when remote is a cloud remote and thumbnails are enabled
+        val currentRemote = remote
+        val isCloudRemote = currentRemote != null && !currentRemote.isRemoteType(RemoteItem.LOCAL, RemoteItem.SAFW) && !currentRemote.isPathAlias
+        if (isCloudRemote) {
+            startThumbnailService()
         }
 
         return ComposeView(requireContext()).apply {
