@@ -92,7 +92,7 @@ class OnboardingActivity : AppIntro2(), SlideLeaveInterface, SlideSwitchCallback
                 IdentifiableAppIntroFragment.createInstance(
                     title = getString(R.string.intro_welcome_title),
                     description = getString(R.string.intro_welcome_description),
-                    imageDrawable = R.drawable.undraw_hello,
+                    imageDrawable = R.drawable.app_logo,
                     backgroundColorRes = color,
                     id = SLIDE_ID_WELCOME,
                     callback = this

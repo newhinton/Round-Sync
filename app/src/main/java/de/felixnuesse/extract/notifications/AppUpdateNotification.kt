@@ -30,7 +30,8 @@ class AppUpdateNotification(private var mContext: Context) {
     fun showNotification(version: String) {
         createNotificationChannel()
         val builder = NotificationCompat.Builder(mContext, NOTIFICATION_CHANNEL_ID)
-            .setSmallIcon(R.drawable.appicon)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setLargeIcon(android.graphics.BitmapFactory.decodeResource(mContext.resources, R.drawable.app_logo))
             .setContentTitle(mContext.getString(R.string.app_update_notification_title))
             .setContentText(mContext.getString(R.string.app_update_notification_description, version))
             .setPriority(NotificationCompat.PRIORITY_LOW)

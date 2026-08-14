@@ -45,6 +45,11 @@
     <string name="select">Select</string>
     <string name="app_icon">App Icon</string>
     <string name="check_for_updates">Check for updates</string>
+    <string name="pref_thumbnail_cache_budget_title">Total Thumbnail Cache Size</string>
+    <string name="pref_thumbnail_cache_budget_summary">Maximum storage limit for cached thumbnails (auto-cleaned when reached)</string>
+    <string name="pref_clear_thumbnail_cache_title">Clear Thumbnail Cache</string>
+    <string name="pref_clear_thumbnail_cache_summary">Delete all cached thumbnails to free up storage</string>
+    <string name="thumbnail_cache_cleared">Thumbnail cache cleared successfully</string>
     <string name="github_app_url" translatable="false">https://github.com/neubofy/Remote-Manager</string>
     <string name="github_issue_url" translatable="false">https://github.com/neubofy/Remote-Manager/issues/new</string>
     <string name="github_author_url" translatable="false">https://github.com/pawanwashudev-official</string>
@@ -121,12 +126,12 @@
     <string name="smashicons" translatable="false">Smashicons</string>
     <string name="from">from</string>
     <string name="flaticon" translatable="false">Flaticon</string>
-    <string name="intro_welcome_title">Welcome!</string>
-    <string name="intro_welcome_description">Round Sync is a file management tool that can handle files stored on your device or in the cloud. For more questions, visit github.com/newhinton/Round-Sync.</string>
-    <string name="intro_storage_title">Storage access</string>
-    <string name="intro_storage_description">Round Sync relies on rclone and needs your permission to access all files. Please grant storage access when prompted, otherwise the application will not work properly.</string>
-    <string name="intro_community_title">Community</string>
-    <string name="intro_community_description">Round Sync is a community driven project. To contribute and improve the application, you can enable anonymous bug reporting. For more information, please visit felixnuesse.de/privacy-roundsync.</string>
+    <string name="intro_welcome_title">Welcome to Remote Manager!</string>
+    <string name="intro_welcome_description">Remote Manager is a modern, lightweight, and secure cloud storage manager for Android, powered by Rclone.</string>
+    <string name="intro_storage_title">Storage Access</string>
+    <string name="intro_storage_description">Remote Manager needs permission to access files on your device storage to transfer, move, and synchronize files safely.</string>
+    <string name="intro_community_title">Open Source &amp; Secure</string>
+    <string name="intro_community_description">Remote Manager is built for privacy, security, and performance. Visit github.com/neubofy/Remote-Manager for updates and features.</string>
 
     <string name="file_access">File Access</string>
     <string name="look_and_feel">Look and Feel</string>
@@ -275,15 +280,15 @@
     <string name="config_use_external_question">Import found configuration?</string>
     <string name="config_import_external_explain">Automatically import from %1$s</string>
     <string name="pref_header_file_access">File Access</string>
-    <string name="pref_saf_enable">Enable SAF Client Preview</string>
-    <string name="pref_saf_summary">EXPERIMENTAL: Access SD cards and other external storage devices</string>
+    <string name="pref_saf_enable">Enable Storage Access Framework (SAF)</string>
+    <string name="pref_saf_summary">Access SD cards, internal storage, USB drives, and external storage via Android Storage Access Framework</string>
     <string name="pref_saf_add_permission">Add Storage</string>
     <string name="pref_saf_permission_label_primary">Internal Storage (%1$s)</string>
     <string name="pref_saf_permission_label_external">External Storage (%1$s)</string>
-    <string name="pref_saf_virtual_content_provider_enable">Enable Content Provider Preview</string>
-    <string name="pref_saf_virtual_content_provider_summary">EXPERIMENTAL: Allows other apps to work with rclone remotes</string>
-    <string name="pref_saf_vcp_local_pretend_enable">Declare as local provider</string>
-    <string name="pref_saf_vcp_local_pretend_summary">Allows some apps such as Google Docs to access files</string>
+    <string name="pref_saf_virtual_content_provider_enable">Virtual Storage Provider</string>
+    <string name="pref_saf_virtual_content_provider_summary">Integrates with Android Files app to access your remotes from other applications</string>
+    <string name="pref_saf_vcp_local_pretend_enable">Declare as Local Provider</string>
+    <string name="pref_saf_vcp_local_pretend_summary">Allows media players and document editors to access your remote cloud storage directly</string>
     <string name="pref_saf_vcp_grant_all_enable">Allow all apps to access your remotes</string>
     <string name="pref_saf_vcp_grant_all_summary">WARNING: Allowing any app to access your remotes could result in unauthorized access to your data.</string>
     <string name="saf_uri_permission_added">Storage Added</string>

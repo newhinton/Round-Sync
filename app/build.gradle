@@ -40,6 +40,7 @@ android {
         buildConfigField "java.lang.String", "CLI", System.getenv('RCX_BUILD_CLI') ? System.getenv('RCX_BUILD_CLI') : "\"c03129b6-b09f-9cb4-8fcd-7f143b8f94ef\""
         buildConfigField "java.lang.String", "VCP_AUTHORITY", "\"" + applicationId + ".vcp\"";
         buildConfigField "long", "BUILD_TIMESTAMP", "${System.currentTimeMillis()}L"
+        buildConfigField "java.lang.String", "RCLONE_VERSION", "\"" + (project.findProperty('de.felixnuesse.extract.rCloneVersion') ?: 'unknown') + "\""
         setProperty("archivesBaseName",  "RemoteManager_v" + versionName + "_" + System.currentTimeMillis())
 
         externalNativeBuild {
@@ -56,6 +57,11 @@ android {
     buildFeatures {
         viewBinding true
         buildConfig true
+        compose true
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.8"
     }
 
     buildTypes {
@@ -193,6 +199,16 @@ dependencies {
     // Splash screen
     implementation("androidx.core:core-splashscreen:1.0.1")
 
-    //Updates
-    implementation 'com.github.Sharkaboi:AppUpdateChecker:v1.0.5'
+    // Jetpack Compose
+    implementation platform('androidx.compose:compose-bom:2024.02.00')
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.ui:ui-graphics'
+    implementation 'androidx.compose.ui:ui-tooling-preview'
+    implementation 'androidx.compose.material3:material3'
+    implementation 'androidx.compose.material:material-icons-extended'
+    implementation 'androidx.activity:activity-compose:1.8.2'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0'
+
+    // App Updater (matching Watch app)
+    implementation 'io.github.azhon:appupdate:4.3.6'
 }

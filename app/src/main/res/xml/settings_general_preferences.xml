@@ -18,10 +18,23 @@
             app:title="@string/show_thumbnails" />
 
         <de.felixnuesse.extract.settings.preferences.FilesizePreference
-            android:defaultValue="1048576"
+            android:defaultValue="26214400"
             android:key="@string/pref_key_thumbnail_size_limit"
             android:title="@string/pref_thumbnails_dlg_title"
             app:dependency="@string/pref_key_show_thumbnails" />
+
+        <de.felixnuesse.extract.settings.preferences.FilesizePreference
+            android:defaultValue="104857600"
+            android:key="@string/pref_key_thumbnail_cache_budget"
+            android:title="@string/pref_thumbnail_cache_budget_title"
+            app:dependency="@string/pref_key_show_thumbnails"
+            app:summary="@string/pref_thumbnail_cache_budget_summary" />
+
+        <Preference
+            android:key="@string/pref_key_clear_thumbnail_cache"
+            android:title="@string/pref_clear_thumbnail_cache_title"
+            app:dependency="@string/pref_key_show_thumbnails"
+            app:summary="@string/pref_clear_thumbnail_cache_summary" />
 
     </PreferenceCategory>
 

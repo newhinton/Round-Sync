@@ -16,9 +16,11 @@ import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.DecodeFormat;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.load.model.GlideUrl;
 import com.bumptech.glide.request.RequestOptions;
+import com.bumptech.glide.signature.ObjectKey;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -106,10 +108,13 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
             boolean localLoad = item.getRemote().getType() == RemoteItem.SAFW;
             String mimeType = item.getMimeType();
             if ((mimeType != null && (mimeType.startsWith("image/") || mimeType.startsWith("video/"))) && item.getSize() <= sizeLimit) {
+                String cacheSignature = item.getRemote().getName() + ":" + item.getPath() + ":" + item.getModTime() + ":" + item.getSize();
                 RequestOptions glideOption = new RequestOptions()
                         .centerCrop()
                         .override(180, 180)
-                        .diskCacheStrategy(DiskCacheStrategy.ALL)
+                        .format(DecodeFormat.PREFER_RGB_565)
+                        .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
+                        .signature(new ObjectKey(cacheSignature))
                         .placeholder(R.drawable.ic_file)
                         .error(R.drawable.ic_file);
                 if(localLoad) {
