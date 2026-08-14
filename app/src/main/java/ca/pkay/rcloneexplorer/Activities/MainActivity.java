@@ -63,6 +63,7 @@ import ca.pkay.rcloneexplorer.Database.json.SharedPreferencesBackup;
 import ca.pkay.rcloneexplorer.Dialogs.Dialogs;
 import ca.pkay.rcloneexplorer.Dialogs.InputDialog;
 import ca.pkay.rcloneexplorer.Dialogs.LoadingDialog;
+import ca.pkay.rcloneexplorer.Fragments.FileExplorerComposeFragment;
 import ca.pkay.rcloneexplorer.Fragments.FileExplorerFragment;
 import ca.pkay.rcloneexplorer.Fragments.LogFragment;
 import ca.pkay.rcloneexplorer.Fragments.PermissionFragment;
@@ -326,18 +327,24 @@ public class MainActivity extends AppCompatActivity
         if (drawer.isDrawerOpen(GravityCompat.START)) {
             drawer.closeDrawer(GravityCompat.START);
         } else if (fragment != null) {
-            if(fragment instanceof FileExplorerFragment){
+            if (fragment instanceof FileExplorerComposeFragment) {
+                if (((FileExplorerComposeFragment) fragment).onBackButtonPressed()) {
+                    return;
+                } else {
+                    fragment = null;
+                }
+            } else if (fragment instanceof FileExplorerFragment) {
                 if (((FileExplorerFragment) fragment).onBackButtonPressed()) {
                     return;
                 } else {
                     fragment = null;
                 }
-            } else if(fragment instanceof TasksFragment){
+            } else if (fragment instanceof TasksFragment) {
                 startRemotesFragment();
-                superOnBackPressed=false;
-            } else if(fragment instanceof TriggerFragment){
+                superOnBackPressed = false;
+            } else if (fragment instanceof TriggerFragment) {
                 startRemotesFragment();
-                superOnBackPressed=false;
+                superOnBackPressed = false;
             }
         }
         if(superOnBackPressed){
@@ -591,7 +598,7 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void startRemote(RemoteItem remote, boolean addToBackStack) {
-        fragment = FileExplorerFragment.newInstance(remote);
+        fragment = FileExplorerComposeFragment.newInstance(remote);
         FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
         transaction.replace(R.id.flFragment, fragment, FILE_EXPLORER_FRAGMENT_TAG);
         if (addToBackStack) {
@@ -604,7 +611,7 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void startPinnedRemote(RemoteItem remoteItem) {
-        if (fragment != null && fragment instanceof FileExplorerFragment) {
+        if (fragment != null && (fragment instanceof FileExplorerFragment || fragment instanceof FileExplorerComposeFragment)) {
             FragmentManager fragmentManager = getSupportFragmentManager();
 
             // this is the case when remote gets started from a shortcut

@@ -3,15 +3,16 @@ package ca.pkay.rcloneexplorer.ui
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -24,17 +25,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ca.pkay.rcloneexplorer.Items.FileItem
-import ca.pkay.rcloneexplorer.R
+import ca.pkay.rcloneexplorer.data.*
+import ca.pkay.rcloneexplorer.ui.viewmodel.FileExplorerUiState
+import ca.pkay.rcloneexplorer.ui.viewmodel.FileExplorerViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 
@@ -46,335 +47,640 @@ data class BreadcrumbItem(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun FileExplorerComposeScreen(
-    remoteName: String,
-    currentPath: String,
-    breadcrumbs: List<BreadcrumbItem>,
-    files: List<FileItem>,
-    selectedItems: Set<FileItem>,
-    isGridView: Boolean,
-    isSearching: Boolean,
-    searchQuery: String,
-    isLoading: Boolean,
-    showThumbnails: Boolean,
-    thumbnailServerAuth: String,
-    thumbnailServerPort: Int,
-    onToggleViewMode: () -> Unit,
-    onSearchQueryChanged: (String) -> Unit,
-    onToggleSearch: () -> Unit,
-    onBreadcrumbClicked: (String) -> Unit,
+    viewModel: FileExplorerViewModel,
     onFileClicked: (FileItem) -> Unit,
-    onDirectoryClicked: (FileItem) -> Unit,
-    onItemLongClicked: (FileItem) -> Unit,
-    onItemOptionsClicked: (FileItem) -> Unit,
-    onSelectAll: () -> Unit,
-    onDeselectAll: () -> Unit,
-    onDownloadSelected: () -> Unit,
-    onMoveSelected: () -> Unit,
-    onRenameSelected: () -> Unit,
-    onDeleteSelected: () -> Unit,
-    onCreateNewFolder: () -> Unit,
+    onFilePropertiesClicked: (FileItem) -> Unit,
+    onFileLinkShareClicked: (FileItem) -> Unit,
     onUploadFiles: () -> Unit,
-    onRefresh: () -> Unit,
-    onSortClicked: () -> Unit
+    onDownloadSelected: (List<FileItem>) -> Unit,
+    onMoveSelected: (List<FileItem>) -> Unit,
+    onSortClicked: () -> Unit,
+    onOpenServeDialog: () -> Unit
 ) {
-    val isInSelectMode = selectedItems.isNotEmpty()
+    val uiState by viewModel.uiState.collectAsState()
+    val clipboard by viewModel.clipboard.collectAsState()
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Glassmorphic Top Bar & Breadcrumbs
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-                tonalElevation = 4.dp
-            ) {
-                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)) {
-                    // Search Bar or Breadcrumb Row
-                    if (isSearching) {
-                        OutlinedTextField(
-                            value = searchQuery,
-                            onValueChange = onSearchQueryChanged,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(56.dp),
-                            placeholder = { Text("Search files & folders...") },
-                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-                            trailingIcon = {
-                                IconButton(onClick = onToggleSearch) {
-                                    Icon(Icons.Default.Close, contentDescription = "Close search")
-                                }
-                            },
-                            singleLine = true,
-                            shape = RoundedCornerShape(16.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = Color.Transparent
-                            )
-                        )
-                    } else {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            // Breadcrumb chips
-                            LazyRow(
-                                modifier = Modifier.weight(1f),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                items(breadcrumbs) { crumb ->
-                                    Surface(
-                                        shape = RoundedCornerShape(12.dp),
-                                        color = if (crumb.path == currentPath) {
-                                            MaterialTheme.colorScheme.primaryContainer
-                                        } else {
-                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-                                        },
-                                        modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable {
-                                            onBreadcrumbClicked(crumb.path)
+    val snackbarHostState = remember { SnackbarHostState() }
+    var itemForOptionSheet by remember { mutableStateOf<FileItem?>(null) }
+    var showFabMenu by remember { mutableStateOf(false) }
+
+    LaunchedEffect(uiState.infoMessage) {
+        uiState.infoMessage?.let { msg ->
+            snackbarHostState.showSnackbar(msg)
+            viewModel.clearInfoMessage()
+        }
+    }
+
+    val isInSelectMode = uiState.selectedItems.isNotEmpty()
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Glassmorphic Top Bar & Breadcrumbs
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                    tonalElevation = 4.dp
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        // Search Bar or Breadcrumb Row
+                        if (uiState.isSearching) {
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                OutlinedTextField(
+                                    value = uiState.searchQuery,
+                                    onValueChange = { viewModel.onSearchQueryChanged(it) },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(54.dp),
+                                    placeholder = { Text("Search files & folders...") },
+                                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+                                    trailingIcon = {
+                                        IconButton(onClick = { viewModel.toggleSearch() }) {
+                                            Icon(Icons.Default.Close, contentDescription = "Close search")
                                         }
-                                    ) {
-                                        Text(
-                                            text = crumb.title,
-                                            style = MaterialTheme.typography.labelMedium,
-                                            fontWeight = if (crumb.path == currentPath) FontWeight.Bold else FontWeight.Medium,
-                                            color = if (crumb.path == currentPath) {
-                                                MaterialTheme.colorScheme.onPrimaryContainer
-                                            } else {
-                                                MaterialTheme.colorScheme.onSurfaceVariant
-                                            },
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                    },
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                        unfocusedBorderColor = Color.Transparent
+                                    )
+                                )
+
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                // File Type Filter Chips
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    items(FileTypeFilter.values()) { filter ->
+                                        FilterChip(
+                                            selected = uiState.typeFilter == filter,
+                                            onClick = { viewModel.onTypeFilterChanged(filter) },
+                                            label = { Text(filter.displayName) },
+                                            shape = RoundedCornerShape(12.dp)
                                         )
                                     }
                                 }
                             }
-
-                            // Action Icons
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(onClick = onToggleSearch) {
-                                    Icon(Icons.Default.Search, contentDescription = "Search", tint = MaterialTheme.colorScheme.onSurface)
+                        } else {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                // Breadcrumb chips
+                                LazyRow(
+                                    modifier = Modifier.weight(1f),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    items(uiState.breadcrumbs) { crumb ->
+                                        Surface(
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = if (crumb.path == uiState.currentPath) {
+                                                MaterialTheme.colorScheme.primaryContainer
+                                            } else {
+                                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                                            },
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .clickable {
+                                                    viewModel.navigateToBreadcrumb(crumb.path)
+                                                }
+                                        ) {
+                                            Text(
+                                                text = crumb.title,
+                                                style = MaterialTheme.typography.labelMedium,
+                                                fontWeight = if (crumb.path == uiState.currentPath) FontWeight.Bold else FontWeight.Medium,
+                                                color = if (crumb.path == uiState.currentPath) {
+                                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                                } else {
+                                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                                },
+                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                            )
+                                        }
+                                    }
                                 }
-                                IconButton(onClick = onToggleViewMode) {
+
+                                // Action Icons (Search, Bookmarks, Dedupe, ViewMode, Sort, Serve)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    IconButton(onClick = { viewModel.toggleSearch() }) {
+                                        Icon(Icons.Default.Search, contentDescription = "Search", tint = MaterialTheme.colorScheme.onSurface)
+                                    }
+                                    IconButton(onClick = { viewModel.openBookmarks() }) {
+                                        Icon(Icons.Outlined.BookmarkBorder, contentDescription = "Bookmarks", tint = MaterialTheme.colorScheme.onSurface)
+                                    }
+                                    IconButton(onClick = { viewModel.openDedupeSheet() }) {
+                                        Icon(Icons.Outlined.CleaningServices, contentDescription = "Deduplicator", tint = MaterialTheme.colorScheme.onSurface)
+                                    }
+                                    IconButton(onClick = { viewModel.toggleViewMode() }) {
+                                        Icon(
+                                            imageVector = if (uiState.isGridView) Icons.Default.ViewList else Icons.Default.GridView,
+                                            contentDescription = "Toggle Grid/List",
+                                            tint = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                    IconButton(onClick = onSortClicked) {
+                                        Icon(Icons.Default.Sort, contentDescription = "Sort", tint = MaterialTheme.colorScheme.onSurface)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Clipboard Paste Banner
+                AnimatedVisibility(
+                    visible = clipboard.isNotEmpty && !isInSelectMode,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 4.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (clipboard.operation == ClipboardOp.COPY) Icons.Default.ContentCopy else Icons.Default.ContentCut,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = "${clipboard.count} item(s) ready to paste",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                TextButton(
+                                    onClick = { viewModel.pasteClipboard() },
+                                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+                                ) {
+                                    Text("Paste Here", fontWeight = FontWeight.Bold)
+                                }
+                                IconButton(
+                                    onClick = { FileClipboardManager.clear() },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
                                     Icon(
-                                        imageVector = if (isGridView) Icons.Default.ViewList else Icons.Default.GridView,
-                                        contentDescription = "Toggle Grid/List",
-                                        tint = MaterialTheme.colorScheme.onSurface
+                                        Icons.Default.Close,
+                                        contentDescription = "Clear clipboard",
+                                        tint = MaterialTheme.colorScheme.onSecondaryContainer
                                     )
                                 }
-                                IconButton(onClick = onSortClicked) {
-                                    Icon(Icons.Default.Sort, contentDescription = "Sort", tint = MaterialTheme.colorScheme.onSurface)
-                                }
+                            }
+                        }
+                    }
+                }
+
+                // File Content List / Grid
+                if (uiState.displayFiles.isEmpty() && !uiState.isLoading) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = 80.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Surface(
+                                modifier = Modifier.size(80.dp),
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            ) {
+                                Icon(
+                                    imageVector = if (uiState.isSearching) Icons.Outlined.SearchOff else Icons.Outlined.FolderOpen,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .padding(20.dp)
+                                        .fillMaxSize(),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = if (uiState.isSearching) "No files matching \"${uiState.searchQuery}\"" else "This folder is empty",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = if (uiState.isSearching) "Try adjusting search or filters" else "Tap + to upload files or create a directory",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                } else {
+                    LazyVerticalGrid(
+                        columns = if (uiState.isGridView) GridCells.Fixed(2) else GridCells.Fixed(1),
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(
+                            start = 12.dp,
+                            end = 12.dp,
+                            top = 10.dp,
+                            bottom = if (isInSelectMode) 130.dp else 90.dp
+                        ),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(uiState.displayFiles, key = { "${it.path}:${it.name}" }) { fileItem ->
+                            val isSelected = uiState.selectedItems.contains(fileItem)
+                            if (uiState.isGridView) {
+                                GridFileCard(
+                                    fileItem = fileItem,
+                                    isSelected = isSelected,
+                                    isInSelectMode = isInSelectMode,
+                                    showThumbnails = uiState.showThumbnails,
+                                    thumbnailServerAuth = uiState.thumbnailServerAuth,
+                                    thumbnailServerPort = uiState.thumbnailServerPort,
+                                    onClick = {
+                                        if (isInSelectMode) {
+                                            viewModel.toggleSelection(fileItem)
+                                        } else if (fileItem.isDir) {
+                                            viewModel.navigateInto(fileItem)
+                                        } else {
+                                            onFileClicked(fileItem)
+                                        }
+                                    },
+                                    onLongClick = { viewModel.toggleSelection(fileItem) },
+                                    onOptionsClick = { itemForOptionSheet = fileItem }
+                                )
+                            } else {
+                                ListFileCard(
+                                    fileItem = fileItem,
+                                    isSelected = isSelected,
+                                    isInSelectMode = isInSelectMode,
+                                    showThumbnails = uiState.showThumbnails,
+                                    thumbnailServerAuth = uiState.thumbnailServerAuth,
+                                    thumbnailServerPort = uiState.thumbnailServerPort,
+                                    onClick = {
+                                        if (isInSelectMode) {
+                                            viewModel.toggleSelection(fileItem)
+                                        } else if (fileItem.isDir) {
+                                            viewModel.navigateInto(fileItem)
+                                        } else {
+                                            onFileClicked(fileItem)
+                                        }
+                                    },
+                                    onLongClick = { viewModel.toggleSelection(fileItem) },
+                                    onOptionsClick = { itemForOptionSheet = fileItem }
+                                )
                             }
                         }
                     }
                 }
             }
 
-            // File Content List / Grid
-            if (files.isEmpty() && !isLoading) {
-                Box(
+            // Floating Transfer Activity Pill
+            TransferPill(
+                activeTransfers = uiState.activeTransfers,
+                onCancelTransfer = { /* Cancel transfer */ },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = if (isInSelectMode) 96.dp else 84.dp)
+            )
+
+            // FAB for Adding (Upload & New Folder)
+            if (!isInSelectMode) {
+                Column(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(bottom = 80.dp),
-                    contentAlignment = Alignment.Center
+                        .align(Alignment.BottomEnd)
+                        .padding(20.dp),
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    if (showFabMenu) {
+                        SmallFloatingActionButton(
+                            onClick = {
+                                showFabMenu = false
+                                viewModel.openCreateFolderDialog()
+                            },
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        ) {
+                            Icon(Icons.Default.CreateNewFolder, contentDescription = "New Folder")
+                        }
+                        SmallFloatingActionButton(
+                            onClick = {
+                                showFabMenu = false
+                                onUploadFiles()
+                            },
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        ) {
+                            Icon(Icons.Default.UploadFile, contentDescription = "Upload")
+                        }
+                    }
+
+                    FloatingActionButton(
+                        onClick = { showFabMenu = !showFabMenu },
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        shape = RoundedCornerShape(18.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (showFabMenu) Icons.Default.Close else Icons.Default.Add,
+                            contentDescription = "Add Actions"
+                        )
+                    }
+                }
+            }
+
+            // Glassmorphic Bottom Selection Action Bar
+            AnimatedVisibility(
+                visible = isInSelectMode,
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp)
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(24.dp))
+                        .border(
+                            BorderStroke(
+                                1.dp,
+                                Brush.linearGradient(
+                                    listOf(
+                                        Color.White.copy(alpha = 0.25f),
+                                        Color.White.copy(alpha = 0.05f)
+                                    )
+                                )
+                            ),
+                            RoundedCornerShape(24.dp)
+                        ),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.94f),
+                    shadowElevation = 14.dp
                 ) {
                     Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 10.dp)
                     ) {
-                        Surface(
-                            modifier = Modifier.size(80.dp),
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = if (isSearching) Icons.Outlined.SearchOff else Icons.Outlined.FolderOpen,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .padding(20.dp)
-                                    .fillMaxSize(),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
+                            // Selected Count & Select All
+                            Column {
+                                Text(
+                                    text = "${uiState.selectedItems.size} Selected",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = if (uiState.selectedItems.size == uiState.displayFiles.size) "Deselect All" else "Select All",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.clickable {
+                                        if (uiState.selectedItems.size == uiState.displayFiles.size) viewModel.deselectAll() else viewModel.selectAll()
+                                    }
+                                )
+                            }
+
+                            // Actions Row (Copy, Cut, Duplicate, Batch Rename, Download, Move, Delete)
+                            Row(
+                                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                IconButton(onClick = { viewModel.copySelected() }) {
+                                    Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = MaterialTheme.colorScheme.onSurface)
+                                }
+                                IconButton(onClick = { viewModel.cutSelected() }) {
+                                    Icon(Icons.Default.ContentCut, contentDescription = "Cut", tint = MaterialTheme.colorScheme.onSurface)
+                                }
+                                IconButton(onClick = { viewModel.duplicateSelected() }) {
+                                    Icon(Icons.Default.CopyAll, contentDescription = "Duplicate", tint = MaterialTheme.colorScheme.onSurface)
+                                }
+                                IconButton(onClick = { viewModel.openBatchRename() }) {
+                                    Icon(Icons.Default.DriveFileRenameOutline, contentDescription = "Batch Rename", tint = MaterialTheme.colorScheme.onSurface)
+                                }
+                                IconButton(onClick = { onDownloadSelected(uiState.selectedItems.toList()) }) {
+                                    Icon(Icons.Default.Download, contentDescription = "Download", tint = MaterialTheme.colorScheme.onSurface)
+                                }
+                                IconButton(onClick = { onMoveSelected(uiState.selectedItems.toList()) }) {
+                                    Icon(Icons.Default.DriveFileMove, contentDescription = "Move", tint = MaterialTheme.colorScheme.onSurface)
+                                }
+                                IconButton(onClick = { viewModel.deleteSelected() }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                                }
+                                IconButton(onClick = { viewModel.deselectAll() }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Cancel", tint = MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
                         }
-                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                }
+            }
+        }
+    }
+
+    // --- Modals & Sheets ---
+
+    // Batch Rename Dialog
+    if (uiState.isBatchRenameOpen) {
+        BatchRenameDialog(
+            selectedItems = uiState.selectedItems.toList(),
+            onDismiss = { viewModel.closeBatchRename() },
+            onConfirm = { rule -> viewModel.executeBatchRename(rule) }
+        )
+    }
+
+    // Dedupe Sheet
+    if (uiState.isDedupeSheetOpen) {
+        DedupeComposeSheet(
+            isScanning = uiState.isScanningDuplicates,
+            duplicateGroups = uiState.duplicateGroups,
+            onDismiss = { viewModel.closeDedupeSheet() },
+            onDeleteDuplicates = { files -> viewModel.deleteDuplicates(files) }
+        )
+    }
+
+    // Bookmarks Sheet
+    if (uiState.isBookmarksOpen) {
+        BookmarksSheet(
+            bookmarks = uiState.bookmarks,
+            currentRemoteName = uiState.remote?.name ?: "",
+            currentPath = uiState.currentPath,
+            onDismiss = { viewModel.closeBookmarks() },
+            onBookmarkClick = { bookmark ->
+                viewModel.closeBookmarks()
+                viewModel.navigateToBreadcrumb(bookmark.path)
+            },
+            onRemoveBookmark = { bookmark -> viewModel.removeBookmark(bookmark) },
+            onAddCurrentAsBookmark = { viewModel.bookmarkCurrentFolder() }
+        )
+    }
+
+    // Create New Folder Dialog
+    if (uiState.isCreateFolderDialogOpen) {
+        var folderName by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { viewModel.closeCreateFolderDialog() },
+            title = { Text("Create New Folder") },
+            text = {
+                OutlinedTextField(
+                    value = folderName,
+                    onValueChange = { folderName = it },
+                    label = { Text("Folder Name") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (folderName.isNotBlank()) {
+                            viewModel.createFolder(folderName.trim())
+                        }
+                    },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Create")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.closeCreateFolderDialog() }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Single File Item Options Sheet
+    itemForOptionSheet?.let { file ->
+        ModalBottomSheet(
+            onDismissRequest = { itemForOptionSheet = null },
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = if (file.isDir) Icons.Default.Folder else Icons.Default.InsertDriveFile,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(32.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = if (isSearching) "No files matching \"$searchQuery\"" else "This folder is empty",
+                            text = file.name,
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
-                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = if (isSearching) "Try a different search term" else "Tap + to upload files or create a directory",
+                            text = if (file.isDir) "Directory" else file.humanReadableSize,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
-            } else {
-                LazyVerticalGrid(
-                    columns = if (isGridView) GridCells.Fixed(2) else GridCells.Fixed(1),
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(
-                        start = 12.dp,
-                        end = 12.dp,
-                        top = 10.dp,
-                        bottom = if (isInSelectMode) 120.dp else 88.dp
-                    ),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    items(files, key = { it.path + ":" + it.name }) { fileItem ->
-                        val isSelected = selectedItems.contains(fileItem)
-                        if (isGridView) {
-                            GridFileCard(
-                                fileItem = fileItem,
-                                isSelected = isSelected,
-                                isInSelectMode = isInSelectMode,
-                                showThumbnails = showThumbnails,
-                                thumbnailServerAuth = thumbnailServerAuth,
-                                thumbnailServerPort = thumbnailServerPort,
-                                onClick = {
-                                    if (isInSelectMode) {
-                                        onItemLongClicked(fileItem)
-                                    } else if (fileItem.isDir) {
-                                        onDirectoryClicked(fileItem)
-                                    } else {
-                                        onFileClicked(fileItem)
-                                    }
-                                },
-                                onLongClick = { onItemLongClicked(fileItem) },
-                                onOptionsClick = { onItemOptionsClicked(fileItem) }
-                            )
-                        } else {
-                            ListFileCard(
-                                fileItem = fileItem,
-                                isSelected = isSelected,
-                                isInSelectMode = isInSelectMode,
-                                showThumbnails = showThumbnails,
-                                thumbnailServerAuth = thumbnailServerAuth,
-                                thumbnailServerPort = thumbnailServerPort,
-                                onClick = {
-                                    if (isInSelectMode) {
-                                        onItemLongClicked(fileItem)
-                                    } else if (fileItem.isDir) {
-                                        onDirectoryClicked(fileItem)
-                                    } else {
-                                        onFileClicked(fileItem)
-                                    }
-                                },
-                                onLongClick = { onItemLongClicked(fileItem) },
-                                onOptionsClick = { onItemOptionsClicked(fileItem) }
-                            )
-                        }
-                    }
-                }
-            }
-        }
 
-        // Floating Action Button (New Folder & Upload)
-        if (!isInSelectMode) {
-            FloatingActionButton(
-                onClick = onUploadFiles,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(20.dp),
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                shape = RoundedCornerShape(18.dp)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Files")
-            }
-        }
+                Spacer(modifier = Modifier.height(16.dp))
 
-        // Glassmorphic Bottom Selection Action Bar
-        AnimatedVisibility(
-            visible = isInSelectMode,
-            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(16.dp)
-        ) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(24.dp))
-                    .border(
-                        BorderStroke(
-                            1.dp,
-                            Brush.linearGradient(
-                                listOf(
-                                    Color.White.copy(alpha = 0.25f),
-                                    Color.White.copy(alpha = 0.05f)
-                                )
-                            )
-                        ),
-                        RoundedCornerShape(24.dp)
-                    ),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.92f),
-                shadowElevation = 12.dp
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Selected Count & Select All
-                    Column {
-                        Text(
-                            text = "${selectedItems.size} Selected",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = if (selectedItems.size == files.size) "Deselect All" else "Select All",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.clickable {
-                                if (selectedItems.size == files.size) onDeselectAll() else onSelectAll()
-                            }
-                        )
+                // Options list
+                ListItem(
+                    headlineContent = { Text("Properties & Hash") },
+                    leadingContent = { Icon(Icons.Default.Info, contentDescription = null) },
+                    modifier = Modifier.clickable {
+                        itemForOptionSheet = null
+                        onFilePropertiesClicked(file)
                     }
-
-                    // Action Icons
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(onClick = onDownloadSelected) {
-                            Icon(Icons.Default.Download, contentDescription = "Download", tint = MaterialTheme.colorScheme.onSurface)
-                        }
-                        IconButton(onClick = onMoveSelected) {
-                            Icon(Icons.Default.DriveFileMove, contentDescription = "Move", tint = MaterialTheme.colorScheme.onSurface)
-                        }
-                        IconButton(
-                            onClick = onRenameSelected,
-                            enabled = selectedItems.size == 1
-                        ) {
-                            Icon(
-                                Icons.Default.Edit,
-                                contentDescription = "Rename",
-                                tint = if (selectedItems.size == 1) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                            )
-                        }
-                        IconButton(onClick = onDeleteSelected) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
-                        }
-                        IconButton(onClick = onDeselectAll) {
-                            Icon(Icons.Default.Close, contentDescription = "Cancel", tint = MaterialTheme.colorScheme.onSurface)
-                        }
+                )
+                ListItem(
+                    headlineContent = { Text("Copy to Clipboard") },
+                    leadingContent = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
+                    modifier = Modifier.clickable {
+                        itemForOptionSheet = null
+                        viewModel.toggleSelection(file)
+                        viewModel.copySelected()
                     }
-                }
+                )
+                ListItem(
+                    headlineContent = { Text("Duplicate") },
+                    leadingContent = { Icon(Icons.Default.CopyAll, contentDescription = null) },
+                    modifier = Modifier.clickable {
+                        itemForOptionSheet = null
+                        viewModel.toggleSelection(file)
+                        viewModel.duplicateSelected()
+                    }
+                )
+                ListItem(
+                    headlineContent = { Text("Share Link") },
+                    leadingContent = { Icon(Icons.Default.Share, contentDescription = null) },
+                    modifier = Modifier.clickable {
+                        itemForOptionSheet = null
+                        onFileLinkShareClicked(file)
+                    }
+                )
+                ListItem(
+                    headlineContent = { Text("Download") },
+                    leadingContent = { Icon(Icons.Default.Download, contentDescription = null) },
+                    modifier = Modifier.clickable {
+                        itemForOptionSheet = null
+                        onDownloadSelected(listOf(file))
+                    }
+                )
+                ListItem(
+                    headlineContent = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                    leadingContent = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                    modifier = Modifier.clickable {
+                        itemForOptionSheet = null
+                        viewModel.toggleSelection(file)
+                        viewModel.deleteSelected()
+                    }
+                )
             }
         }
     }
