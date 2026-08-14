@@ -47,6 +47,9 @@ public class AboutActivity extends AppCompatActivity {
         findViewById(R.id.version_number).setOnClickListener(v -> ca.pkay.rcloneexplorer.util.AppUpdateManager.INSTANCE.checkForUpdates(this, false, false, null));
         ((TextView)findViewById(R.id.rclone_version)).setText(rclone.getRcloneVersion());
 
+        findViewById(R.id.check_latest_update).setOnClickListener(v -> ca.pkay.rcloneexplorer.util.AppUpdateManager.INSTANCE.checkForUpdates(this, false, false, null));
+        findViewById(R.id.check_beta_update).setOnClickListener(v -> ca.pkay.rcloneexplorer.util.AppUpdateManager.INSTANCE.checkForUpdates(this, false, true, null));
+
         findViewById(R.id.changelog).setOnClickListener(v -> showChangelog());
         findViewById(R.id.contributors).setOnClickListener(v -> showContributors());
         findViewById(R.id.open_source_libraries).setOnClickListener(v -> showOpenSourceLibraries());

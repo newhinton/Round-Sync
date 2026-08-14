@@ -130,6 +130,12 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
                 }
 
             } else {
+                Glide.with(context).clear(holder.fileIcon);
+                holder.fileIcon.setImageResource(R.drawable.ic_file);
+            }
+        } else {
+            Glide.with(context).clear(holder.fileIcon);
+            if (!item.isDir()) {
                 holder.fileIcon.setImageResource(R.drawable.ic_file);
             }
         }
@@ -201,6 +207,12 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
                 onLongClickAction(item, holder);
             }
         });
+    }
+
+    @Override
+    public void onViewRecycled(@NonNull ViewHolder holder) {
+        super.onViewRecycled(holder);
+        Glide.with(context).clear(holder.fileIcon);
     }
 
     private void bindSafFile(@NonNull ViewHolder holder, FileItem item, RequestOptions glideOption) {

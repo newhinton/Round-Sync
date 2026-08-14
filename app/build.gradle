@@ -63,8 +63,8 @@ android {
             minifyEnabled false
             shrinkResources false
             manifestPlaceholders = [
-                    appIcon: "@mipmap/ic_launcher_debug",
-                    appIconRound: "@mipmap/ic_launcher_debug_round"
+                    appIcon: "@mipmap/ic_launcher",
+                    appIconRound: "@mipmap/ic_launcher_round"
             ]
             applicationIdSuffix ".debug"
             versionNameSuffix "-DEBUG"

@@ -29,9 +29,9 @@
     <string name="author_name" translatable="false">Patryk Kaczmarkiewicz &lt;github.com/patrykcoding&gt;</string>
     <string name="follow_on_github">Follow on GitHub</string>
     <string name="maintainer">Maintainer</string>
-    <string name="maintainer_name" translatable="false">Felix Nüsse &lt;github.com/newhinton&gt;</string>
-    <string name="old_maintainer">Old Maintainer</string>
-    <string name="old_maintainer_name" translatable="false">x0b &lt;github.com/x0b&gt;</string>
+    <string name="maintainer_name" translatable="false">Pawan Washudev &lt;github.com/pawanwashudev-official&gt;</string>
+    <string name="old_maintainer">Previous Maintainers</string>
+    <string name="old_maintainer_name" translatable="false">Felix Nüsse, x0b, Patryk Kaczmarkiewicz</string>
     <string name="empty_folder">The folder is empty</string>
     <string name="ooops">Ooops!</string>
     <string name="no_config_found">No configuration found, please import or add remote</string>
@@ -44,10 +44,11 @@
     <string name="cancel">Cancel</string>
     <string name="select">Select</string>
     <string name="app_icon">App Icon</string>
-    <string name="github_app_url" translatable="false">https://github.com/newhinton/Round-Sync</string>
-    <string name="github_issue_url" translatable="false">https://github.com/newhinton/Round-Sync/issues/new/choose</string>
-    <string name="github_author_url" translatable="false">https://github.com/patrykcoding</string>
-    <string name="github_maintainer_url" translatable="false">https://github.com/newhinton</string>
+    <string name="check_for_updates">Check for updates</string>
+    <string name="github_app_url" translatable="false">https://github.com/neubofy/Remote-Manager</string>
+    <string name="github_issue_url" translatable="false">https://github.com/neubofy/Remote-Manager/issues/new</string>
+    <string name="github_author_url" translatable="false">https://github.com/pawanwashudev-official</string>
+    <string name="github_maintainer_url" translatable="false">https://github.com/pawanwashudev-official</string>
     <string name="replace_config_file_question">Replace the current configuration file?</string>
     <string name="config_file_lost_statement">Your current configuration will be lost</string>
     <string name="continue_statement">Continue</string>

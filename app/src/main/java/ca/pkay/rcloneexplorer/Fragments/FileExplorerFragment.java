@@ -286,6 +286,19 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
         recyclerViewAdapter.showThumbnails(showThumbnails);
         recyclerViewAdapter.setWrapFileNames(wrapFilenames);
         recyclerView.setAdapter(recyclerViewAdapter);
+        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(@NonNull RecyclerView rv, int newState) {
+                super.onScrollStateChanged(rv, newState);
+                if (isAdded() && getContext() != null) {
+                    if (newState == RecyclerView.SCROLL_STATE_SETTLING) {
+                        com.bumptech.glide.Glide.with(getContext()).pauseRequests();
+                    } else {
+                        com.bumptech.glide.Glide.with(getContext()).resumeRequests();
+                    }
+                }
+            }
+        });
 
         if (remote.isRemoteType(RemoteItem.SFTP) && !goToDefaultSet & savedInstanceState == null) {
             showSFTPgoToDialog();
