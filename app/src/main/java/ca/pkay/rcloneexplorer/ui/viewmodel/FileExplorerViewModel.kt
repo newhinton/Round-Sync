@@ -33,6 +33,7 @@ data class FileExplorerUiState(
     val isSearching: Boolean = false,
     val searchQuery: String = "",
     val typeFilter: FileTypeFilter = FileTypeFilter.ALL,
+    val showHiddenFiles: Boolean = false,
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
     val errorMessage: String? = null,
@@ -75,10 +76,12 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
 
     fun initRemote(remote: RemoteItem) {
         val rootPath = "//${remote.name}"
+        val showHidden = prefs.getBoolean("pref_key_show_hidden_files", false)
         _uiState.update {
             it.copy(
                 remote = remote,
                 currentPath = rootPath,
+                showHiddenFiles = showHidden,
                 showThumbnails = prefs.getBoolean(getApplication<Application>().getString(R.string.pref_key_show_thumbnails), true),
                 isGridView = prefs.getBoolean("pref_key_file_grid_view", false)
             )
@@ -96,6 +99,7 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
         val currentRemote = _uiState.value.remote ?: return
         val cacheKey = "${currentRemote.name}:$path"
         val cachedFiles = directoryCache[cacheKey]
+        val showHidden = _uiState.value.showHiddenFiles
 
         viewModelScope.launch {
             if (cachedFiles != null && !forceRefresh) {
@@ -107,7 +111,12 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
                         isRefreshing = true,
                         currentPath = path,
                         rawFiles = cachedFiles,
-                        displayFiles = applyFiltersAndSearch(sorted, if (clearSearch) "" else it.searchQuery, if (clearSearch) FileTypeFilter.ALL else it.typeFilter),
+                        displayFiles = applyFiltersAndSearch(
+                            sorted,
+                            if (clearSearch) "" else it.searchQuery,
+                            if (clearSearch) FileTypeFilter.ALL else it.typeFilter,
+                            showHidden
+                        ),
                         breadcrumbs = generateBreadcrumbs(currentRemote.name, path),
                         searchQuery = if (clearSearch) "" else it.searchQuery,
                         isSearching = if (clearSearch) false else it.isSearching,
@@ -135,7 +144,7 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
                             it.copy(
                                 isRefreshing = false,
                                 rawFiles = freshItems,
-                                displayFiles = applyFiltersAndSearch(freshSorted, it.searchQuery, it.typeFilter)
+                                displayFiles = applyFiltersAndSearch(freshSorted, it.searchQuery, it.typeFilter, it.showHiddenFiles)
                             )
                         } else it
                     }
@@ -150,7 +159,7 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
                         isRefreshing = cachedFiles != null,
                         currentPath = path,
                         rawFiles = cachedFiles ?: emptyList(),
-                        displayFiles = if (cachedFiles != null) applyFiltersAndSearch(sortFiles(cachedFiles, sortOrder), it.searchQuery, it.typeFilter) else emptyList(),
+                        displayFiles = if (cachedFiles != null) applyFiltersAndSearch(sortFiles(cachedFiles, sortOrder), it.searchQuery, it.typeFilter, showHidden) else emptyList(),
                         breadcrumbs = generateBreadcrumbs(currentRemote.name, path),
                         searchQuery = if (clearSearch) "" else it.searchQuery,
                         isSearching = if (clearSearch) false else it.isSearching,
@@ -177,7 +186,7 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
                             isLoading = false,
                             isRefreshing = false,
                             rawFiles = items,
-                            displayFiles = applyFiltersAndSearch(sorted, it.searchQuery, it.typeFilter),
+                            displayFiles = applyFiltersAndSearch(sorted, it.searchQuery, it.typeFilter, it.showHiddenFiles),
                             errorMessage = null
                         )
                     }
@@ -191,6 +200,17 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
                     }
                 }
             }
+        }
+    }
+
+    fun toggleShowHiddenFiles() {
+        val newState = !_uiState.value.showHiddenFiles
+        prefs.edit().putBoolean("pref_key_show_hidden_files", newState).apply()
+        _uiState.update {
+            it.copy(
+                showHiddenFiles = newState,
+                displayFiles = applyFiltersAndSearch(it.rawFiles, it.searchQuery, it.typeFilter, newState)
+            )
         }
     }
 
@@ -250,7 +270,7 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
             it.copy(
                 isSearching = nextState,
                 searchQuery = query,
-                displayFiles = applyFiltersAndSearch(it.rawFiles, query, it.typeFilter)
+                displayFiles = applyFiltersAndSearch(it.rawFiles, query, it.typeFilter, it.showHiddenFiles)
             )
         }
     }
@@ -259,7 +279,7 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
         _uiState.update {
             it.copy(
                 searchQuery = query,
-                displayFiles = applyFiltersAndSearch(it.rawFiles, query, it.typeFilter)
+                displayFiles = applyFiltersAndSearch(it.rawFiles, query, it.typeFilter, it.showHiddenFiles)
             )
         }
     }
@@ -268,7 +288,7 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
         _uiState.update {
             it.copy(
                 typeFilter = filter,
-                displayFiles = applyFiltersAndSearch(it.rawFiles, it.searchQuery, filter)
+                displayFiles = applyFiltersAndSearch(it.rawFiles, it.searchQuery, filter, it.showHiddenFiles)
             )
         }
     }
@@ -632,9 +652,11 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
     private fun applyFiltersAndSearch(
         files: List<FileItem>,
         query: String,
-        filter: FileTypeFilter
+        filter: FileTypeFilter,
+        showHidden: Boolean = _uiState.value.showHiddenFiles
     ): List<FileItem> {
         return files.filter { item ->
+            val matchesHidden = showHidden || !item.name.startsWith(".")
             val matchesQuery = query.isEmpty() || item.name.contains(query, ignoreCase = true)
             val matchesType = when (filter) {
                 FileTypeFilter.ALL -> true
@@ -644,7 +666,7 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
                 FileTypeFilter.AUDIO -> item.isDir || (item.mimeType?.startsWith("audio/") == true)
                 FileTypeFilter.ARCHIVES -> item.isDir || isArchive(item.name)
             }
-            matchesQuery && matchesType
+            matchesHidden && matchesQuery && matchesType
         }
     }
 

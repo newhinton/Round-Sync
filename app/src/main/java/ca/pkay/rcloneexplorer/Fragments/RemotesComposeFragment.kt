@@ -23,7 +23,7 @@ class RemotesComposeFragment : Fragment() {
     companion object {
         const val CONFIG_REQ_CODE = 171
         const val CONFIG_EDIT_CODE = 156
-        const val CONFIG_EDIT_TARGET = "config_edit_target"
+        const val CONFIG_EDIT_TARGET = RemoteConfig.CONFIG_EDIT_TARGET
 
         @JvmStatic
         fun newInstance(): RemotesComposeFragment {

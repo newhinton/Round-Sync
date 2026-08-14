@@ -51,13 +51,13 @@ class TasksComposeFragment : Fragment() {
                         },
                         onEditTaskClick = { task ->
                             val intent = Intent(requireContext(), TaskActivity::class.java).apply {
-                                putExtra(SyncWorker.EXTRA_TASK_ID, task.id)
+                                putExtra(TaskActivity.ID_EXTRA, task.id)
                             }
                             startActivity(intent)
                         },
                         onManageTriggersClick = { task ->
                             val intent = Intent(requireContext(), TriggerActivity::class.java).apply {
-                                putExtra("TASK_ID", task.id)
+                                putExtra(TriggerActivity.TARGET_TASK_ID_EXTRA, task.id)
                             }
                             startActivity(intent)
                         }

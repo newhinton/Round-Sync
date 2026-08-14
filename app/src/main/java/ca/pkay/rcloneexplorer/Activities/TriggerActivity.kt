@@ -29,6 +29,7 @@ class TriggerActivity : AppCompatActivity() {
 
     companion object {
         const val ID_EXTRA = "TRIGGER_EDIT_ID"
+        const val TARGET_TASK_ID_EXTRA = "TARGET_TASK_ID"
     }
 
     private lateinit var mTrigger: Trigger
@@ -88,22 +89,26 @@ class TriggerActivity : AppCompatActivity() {
         mTaskList = dbHandler.allTasks
 
         val extras = intent.extras
-        val triggerId: Long
-        if (extras != null) {
-            triggerId = extras.getLong(ID_EXTRA)
+        var loadedTrigger: Trigger? = null
+        if (extras != null && extras.containsKey(ID_EXTRA)) {
+            val triggerId = extras.getLong(ID_EXTRA)
             if (triggerId != 0L) {
-                val notNullTrigger = dbHandler.getTrigger(triggerId)
-                if (notNullTrigger == null) {
+                loadedTrigger = dbHandler.getTrigger(triggerId)
+                if (loadedTrigger == null) {
                     Toasty.error(
                         this,
                         this.resources.getString(R.string.triggeractivity_trigger_not_found)
                     ).show()
                     finish()
+                    return
                 }
-                mTrigger = notNullTrigger!!
             }
-        } else {
-            mTrigger = Trigger(Trigger.TRIGGER_ID_DOESNTEXIST)
+        }
+        mTrigger = loadedTrigger ?: Trigger(Trigger.TRIGGER_ID_DOESNTEXIST)
+
+        val targetTaskId = intent.getLongExtra(TARGET_TASK_ID_EXTRA, -1L)
+        if (targetTaskId != -1L) {
+            mTrigger.triggerTarget = targetTaskId
         }
         
         val saveButton = findViewById<FloatingActionButton>(R.id.saveButton)
@@ -214,11 +219,18 @@ class TriggerActivity : AppCompatActivity() {
      */
     private fun setUpTargetsDropdown() {
         val items = arrayOfNulls<String>(this.mTaskList.size)
+        var selectedIndex = 0
         for (i in this.mTaskList.indices) {
             items[i] = this.mTaskList[i].title
+            if (this.mTaskList[i].id == mTrigger.triggerTarget) {
+                selectedIndex = i
+            }
         }
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, items)
         mTargetDropdown.adapter = adapter
+        if (items.isNotEmpty()) {
+            mTargetDropdown.setSelection(selectedIndex)
+        }
     }
 
     private fun updateUiFromTrigger() {

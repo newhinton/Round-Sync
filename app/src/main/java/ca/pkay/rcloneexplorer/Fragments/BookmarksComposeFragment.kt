@@ -33,11 +33,12 @@ class BookmarksComposeFragment : Fragment() {
     ): View {
         val rclone = Rclone(requireContext())
         val prefs = PreferenceManager.getDefaultSharedPreferences(requireContext())
-        val pinnedPrefKey = "pinned_remotes"
+        val pinnedPrefKey = requireContext().getString(ca.pkay.rcloneexplorer.R.string.shared_preferences_pinned_remotes)
 
         fun getPinnedRemotes(): List<RemoteItem> {
             val pinnedSet = prefs.getStringSet(pinnedPrefKey, emptySet()) ?: emptySet()
-            return rclone.remotes.filter { pinnedSet.contains(it.name) }
+            val list = rclone.remotes.filter { pinnedSet.contains(it.name) }
+            return RemoteItem.prepareDisplay(requireContext(), list)
         }
 
         return ComposeView(requireContext()).apply {

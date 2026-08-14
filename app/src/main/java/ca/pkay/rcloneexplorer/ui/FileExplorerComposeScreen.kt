@@ -252,6 +252,19 @@ fun FileExplorerComposeScreen(
                                                 }
                                             )
                                             DropdownMenuItem(
+                                                text = { Text(if (uiState.showHiddenFiles) "Hide hidden files" else "Show hidden files") },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        if (uiState.showHiddenFiles) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                                        contentDescription = null
+                                                    )
+                                                },
+                                                onClick = {
+                                                    showOverflowMenu = false
+                                                    viewModel.toggleShowHiddenFiles()
+                                                }
+                                            )
+                                            DropdownMenuItem(
                                                 text = { Text("Refresh") },
                                                 leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) },
                                                 onClick = {
