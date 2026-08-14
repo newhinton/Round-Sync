@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ca.pkay.rcloneexplorer.Items.RemoteItem
 import ca.pkay.rcloneexplorer.Rclone
+import ca.pkay.rcloneexplorer.ui.components.BrandLoader
 import ca.pkay.rcloneexplorer.ui.viewmodel.RemotesViewModel
 import java.util.Locale
 
@@ -118,7 +119,9 @@ fun RemotesComposeScreen(
                 }
 
                 // Remotes List or Empty State
-                if (uiState.displayRemotes.isEmpty() && !uiState.isLoading) {
+                if (uiState.isLoading && uiState.displayRemotes.isEmpty()) {
+                    BrandLoader(message = "Loading your cloud remotes...")
+                } else if (uiState.displayRemotes.isEmpty()) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()

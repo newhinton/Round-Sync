@@ -56,6 +56,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import androidx.compose.ui.platform.ComposeView;
 import ca.pkay.rcloneexplorer.AppShortcutsHelper;
 import ca.pkay.rcloneexplorer.BuildConfig;
 import ca.pkay.rcloneexplorer.Database.json.Importer;
@@ -63,12 +64,14 @@ import ca.pkay.rcloneexplorer.Database.json.SharedPreferencesBackup;
 import ca.pkay.rcloneexplorer.Dialogs.Dialogs;
 import ca.pkay.rcloneexplorer.Dialogs.InputDialog;
 import ca.pkay.rcloneexplorer.Dialogs.LoadingDialog;
+import ca.pkay.rcloneexplorer.Fragments.BookmarksComposeFragment;
 import ca.pkay.rcloneexplorer.Fragments.FileExplorerComposeFragment;
 import ca.pkay.rcloneexplorer.Fragments.FileExplorerFragment;
 import ca.pkay.rcloneexplorer.Fragments.LogFragment;
 import ca.pkay.rcloneexplorer.Fragments.PermissionFragment;
 import ca.pkay.rcloneexplorer.Fragments.RemotesComposeFragment;
 import ca.pkay.rcloneexplorer.Fragments.RemotesFragment;
+import ca.pkay.rcloneexplorer.Fragments.TasksComposeFragment;
 import ca.pkay.rcloneexplorer.Fragments.TasksFragment;
 import ca.pkay.rcloneexplorer.Fragments.TriggerFragment;
 import ca.pkay.rcloneexplorer.Items.RemoteItem;
@@ -78,6 +81,9 @@ import ca.pkay.rcloneexplorer.RemoteConfig.RemoteConfigHelper;
 import ca.pkay.rcloneexplorer.RuntimeConfiguration;
 import ca.pkay.rcloneexplorer.Services.StreamingService;
 import ca.pkay.rcloneexplorer.Services.TriggerService;
+import ca.pkay.rcloneexplorer.Settings.SettingsFragment;
+import ca.pkay.rcloneexplorer.ui.navigation.BottomNavBridge;
+import ca.pkay.rcloneexplorer.ui.navigation.MainNavTab;
 import ca.pkay.rcloneexplorer.util.ActivityHelper;
 import ca.pkay.rcloneexplorer.util.FLog;
 import ca.pkay.rcloneexplorer.util.PermissionManager;
@@ -107,6 +113,8 @@ public class MainActivity extends AppCompatActivity
     private Context context;
     private HashMap<Integer, RemoteItem> drawerPinnedRemoteIds;
     private int availableDrawerPinnedRemoteId;
+    private MainNavTab currentNavTab = MainNavTab.REMOTES;
+    private ComposeView bottomNavComposeView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -122,7 +130,6 @@ public class MainActivity extends AppCompatActivity
             finish();
         }
 
-
         context = this;
         drawerPinnedRemoteIds = new HashMap<>();
         availableDrawerPinnedRemoteId = 2;
@@ -135,6 +142,14 @@ public class MainActivity extends AppCompatActivity
             actionbar.setHomeAsUpIndicator(R.drawable.ic_menu);
         }
 
+        if (findViewById(R.id.appBar) != null) {
+            findViewById(R.id.appBar).setVisibility(View.GONE);
+        }
+
+        getSupportFragmentManager().addOnBackStackChangedListener(() -> {
+            updateBottomNavigation();
+        });
+
         drawer = findViewById(R.id.drawer_layout);
         navigationView = findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
@@ -142,6 +157,8 @@ public class MainActivity extends AppCompatActivity
         rclone = new Rclone(this);
 
         findViewById(R.id.locked_config_btn).setOnClickListener(v -> askForConfigPassword());
+
+        setupBottomNavigation();
 
         Intent intent = getIntent();
         Bundle bundle = intent.getExtras();
@@ -428,8 +445,8 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    private void startTasksFragment(){
-        startFragment(TasksFragment.newInstance());
+    private void startTasksFragmentLegacy(){
+        startTasksFragment();
     }
 
     private void startTriggerFragment() {
@@ -487,7 +504,43 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
+    private void setupBottomNavigation() {
+        bottomNavComposeView = findViewById(R.id.bottom_navigation_compose);
+        updateBottomNavigation();
+    }
+
+    public void updateBottomNavigation() {
+        if (bottomNavComposeView == null) return;
+        Fragment currentFrag = getSupportFragmentManager().findFragmentById(R.id.flFragment);
+        boolean isFileExplorer = currentFrag instanceof FileExplorerComposeFragment || currentFrag instanceof FileExplorerFragment;
+
+        BottomNavBridge.setupBottomNav(
+            bottomNavComposeView,
+            currentNavTab,
+            !isFileExplorer,
+            tab -> {
+                currentNavTab = tab;
+                switch (tab) {
+                    case REMOTES:
+                        startRemotesFragment();
+                        break;
+                    case BOOKMARKS:
+                        startBookmarksFragment();
+                        break;
+                    case TASKS:
+                        startTasksFragment();
+                        break;
+                    case SETTINGS:
+                        startSettingsTabFragment();
+                        break;
+                }
+                return kotlin.Unit.INSTANCE;
+            }
+        );
+    }
+
     public void startRemotesFragment() {
+        currentNavTab = MainNavTab.REMOTES;
         fragment = RemotesComposeFragment.newInstance();
         FragmentManager fragmentManager = getSupportFragmentManager();
 
@@ -498,7 +551,55 @@ public class MainActivity extends AppCompatActivity
         if (!isFinishing()) {
             fragmentManager.beginTransaction().replace(R.id.flFragment, fragment).commitAllowingStateLoss();
         }
-        navigationView.setCheckedItem(R.id.nav_remotes);
+        if (navigationView != null) {
+            navigationView.setCheckedItem(R.id.nav_remotes);
+        }
+        updateBottomNavigation();
+    }
+
+    public void startBookmarksFragment() {
+        currentNavTab = MainNavTab.BOOKMARKS;
+        fragment = BookmarksComposeFragment.newInstance();
+        FragmentManager fragmentManager = getSupportFragmentManager();
+
+        for (int i = 0; i < fragmentManager.getBackStackEntryCount(); i++) {
+            fragmentManager.popBackStack();
+        }
+
+        if (!isFinishing()) {
+            fragmentManager.beginTransaction().replace(R.id.flFragment, fragment).commitAllowingStateLoss();
+        }
+        updateBottomNavigation();
+    }
+
+    public void startTasksFragment() {
+        currentNavTab = MainNavTab.TASKS;
+        fragment = TasksComposeFragment.newInstance();
+        FragmentManager fragmentManager = getSupportFragmentManager();
+
+        for (int i = 0; i < fragmentManager.getBackStackEntryCount(); i++) {
+            fragmentManager.popBackStack();
+        }
+
+        if (!isFinishing()) {
+            fragmentManager.beginTransaction().replace(R.id.flFragment, fragment).commitAllowingStateLoss();
+        }
+        updateBottomNavigation();
+    }
+
+    public void startSettingsTabFragment() {
+        currentNavTab = MainNavTab.SETTINGS;
+        fragment = SettingsFragment.newInstance(false);
+        FragmentManager fragmentManager = getSupportFragmentManager();
+
+        for (int i = 0; i < fragmentManager.getBackStackEntryCount(); i++) {
+            fragmentManager.popBackStack();
+        }
+
+        if (!isFinishing()) {
+            fragmentManager.beginTransaction().replace(R.id.flFragment, fragment).commitAllowingStateLoss();
+        }
+        updateBottomNavigation();
     }
 
     private void warnUserAboutOverwritingConfiguration() {
@@ -598,7 +699,7 @@ public class MainActivity extends AppCompatActivity
         startRemote(remote, true);
     }
 
-    private void startRemote(RemoteItem remote, boolean addToBackStack) {
+    public void startRemote(RemoteItem remote, boolean addToBackStack) {
         fragment = FileExplorerComposeFragment.newInstance(remote);
         FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
         transaction.replace(R.id.flFragment, fragment, FILE_EXPLORER_FRAGMENT_TAG);
@@ -608,7 +709,7 @@ public class MainActivity extends AppCompatActivity
         transaction.commit();
 
         AppShortcutsHelper.reportAppShortcutUsage(this, remote.getName());
-        //navigationView.getMenu().getItem(0).setChecked(false);
+        updateBottomNavigation();
     }
 
     private void startPinnedRemote(RemoteItem remoteItem) {

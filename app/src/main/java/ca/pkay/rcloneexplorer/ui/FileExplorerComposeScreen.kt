@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ca.pkay.rcloneexplorer.Items.FileItem
 import ca.pkay.rcloneexplorer.data.*
+import ca.pkay.rcloneexplorer.ui.components.*
 import ca.pkay.rcloneexplorer.ui.viewmodel.FileExplorerUiState
 import ca.pkay.rcloneexplorer.ui.viewmodel.FileExplorerViewModel
 import coil.compose.AsyncImage
@@ -387,7 +388,9 @@ fun FileExplorerComposeScreen(
                 }
 
                 // File Content List / Grid
-                if (uiState.displayFiles.isEmpty() && !uiState.isLoading) {
+                if (uiState.isLoading && uiState.displayFiles.isEmpty()) {
+                    BrandLoader(message = "Loading folder contents...")
+                } else if (uiState.displayFiles.isEmpty()) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -854,27 +857,23 @@ fun GridFileCard(
                 .padding(10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            val visual = FileIconHelper.getVisualForFile(fileItem)
+
             // Icon or Photo Thumbnail
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(96.dp)
                     .clip(RoundedCornerShape(14.dp))
-                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)),
+                    .background(if (thumbnailUrl != null) MaterialTheme.colorScheme.surface.copy(alpha = 0.6f) else visual.backgroundColor),
                 contentAlignment = Alignment.Center
             ) {
-                if (fileItem.isDir) {
-                    Icon(
-                        imageVector = Icons.Default.Folder,
-                        contentDescription = "Folder",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(54.dp)
-                    )
-                } else if (thumbnailUrl != null) {
+                if (thumbnailUrl != null) {
                     AsyncImage(
                         model = ImageRequest.Builder(context)
                             .data(thumbnailUrl)
                             .crossfade(true)
+                            .size(180, 180)
                             .build(),
                         contentDescription = fileItem.name,
                         contentScale = ContentScale.Crop,
@@ -882,10 +881,10 @@ fun GridFileCard(
                     )
                 } else {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.InsertDriveFile,
-                        contentDescription = "File",
-                        tint = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.size(48.dp)
+                        imageVector = visual.icon,
+                        contentDescription = visual.categoryLabel,
+                        tint = visual.iconColor,
+                        modifier = Modifier.size(46.dp)
                     )
                 }
 
@@ -1001,26 +1000,22 @@ fun ListFileCard(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val visual = FileIconHelper.getVisualForFile(fileItem)
+
             // Icon or Photo Thumbnail
             Box(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)),
+                    .background(if (thumbnailUrl != null) MaterialTheme.colorScheme.surface.copy(alpha = 0.6f) else visual.backgroundColor),
                 contentAlignment = Alignment.Center
             ) {
-                if (fileItem.isDir) {
-                    Icon(
-                        imageVector = Icons.Default.Folder,
-                        contentDescription = "Folder",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(30.dp)
-                    )
-                } else if (thumbnailUrl != null) {
+                if (thumbnailUrl != null) {
                     AsyncImage(
                         model = ImageRequest.Builder(context)
                             .data(thumbnailUrl)
                             .crossfade(true)
+                            .size(180, 180)
                             .build(),
                         contentDescription = fileItem.name,
                         contentScale = ContentScale.Crop,
@@ -1028,9 +1023,9 @@ fun ListFileCard(
                     )
                 } else {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.InsertDriveFile,
-                        contentDescription = "File",
-                        tint = MaterialTheme.colorScheme.secondary,
+                        imageVector = visual.icon,
+                        contentDescription = visual.categoryLabel,
+                        tint = visual.iconColor,
                         modifier = Modifier.size(28.dp)
                     )
                 }

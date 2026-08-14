@@ -12,7 +12,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
+import ca.pkay.rcloneexplorer.Activities.AboutActivity
 import ca.pkay.rcloneexplorer.Activities.MainActivity
+import ca.pkay.rcloneexplorer.Activities.SettingsActivity
 import ca.pkay.rcloneexplorer.R
 
 class SettingsFragment : Fragment() {
@@ -25,8 +27,12 @@ class SettingsFragment : Fragment() {
         const val NOTIFICATION_SETTINGS = 5
 
         @JvmStatic
-        fun newInstance(): SettingsFragment {
-            return SettingsFragment()
+        fun newInstance(showBackButton: Boolean = true): SettingsFragment {
+            val fragment = SettingsFragment()
+            val args = Bundle()
+            args.putBoolean("SHOW_BACK", showBackButton)
+            fragment.arguments = args
+            return fragment
         }
     }
 
@@ -40,8 +46,6 @@ class SettingsFragment : Fragment() {
         super.onAttach(context)
         if (context is OnSettingCategorySelectedListener) {
             clickListener = context
-        } else {
-            throw RuntimeException("$context must implement listener")
         }
     }
 
@@ -50,6 +54,8 @@ class SettingsFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
+        val showBackButton = arguments?.getBoolean("SHOW_BACK", true) ?: true
+
         return ComposeView(requireContext()).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
@@ -65,8 +71,16 @@ class SettingsFragment : Fragment() {
                     )
                 ) {
                     SettingsScreen(
+                        showBackButton = showBackButton,
                         onCategoryClick = { category ->
-                            clickListener?.onSettingCategoryClicked(category)
+                            if (clickListener != null) {
+                                clickListener?.onSettingCategoryClicked(category)
+                            } else {
+                                val intent = Intent(requireContext(), SettingsActivity::class.java).apply {
+                                    putExtra("START_CATEGORY", category)
+                                }
+                                startActivity(intent)
+                            }
                         },
                         onImportClick = {
                             val intent = Intent(requireContext(), MainActivity::class.java).apply {
@@ -78,6 +92,10 @@ class SettingsFragment : Fragment() {
                             val intent = Intent(requireContext(), MainActivity::class.java).apply {
                                 action = MainActivity.MAIN_ACTIVITY_START_EXPORT
                             }
+                            startActivity(intent)
+                        },
+                        onAboutClick = {
+                            val intent = Intent(requireContext(), AboutActivity::class.java)
                             startActivity(intent)
                         },
                         onBackPressed = {
