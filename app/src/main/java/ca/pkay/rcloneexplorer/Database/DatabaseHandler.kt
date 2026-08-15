@@ -167,9 +167,45 @@ class DatabaseHandler(context: Context?) :
 
     fun deleteTask(id: Long): Int {
         val db = writableDatabase
-        val selection = Task.COLUMN_NAME_ID + " LIKE ?"
-        val selectionArgs = arrayOf(id.toString())
-        return db.delete(Task.TABLE_NAME, selection, selectionArgs)
+        db.beginTransaction()
+        try {
+            db.delete(Trigger.TABLE_NAME, Trigger.COLUMN_NAME_TARGET + " = ?", arrayOf(id.toString()))
+            val selection = Task.COLUMN_NAME_ID + " LIKE ?"
+            val selectionArgs = arrayOf(id.toString())
+            val count = db.delete(Task.TABLE_NAME, selection, selectionArgs)
+            db.setTransactionSuccessful()
+            return count
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    fun deleteTriggersForTask(taskId: Long): Int {
+        val db = writableDatabase
+        return db.delete(Trigger.TABLE_NAME, Trigger.COLUMN_NAME_TARGET + " = ?", arrayOf(taskId.toString()))
+    }
+
+    fun getTriggersForTask(taskId: Long): List<Trigger> {
+        val db = readableDatabase
+        val projection = triggerProjection
+        val selection = Trigger.COLUMN_NAME_TARGET + " = ?"
+        val selectionArgs = arrayOf(taskId.toString())
+        val sortOrder = Trigger.COLUMN_NAME_ID + " ASC"
+        val cursor = db.query(
+            Trigger.TABLE_NAME,
+            projection,
+            selection,
+            selectionArgs,
+            null,
+            null,
+            sortOrder
+        )
+        val results: MutableList<Trigger> = ArrayList()
+        while (cursor.moveToNext()) {
+            results.add(triggerFromCursor(cursor))
+        }
+        cursor.close()
+        return results
     }
 
     private fun getTaskContentValues(task: Task): ContentValues {

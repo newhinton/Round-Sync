@@ -1,29 +1,18 @@
 package ca.pkay.rcloneexplorer.Activities
 
-
-import androidx.appcompat.app.AppCompatActivity
-import ca.pkay.rcloneexplorer.Database.DatabaseHandler
-import androidx.cardview.widget.CardView
-import android.widget.EditText
-import android.widget.CheckBox
-import android.widget.Spinner
-import android.widget.TimePicker
 import android.os.Bundle
-import ca.pkay.rcloneexplorer.util.ActivityHelper
-import ca.pkay.rcloneexplorer.R
-import es.dmoral.toasty.Toasty
-import com.google.android.material.floatingactionbutton.FloatingActionButton
-import android.text.TextWatcher
-import android.text.Editable
-import android.text.format.DateFormat
-import android.view.View
-import android.widget.CompoundButton
-import android.widget.AdapterView
-import android.widget.ArrayAdapter
-import androidx.appcompat.widget.Toolbar
-import ca.pkay.rcloneexplorer.Items.Task
+import androidx.activity.compose.setContent
+import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.ui.graphics.Color
+import ca.pkay.rcloneexplorer.Database.DatabaseHandler
 import ca.pkay.rcloneexplorer.Items.Trigger
+import ca.pkay.rcloneexplorer.R
 import ca.pkay.rcloneexplorer.Services.TriggerService
+import ca.pkay.rcloneexplorer.ui.TriggerEditComposeScreen
+import ca.pkay.rcloneexplorer.util.ActivityHelper
+import es.dmoral.toasty.Toasty
 
 class TriggerActivity : AppCompatActivity() {
 
@@ -32,276 +21,74 @@ class TriggerActivity : AppCompatActivity() {
         const val TARGET_TASK_ID_EXTRA = "TARGET_TASK_ID"
     }
 
-    private lateinit var mTrigger: Trigger
     private lateinit var dbHandler: DatabaseHandler
-    private var mTaskList: List<Task> = ArrayList()
-
-    private lateinit var mCardInterval: CardView
-    private lateinit var mCardWeekday: CardView
-    private lateinit var mCardTime: CardView
-
-    private lateinit var mTitle: EditText
-    private lateinit var mEnabled: CheckBox
-    private lateinit var mType: Spinner
-    private lateinit var mInterval: Spinner
-
-    private lateinit var mWeekdayMon: CheckBox
-    private lateinit var mWeekdayTue: CheckBox
-    private lateinit var mWeekdayWed: CheckBox
-    private lateinit var mWeekdayThu: CheckBox
-    private lateinit var mWeekdayFri: CheckBox
-    private lateinit var mWeekdaySat: CheckBox
-    private lateinit var mWeekdaySun: CheckBox
-
-    private lateinit var mTargetDropdown: Spinner
-    private lateinit var mTimepicker: TimePicker
-
+    private var existingTrigger: Trigger? = null
+    private var targetTaskId: Long = -1L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ActivityHelper.applyTheme(this)
-        setContentView(R.layout.activity_trigger)
-        val toolbar = findViewById<Toolbar>(R.id.toolbar)
-        setSupportActionBar(toolbar)
-        val actionBar = supportActionBar
-        actionBar?.setDisplayHomeAsUpEnabled(true)
-
-
-        mCardInterval = findViewById(R.id.intervalCard)
-        mCardWeekday = findViewById(R.id.weekdaysCard)
-        mCardTime = findViewById(R.id.timeCard)
-        mTitle = findViewById(R.id.trigger_name_edit)
-        mEnabled = findViewById(R.id.cb_is_enabled)
-        mType = findViewById(R.id.triggerType)
-        mInterval = findViewById(R.id.spinnerIntervals)
-
-        mWeekdayMon = findViewById(R.id.trigger_cb_monday)
-        mWeekdayTue = findViewById(R.id.trigger_cb_tuesday)
-        mWeekdayWed = findViewById(R.id.trigger_cb_wednesday)
-        mWeekdayThu = findViewById(R.id.trigger_cb_thursday)
-        mWeekdayFri = findViewById(R.id.trigger_cb_friday)
-        mWeekdaySat = findViewById(R.id.trigger_cb_saturday)
-        mWeekdaySun = findViewById(R.id.trigger_cb_sunday)
-        mTimepicker = findViewById(R.id.trigger_time)
-        mTargetDropdown = findViewById(R.id.trigger_targets)
 
         dbHandler = DatabaseHandler(this)
-        mTaskList = dbHandler.allTasks
 
         val extras = intent.extras
-        var loadedTrigger: Trigger? = null
         if (extras != null && extras.containsKey(ID_EXTRA)) {
             val triggerId = extras.getLong(ID_EXTRA)
             if (triggerId != 0L) {
-                loadedTrigger = dbHandler.getTrigger(triggerId)
-                if (loadedTrigger == null) {
-                    Toasty.error(
-                        this,
-                        this.resources.getString(R.string.triggeractivity_trigger_not_found)
-                    ).show()
+                existingTrigger = dbHandler.getTrigger(triggerId)
+                if (existingTrigger == null) {
+                    Toasty.error(this, getString(R.string.triggeractivity_trigger_not_found)).show()
                     finish()
                     return
                 }
             }
         }
-        mTrigger = loadedTrigger ?: Trigger(Trigger.TRIGGER_ID_DOESNTEXIST)
 
-        val targetTaskId = intent.getLongExtra(TARGET_TASK_ID_EXTRA, -1L)
-        if (targetTaskId != -1L) {
-            mTrigger.triggerTarget = targetTaskId
-        }
-        
-        val saveButton = findViewById<FloatingActionButton>(R.id.saveButton)
-        saveButton.setOnClickListener { saveTrigger() }
-        setUpTargetsDropdown()
+        targetTaskId = intent.getLongExtra(TARGET_TASK_ID_EXTRA, -1L)
 
-        // Todo: use KTX Extensions. https://stackoverflow.com/a/60409004
-        mTitle.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(s: Editable) {}
-            override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                mTrigger.title = s.toString()
-            }
-        })
-
-        mEnabled.setOnCheckedChangeListener { _: CompoundButton?, isChecked: Boolean ->
-            mTrigger.isEnabled = isChecked
-        }
-
-        val initialTriggerType = mTrigger.type
-        mType.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View, pos: Int, id: Long) {
-                if (pos == Trigger.TRIGGER_TYPE_SCHEDULE) {
-                    mTrigger.type = Trigger.TRIGGER_TYPE_SCHEDULE
-                } else {
-                    mTrigger.type = Trigger.TRIGGER_TYPE_INTERVAL
-                }
-
-                //update ui here, because typechanges also changes displayed items.
-                updateUiFromTrigger()
-            }
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
-        }
-
-        //restore initial triggerstate here
-        mType.setSelection(initialTriggerType)
-        mWeekdayMon.setOnCheckedChangeListener { _: CompoundButton?, isChecked: Boolean ->
-            mTrigger.setEnabledAtDay(
-                Trigger.TRIGGER_DAY_MON, isChecked
-            )
-        }
-        mWeekdayTue.setOnCheckedChangeListener { _: CompoundButton?, isChecked: Boolean ->
-            mTrigger.setEnabledAtDay(
-                Trigger.TRIGGER_DAY_TUE, isChecked
-            )
-        }
-        mWeekdayWed.setOnCheckedChangeListener { _: CompoundButton?, isChecked: Boolean ->
-            mTrigger.setEnabledAtDay(
-                Trigger.TRIGGER_DAY_WED, isChecked
-            )
-        }
-        mWeekdayThu.setOnCheckedChangeListener { _: CompoundButton?, isChecked: Boolean ->
-            mTrigger.setEnabledAtDay(
-                Trigger.TRIGGER_DAY_THU, isChecked
-            )
-        }
-        mWeekdayFri.setOnCheckedChangeListener { _: CompoundButton?, isChecked: Boolean ->
-            mTrigger.setEnabledAtDay(
-                Trigger.TRIGGER_DAY_FRI, isChecked
-            )
-        }
-        mWeekdaySat.setOnCheckedChangeListener { _: CompoundButton?, isChecked: Boolean ->
-            mTrigger.setEnabledAtDay(
-                Trigger.TRIGGER_DAY_SAT, isChecked
-            )
-        }
-        mWeekdaySun.setOnCheckedChangeListener { _: CompoundButton?, isChecked: Boolean ->
-            mTrigger.setEnabledAtDay(
-                Trigger.TRIGGER_DAY_SUN, isChecked
-            )
-        }
-        mTimepicker.setOnTimeChangedListener { _: TimePicker?, hourOfDay: Int, minute: Int ->
-            mTrigger.time = hourOfDay * 60 + minute
-        }
-
-        mInterval.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View, pos: Int, id: Long) {
-                when (pos) {
-                    0 -> mTrigger.time = 15
-                    1 -> mTrigger.time = 30
-                    3 -> mTrigger.time = 120
-                    2 -> mTrigger.time = 60
-                    else -> mTrigger.time = 60
-                }
-            }
-
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
-        }
-
-        mTargetDropdown.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View, pos: Int, id: Long) {
-                mTrigger.triggerTarget = mTaskList[pos].id
-            }
-
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
-        }
-
-        updateUiFromTrigger()
-    }
-
-    override fun onSupportNavigateUp(): Boolean {
-        finish()
-        return true
-    }
-
-    /**
-     * Set up Task-Target Dropdown
-     */
-    private fun setUpTargetsDropdown() {
-        val items = arrayOfNulls<String>(this.mTaskList.size)
-        var selectedIndex = 0
-        for (i in this.mTaskList.indices) {
-            items[i] = this.mTaskList[i].title
-            if (this.mTaskList[i].id == mTrigger.triggerTarget) {
-                selectedIndex = i
-            }
-        }
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, items)
-        mTargetDropdown.adapter = adapter
-        if (items.isNotEmpty()) {
-            mTargetDropdown.setSelection(selectedIndex)
-        }
-    }
-
-    private fun updateUiFromTrigger() {
-        if (DateFormat.is24HourFormat(this)) {
-            mTimepicker.setIs24HourView(true)
-        }
-        mCardInterval.visibility = View.GONE
-        mCardWeekday.visibility = View.GONE
-        mCardTime.visibility = View.GONE
-        mTitle.setText(mTrigger.title)
-        mEnabled.isChecked = mTrigger.isEnabled
-
-        // seconds if time is schedule, otherwise minutes (as in interval).
-        val timeValue = mTrigger.time
-        if (mTrigger.type == Trigger.TRIGGER_TYPE_SCHEDULE) {
-            mCardWeekday.visibility = View.VISIBLE
-            mCardTime.visibility = View.VISIBLE
-            mWeekdayMon.isChecked = mTrigger.isEnabledAtDay(Trigger.TRIGGER_DAY_MON)
-            mWeekdayTue.isChecked = mTrigger.isEnabledAtDay(Trigger.TRIGGER_DAY_TUE)
-            mWeekdayWed.isChecked = mTrigger.isEnabledAtDay(Trigger.TRIGGER_DAY_WED)
-            mWeekdayThu.isChecked = mTrigger.isEnabledAtDay(Trigger.TRIGGER_DAY_THU)
-            mWeekdayFri.isChecked = mTrigger.isEnabledAtDay(Trigger.TRIGGER_DAY_FRI)
-            mWeekdaySat.isChecked = mTrigger.isEnabledAtDay(Trigger.TRIGGER_DAY_SAT)
-            mWeekdaySun.isChecked = mTrigger.isEnabledAtDay(Trigger.TRIGGER_DAY_SUN)
-            mTimepicker.hour = timeValue / 60
-            mTimepicker.minute = timeValue % 60
-        } else {
-            mCardInterval.visibility = View.VISIBLE
-            when (timeValue) {
-                15 -> mInterval.setSelection(0)
-                30 -> mInterval.setSelection(1)
-                120 -> mInterval.setSelection(3)
-                60 -> mInterval.setSelection(2)
-                else -> mInterval.setSelection(2)
-            }
-        }
-
-        //Todo properly populate the fields
-        for (task in mTaskList) {
-            if (task.id == mTrigger.triggerTarget) {
-                mTargetDropdown.setSelection(mTaskList.indexOf(task))
-            }
-        }
-    }
-
-    private fun checkTaskExistence(): Boolean {
-        if (mTaskList.isEmpty()) {
-            Toasty.error(this, this.resources.getString(R.string.trigger_save_notasks)).show()
-            return false
-        }
-        return true
-    }
-
-    private fun saveTrigger() {
-        // check if title is set
-        if (mTrigger.title.isBlank()) {
-            Toasty.error(this, this.resources.getString(R.string.trigger_save_notitle)).show()
+        val allTasks = dbHandler.allTasks
+        if (allTasks.isEmpty()) {
+            Toasty.error(this, getString(R.string.trigger_save_notasks)).show()
+            finish()
             return
         }
 
-        // check if target task is set
-        if (!checkTaskExistence()) {
-            Toasty.error(this, this.resources.getString(R.string.trigger_save_notasks)).show()
-            return
+        setContent {
+            MaterialTheme(
+                colorScheme = darkColorScheme(
+                    primary = Color(0xFF3B82F6),
+                    secondary = Color(0xFF38BDF8),
+                    surface = Color(0xFF0F172A),
+                    surfaceVariant = Color(0xFF1E293B),
+                    background = Color(0xFF0B1120),
+                    onBackground = Color(0xFFF8FAFC),
+                    onSurface = Color(0xFFF8FAFC)
+                )
+            ) {
+                TriggerEditComposeScreen(
+                    existingTrigger = existingTrigger,
+                    initialTargetTaskId = targetTaskId,
+                    allTasks = allTasks,
+                    onSaveTrigger = { triggerToSave ->
+                        val savedTrigger = if (existingTrigger == null || existingTrigger?.id == Trigger.TRIGGER_ID_DOESNTEXIST) {
+                            dbHandler.createTrigger(triggerToSave)
+                        } else {
+                            dbHandler.updateTrigger(triggerToSave)
+                            triggerToSave
+                        }
+                        TriggerService(this).queueSingleTrigger(savedTrigger)
+                        finish()
+                    },
+                    onDeleteTrigger = if (existingTrigger != null) {
+                        { triggerToDelete ->
+                            TriggerService(this).cancelTrigger(triggerToDelete.id)
+                            dbHandler.deleteTrigger(triggerToDelete.id)
+                            finish()
+                        }
+                    } else null,
+                    onBack = { finish() }
+                )
+            }
         }
-        if (mTrigger.id == Trigger.TRIGGER_ID_DOESNTEXIST) {
-            mTrigger = dbHandler.createTrigger(mTrigger)
-        } else {
-            dbHandler.updateTrigger(mTrigger)
-        }
-        TriggerService(this).queueSingleTrigger(mTrigger)
-        finish()
     }
 }

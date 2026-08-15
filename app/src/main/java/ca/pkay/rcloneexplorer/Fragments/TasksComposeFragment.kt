@@ -11,18 +11,27 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.viewmodel.compose.viewModel
 import ca.pkay.rcloneexplorer.Activities.TaskActivity
 import ca.pkay.rcloneexplorer.Activities.TriggerActivity
 import ca.pkay.rcloneexplorer.ui.TasksComposeScreen
-import ca.pkay.rcloneexplorer.workmanager.SyncWorker
+import ca.pkay.rcloneexplorer.ui.viewmodel.TasksViewModel
 
 class TasksComposeFragment : Fragment() {
+
+    private val tasksViewModel: TasksViewModel by activityViewModels()
 
     companion object {
         @JvmStatic
         fun newInstance(): TasksComposeFragment {
             return TasksComposeFragment()
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        tasksViewModel.refresh()
     }
 
     override fun onCreateView(
@@ -45,6 +54,7 @@ class TasksComposeFragment : Fragment() {
                     )
                 ) {
                     TasksComposeScreen(
+                        viewModel = tasksViewModel,
                         onNewTaskClick = {
                             val intent = Intent(requireContext(), TaskActivity::class.java)
                             startActivity(intent)
@@ -58,6 +68,13 @@ class TasksComposeFragment : Fragment() {
                         onManageTriggersClick = { task ->
                             val intent = Intent(requireContext(), TriggerActivity::class.java).apply {
                                 putExtra(TriggerActivity.TARGET_TASK_ID_EXTRA, task.id)
+                            }
+                            startActivity(intent)
+                        },
+                        onEditTriggerClick = { trigger ->
+                            val intent = Intent(requireContext(), TriggerActivity::class.java).apply {
+                                putExtra(TriggerActivity.ID_EXTRA, trigger.id)
+                                putExtra(TriggerActivity.TARGET_TASK_ID_EXTRA, trigger.triggerTarget)
                             }
                             startActivity(intent)
                         }

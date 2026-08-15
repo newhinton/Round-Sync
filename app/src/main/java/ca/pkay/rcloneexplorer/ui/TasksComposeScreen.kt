@@ -1,7 +1,5 @@
 package ca.pkay.rcloneexplorer.ui
 
-import android.content.Context
-import android.content.Intent
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -19,24 +17,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import ca.pkay.rcloneexplorer.Activities.TriggerActivity
-import ca.pkay.rcloneexplorer.Database.DatabaseHandler
+import androidx.lifecycle.viewmodel.compose.viewModel
 import ca.pkay.rcloneexplorer.Items.RemoteItem
 import ca.pkay.rcloneexplorer.Items.SyncDirectionObject
 import ca.pkay.rcloneexplorer.Items.Task
 import ca.pkay.rcloneexplorer.Items.Trigger
-import ca.pkay.rcloneexplorer.R
-import ca.pkay.rcloneexplorer.Services.TriggerService
-import ca.pkay.rcloneexplorer.workmanager.SyncManager
-import kotlinx.coroutines.Dispatchers
+import ca.pkay.rcloneexplorer.ui.viewmodel.TasksViewModel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 data class TaskWithTriggers(
     val task: Task,
@@ -46,40 +38,18 @@ data class TaskWithTriggers(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TasksComposeScreen(
+    viewModel: TasksViewModel = viewModel(),
     onNewTaskClick: () -> Unit,
     onEditTaskClick: (Task) -> Unit,
-    onManageTriggersClick: (Task) -> Unit
+    onManageTriggersClick: (Task) -> Unit,
+    onEditTriggerClick: (Trigger) -> Unit
 ) {
-    val context = LocalContext.current
-    val dbHandler = remember { DatabaseHandler(context) }
-    var taskDataList by remember { mutableStateOf<List<TaskWithTriggers>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
+    val taskDataList by viewModel.tasksWithTriggers.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
     var taskToDelete by remember { mutableStateOf<Task?>(null) }
+    var triggerToDelete by remember { mutableStateOf<Pair<Trigger, Long>?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-
-    fun loadTasksAndTriggers() {
-        scope.launch {
-            isLoading = true
-            val items = withContext(Dispatchers.IO) {
-                val tasks = dbHandler.allTasks
-                val triggers = dbHandler.allTrigger
-                val triggersByTask = triggers.groupBy { it.triggerTarget }
-                tasks.map { task ->
-                    TaskWithTriggers(
-                        task = task,
-                        triggers = triggersByTask[task.id] ?: emptyList()
-                    )
-                }
-            }
-            taskDataList = items
-            isLoading = false
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        loadTasksAndTriggers()
-    }
 
     Scaffold(
         topBar = {
@@ -95,7 +65,7 @@ fun TasksComposeScreen(
                     titleContentColor = MaterialTheme.colorScheme.onSurface
                 ),
                 actions = {
-                    IconButton(onClick = { loadTasksAndTriggers() }) {
+                    IconButton(onClick = { viewModel.refresh() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh tasks")
                     }
                 }
@@ -188,28 +158,25 @@ fun TasksComposeScreen(
                         task = item.task,
                         triggers = item.triggers,
                         onRunTask = {
-                            SyncManager(context).queue(item.task)
+                            viewModel.runTask(item.task)
                             scope.launch {
                                 snackbarHostState.showSnackbar("Started sync task: ${item.task.title}")
                             }
                         },
                         onToggleTrigger = { trigger, isEnabled ->
-                            scope.launch {
-                                withContext(Dispatchers.IO) {
-                                    trigger.isEnabled = isEnabled
-                                    dbHandler.updateTrigger(trigger)
-                                    val triggerService = TriggerService(context)
-                                    if (isEnabled) {
-                                        triggerService.queueSingleTrigger(trigger)
-                                    } else {
-                                        triggerService.cancelTrigger(trigger.id)
-                                    }
-                                }
-                                loadTasksAndTriggers()
-                            }
+                            viewModel.toggleTrigger(trigger, isEnabled)
                         },
                         onEditTask = { onEditTaskClick(item.task) },
                         onManageTriggers = { onManageTriggersClick(item.task) },
+                        onEditTrigger = { onEditTriggerClick(it) },
+                        onDeleteTrigger = { trigger ->
+                            triggerToDelete = Pair(trigger, item.task.id)
+                        },
+                        onDeleteAllTriggersForTask = {
+                            if (item.triggers.isNotEmpty()) {
+                                triggerToDelete = Pair(item.triggers.first(), item.task.id)
+                            }
+                        },
                         onDeleteTask = { taskToDelete = item.task }
                     )
                 }
@@ -217,35 +184,54 @@ fun TasksComposeScreen(
         }
     }
 
-    // Delete Confirmation Dialog
+    // Delete Task Dialog (cascades to triggers)
     taskToDelete?.let { target ->
         AlertDialog(
             onDismissRequest = { taskToDelete = null },
             title = { Text("Delete Task") },
-            text = { Text("Are you sure you want to delete sync task \"${target.title}\"? Associated schedules will also be cancelled.") },
+            text = { Text("Are you sure you want to delete sync task \"${target.title}\"? All associated triggers and schedules will also be cancelled and deleted.") },
             confirmButton = {
                 TextButton(
                     onClick = {
+                        viewModel.deleteTask(target.id)
+                        taskToDelete = null
                         scope.launch {
-                            withContext(Dispatchers.IO) {
-                                val triggers = dbHandler.allTrigger.filter { it.triggerTarget == target.id }
-                                val triggerService = TriggerService(context)
-                                for (t in triggers) {
-                                    triggerService.cancelTrigger(t.id)
-                                    dbHandler.deleteTrigger(t.id)
-                                }
-                                dbHandler.deleteTask(target.id)
-                            }
-                            loadTasksAndTriggers()
-                            taskToDelete = null
+                            snackbarHostState.showSnackbar("Task \"${target.title}\" deleted")
                         }
                     }
                 ) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                    Text("Delete", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { taskToDelete = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Delete Trigger Dialog
+    triggerToDelete?.let { (trigger, taskId) ->
+        AlertDialog(
+            onDismissRequest = { triggerToDelete = null },
+            title = { Text("Delete Trigger") },
+            text = { Text("Are you sure you want to delete trigger \"${if (trigger.title.isNotBlank()) trigger.title else "Schedule"}\"?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteTrigger(trigger.id, taskId)
+                        triggerToDelete = null
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Trigger deleted")
+                        }
+                    }
+                ) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { triggerToDelete = null }) {
                     Text("Cancel")
                 }
             }
@@ -261,9 +247,11 @@ fun TaskCard(
     onToggleTrigger: (Trigger, Boolean) -> Unit,
     onEditTask: () -> Unit,
     onManageTriggers: () -> Unit,
+    onEditTrigger: (Trigger) -> Unit,
+    onDeleteTrigger: (Trigger) -> Unit,
+    onDeleteAllTriggersForTask: () -> Unit,
     onDeleteTask: () -> Unit
 ) {
-    val context = LocalContext.current
     var showMenu by remember { mutableStateOf(false) }
 
     val remote = remember(task) {
@@ -377,14 +365,16 @@ fun TaskCard(
                                     onEditTask()
                                 }
                             )
-                            DropdownMenuItem(
-                                text = { Text("Add / Manage Triggers") },
-                                leadingIcon = { Icon(Icons.Outlined.Alarm, contentDescription = null) },
-                                onClick = {
-                                    showMenu = false
-                                    onManageTriggers()
-                                }
-                            )
+                            if (triggers.isNotEmpty()) {
+                                DropdownMenuItem(
+                                    text = { Text("Delete Trigger") },
+                                    leadingIcon = { Icon(Icons.Outlined.AlarmOff, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                                    onClick = {
+                                        showMenu = false
+                                        onDeleteAllTriggersForTask()
+                                    }
+                                )
+                            }
                             DropdownMenuItem(
                                 text = { Text("Delete Task") },
                                 leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
@@ -447,7 +437,7 @@ fun TaskCard(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Trigger & Schedule Section
+            // Trigger & Schedule Section on Task Card
             if (triggers.isNotEmpty()) {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -466,7 +456,10 @@ fun TaskCard(
                         Surface(
                             shape = RoundedCornerShape(10.dp),
                             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.4f),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { onEditTrigger(trigger) }
                         ) {
                             Row(
                                 modifier = Modifier
@@ -502,13 +495,27 @@ fun TaskCard(
                                     }
                                 }
 
-                                Switch(
-                                    checked = trigger.isEnabled,
-                                    onCheckedChange = { isChecked ->
-                                        onToggleTrigger(trigger, isChecked)
-                                    },
-                                    modifier = Modifier.height(28.dp)
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    IconButton(
+                                        onClick = { onDeleteTrigger(trigger) },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Outlined.Delete,
+                                            contentDescription = "Delete trigger",
+                                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+
+                                    Switch(
+                                        checked = trigger.isEnabled,
+                                        onCheckedChange = { isChecked ->
+                                            onToggleTrigger(trigger, isChecked)
+                                        },
+                                        modifier = Modifier.height(28.dp)
+                                    )
+                                }
                             }
                         }
                     }
