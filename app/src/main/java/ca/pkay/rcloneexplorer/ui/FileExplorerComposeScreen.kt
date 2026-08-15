@@ -1144,6 +1144,9 @@ fun GridFileCard(
             .getLong(context.getString(R.string.pref_key_thumbnail_size_limit), 26214400L)
     }
 
+    val cacheSignature = "${fileItem.remote.name}:${fileItem.path}:${fileItem.modTime}:${fileItem.size}"
+    val diskCache = remember { coil.Coil.imageLoader(context).diskCache }
+
     val imageModel: Any? = remember(fileItem, thumbnailServerAuth, thumbnailServerPort, maxThumbnailSize) {
         if (!showThumbnails || !isPhoto || fileItem.size > maxThumbnailSize) {
             null
@@ -1167,9 +1170,17 @@ fun GridFileCard(
                     "http://127.0.0.1:$thumbnailServerPort/$thumbnailServerAuth/${fileItem.remote.name}/${fileItem.path}"
                 } else null
             }
-        } else if (thumbnailServerPort > 0 && thumbnailServerAuth.isNotEmpty()) {
-            "http://127.0.0.1:$thumbnailServerPort/$thumbnailServerAuth/${fileItem.remote.name}/${fileItem.path}"
-        } else null
+        } else {
+            // First check: is it already cached locally on disk?
+            val snapshot = try { diskCache?.openSnapshot(cacheSignature) } catch (e: Exception) { null }
+            val localCachedFile = snapshot?.use { it.data.toFile() }
+            if (localCachedFile != null && localCachedFile.exists()) {
+                // Instant 0ms local file load - ZERO network request, ZERO server dependency
+                localCachedFile
+            } else if (thumbnailServerPort > 0 && thumbnailServerAuth.isNotEmpty()) {
+                "http://127.0.0.1:$thumbnailServerPort/$thumbnailServerAuth/${fileItem.remote.name}/${fileItem.path}"
+            } else null
+        }
     }
 
     Card(
@@ -1211,7 +1222,6 @@ fun GridFileCard(
                 contentAlignment = Alignment.Center
             ) {
                 if (imageModel != null) {
-                    val cacheSignature = "${fileItem.remote.name}:${fileItem.path}:${fileItem.modTime}:${fileItem.size}"
                     AsyncImage(
                         model = ImageRequest.Builder(context)
                             .data(imageModel)
@@ -1323,6 +1333,9 @@ fun ListFileCard(
             .getLong(context.getString(R.string.pref_key_thumbnail_size_limit), 26214400L)
     }
 
+    val cacheSignature = "${fileItem.remote.name}:${fileItem.path}:${fileItem.modTime}:${fileItem.size}"
+    val diskCache = remember { coil.Coil.imageLoader(context).diskCache }
+
     val imageModel: Any? = remember(fileItem, thumbnailServerAuth, thumbnailServerPort, maxThumbnailSize) {
         if (!showThumbnails || !isPhoto || fileItem.size > maxThumbnailSize) {
             null
@@ -1346,9 +1359,17 @@ fun ListFileCard(
                     "http://127.0.0.1:$thumbnailServerPort/$thumbnailServerAuth/${fileItem.remote.name}/${fileItem.path}"
                 } else null
             }
-        } else if (thumbnailServerPort > 0 && thumbnailServerAuth.isNotEmpty()) {
-            "http://127.0.0.1:$thumbnailServerPort/$thumbnailServerAuth/${fileItem.remote.name}/${fileItem.path}"
-        } else null
+        } else {
+            // First check: is it already cached locally on disk?
+            val snapshot = try { diskCache?.openSnapshot(cacheSignature) } catch (e: Exception) { null }
+            val localCachedFile = snapshot?.use { it.data.toFile() }
+            if (localCachedFile != null && localCachedFile.exists()) {
+                // Instant 0ms local file load - ZERO network request, ZERO server dependency
+                localCachedFile
+            } else if (thumbnailServerPort > 0 && thumbnailServerAuth.isNotEmpty()) {
+                "http://127.0.0.1:$thumbnailServerPort/$thumbnailServerAuth/${fileItem.remote.name}/${fileItem.path}"
+            } else null
+        }
     }
 
     Card(
@@ -1389,7 +1410,6 @@ fun ListFileCard(
                 contentAlignment = Alignment.Center
             ) {
                 if (imageModel != null) {
-                    val cacheSignature = "${fileItem.remote.name}:${fileItem.path}:${fileItem.modTime}:${fileItem.size}"
                     AsyncImage(
                         model = ImageRequest.Builder(context)
                             .data(imageModel)
