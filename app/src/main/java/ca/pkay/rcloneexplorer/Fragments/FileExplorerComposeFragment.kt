@@ -101,11 +101,14 @@ class FileExplorerComposeFragment : Fragment(), SortDialog.OnClickListener, Serv
     ): View {
         remote?.let { viewModel.initRemote(it) }
 
-        // Start thumbnail service when remote is a cloud remote and thumbnails are enabled
-        val currentRemote = remote
-        val isCloudRemote = currentRemote != null && !currentRemote.isRemoteType(RemoteItem.LOCAL, RemoteItem.SAFW) && !currentRemote.isPathAlias
-        if (isCloudRemote) {
-            startThumbnailService()
+        // Smart On-Demand Thumbnail Service Lifecycle
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.uiState
+                .map { Triple(it.displayFiles, it.showThumbnails, it.remote) }
+                .distinctUntilChanged()
+                .collect { (displayFiles, showThumbnails, currentRemote) ->
+                    evaluateThumbnailServiceDemand(displayFiles, showThumbnails, currentRemote)
+                }
         }
 
         return ComposeView(requireContext()).apply {
@@ -127,6 +130,45 @@ class FileExplorerComposeFragment : Fragment(), SortDialog.OnClickListener, Serv
                     )
                 }
             }
+        }
+    }
+
+    private fun evaluateThumbnailServiceDemand(
+        displayFiles: List<FileItem>,
+        showThumbnails: Boolean,
+        currentRemote: RemoteItem?
+    ) {
+        if (currentRemote == null || !showThumbnails ||
+            currentRemote.isRemoteType(RemoteItem.LOCAL, RemoteItem.SAFW) ||
+            currentRemote.isPathAlias
+        ) {
+            stopThumbnailService()
+            return
+        }
+
+        val imageFiles = displayFiles.filter { !it.isDir && it.mimeType?.startsWith("image/") == true }
+        if (imageFiles.isEmpty()) {
+            stopThumbnailService()
+            return
+        }
+
+        val ctx = context ?: return
+        val diskCache = coil.Coil.imageLoader(ctx).diskCache
+        val maxThumbnailSize = PreferenceManager.getDefaultSharedPreferences(ctx)
+            .getLong(getString(R.string.pref_key_thumbnail_size_limit), 26214400L)
+
+        // Check if there is at least one visible image NOT yet cached locally
+        val hasUncachedImages = imageFiles.any { item ->
+            if (item.size > maxThumbnailSize) return@any false
+            val cacheSignature = "${item.remote.name}:${item.path}:${item.modTime}:${item.size}"
+            diskCache?.get(cacheSignature) == null
+        }
+
+        if (hasUncachedImages) {
+            startThumbnailService()
+        } else {
+            // All images are already cached locally on disk - no service needed
+            stopThumbnailService()
         }
     }
 
