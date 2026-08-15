@@ -638,8 +638,27 @@
     <string name="pref_key_enable_telemetry_cache" translatable="false">pref_key_enable_telemetry_cache</string>
     <string name="pref_enable_telemetry_cache_title">Cache Storage Quotas &amp; Directory Listings</string>
     <string name="pref_enable_telemetry_cache_summary">Saves remote storage telemetry and directory listings locally so remotes load instantly, even on low internet or app restart</string>
+    <string name="pref_key_telemetry_cache_budget" translatable="false">pref_key_telemetry_cache_budget</string>
+    <string name="pref_telemetry_cache_budget_title">Cache Budget Limit</string>
+    <string name="pref_telemetry_cache_budget_summary">Max storage limit for directory listings: %1$.1f MB</string>
     <string name="pref_key_clear_telemetry_cache" translatable="false">pref_key_clear_telemetry_cache</string>
     <string name="pref_clear_telemetry_cache_title">Clear Remote Telemetry &amp; Metadata Cache</string>
     <string name="pref_clear_telemetry_cache_summary">Purge all locally cached remote storage quotas and folder metadata</string>
     <string name="telemetry_cache_cleared">Remote telemetry and metadata cache cleared</string>
+
+    <string name="preference_category_header_default_openers">Default File Openers</string>
+    <string name="pref_key_default_image_opener" translatable="false">pref_key_default_image_opener</string>
+    <string name="pref_default_image_opener_title">Image Opener</string>
+    <string name="pref_key_default_video_opener" translatable="false">pref_key_default_video_opener</string>
+    <string name="pref_default_video_opener_title">Video Opener</string>
+    <string name="pref_key_default_audio_opener" translatable="false">pref_key_default_audio_opener</string>
+    <string name="pref_default_audio_opener_title">Audio Opener</string>
+    <string name="pref_key_default_doc_opener" translatable="false">pref_key_default_doc_opener</string>
+    <string name="pref_default_doc_opener_title">Document &amp; PDF Opener</string>
+    <string name="pref_key_reset_default_openers" translatable="false">pref_key_reset_default_openers</string>
+    <string name="pref_reset_default_openers_title">Reset Default Openers</string>
+    <string name="pref_reset_default_openers_summary">Revert all file categories to ask every time</string>
+    <string name="default_opener_ask_every_time">Always ask (Chooser menu)</string>
+    <string name="default_opener_system_default">System Default</string>
+    <string name="default_openers_reset_success">Default file openers reset to always ask</string>
 </resources>

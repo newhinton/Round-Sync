@@ -76,6 +76,15 @@ class GeneralPreferencesFragment : PreferenceFragmentCompat() {
             true
         }
 
+        val telemetryBudgetKey = getString(R.string.pref_key_telemetry_cache_budget)
+        val telemetryBudgetPreference = findPreference(telemetryBudgetKey) as FilesizePreference?
+        telemetryBudgetPreference?.summaryProvider =
+            Preference.SummaryProvider<FilesizePreference> { preference ->
+                val size = preference.getValue()
+                val sizeMb = (size / 1024 / 1024)
+                "$sizeMb MB"
+            }
+
         val clearTelemetryCachePreference = findPreference(getString(R.string.pref_key_clear_telemetry_cache)) as Preference?
         clearTelemetryCachePreference?.setOnPreferenceClickListener {
             viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
@@ -93,6 +102,9 @@ class GeneralPreferencesFragment : PreferenceFragmentCompat() {
             }
             true
         }
+
+        // Setup Default File Openers
+        setupDefaultOpeners()
 
         val shortcutsPreference = findPreference("AppShortcutTempKey") as Preference?
         shortcutsPreference?.setOnPreferenceClickListener {
@@ -280,6 +292,65 @@ class GeneralPreferencesFragment : PreferenceFragmentCompat() {
             updatedAppShortcutIDds
         )
         editor.apply()
+    }
+
+    private fun setupDefaultOpeners() {
+        val imageKey = getString(R.string.pref_key_default_image_opener)
+        val videoKey = getString(R.string.pref_key_default_video_opener)
+        val audioKey = getString(R.string.pref_key_default_audio_opener)
+        val docKey = getString(R.string.pref_key_default_doc_opener)
+        val resetKey = getString(R.string.pref_key_reset_default_openers)
+
+        val imagePref = findPreference<Preference>(imageKey)
+        val videoPref = findPreference<Preference>(videoKey)
+        val audioPref = findPreference<Preference>(audioKey)
+        val docPref = findPreference<Preference>(docKey)
+        val resetPref = findPreference<Preference>(resetKey)
+
+        fun updateOpenerSummaries() {
+            val ctx = context ?: return
+            imagePref?.summary = ca.pkay.rcloneexplorer.util.DefaultOpenerHelper.getOpenerSummary(ctx, imageKey)
+            videoPref?.summary = ca.pkay.rcloneexplorer.util.DefaultOpenerHelper.getOpenerSummary(ctx, videoKey)
+            audioPref?.summary = ca.pkay.rcloneexplorer.util.DefaultOpenerHelper.getOpenerSummary(ctx, audioKey)
+            docPref?.summary = ca.pkay.rcloneexplorer.util.DefaultOpenerHelper.getOpenerSummary(ctx, docKey)
+        }
+
+        updateOpenerSummaries()
+
+        imagePref?.setOnPreferenceClickListener {
+            ca.pkay.rcloneexplorer.util.DefaultOpenerHelper.showAppPickerDialog(
+                requireContext(), imageKey, getString(R.string.pref_default_image_opener_title), "image/*"
+            ) { updateOpenerSummaries() }
+            true
+        }
+
+        videoPref?.setOnPreferenceClickListener {
+            ca.pkay.rcloneexplorer.util.DefaultOpenerHelper.showAppPickerDialog(
+                requireContext(), videoKey, getString(R.string.pref_default_video_opener_title), "video/*"
+            ) { updateOpenerSummaries() }
+            true
+        }
+
+        audioPref?.setOnPreferenceClickListener {
+            ca.pkay.rcloneexplorer.util.DefaultOpenerHelper.showAppPickerDialog(
+                requireContext(), audioKey, getString(R.string.pref_default_audio_opener_title), "audio/*"
+            ) { updateOpenerSummaries() }
+            true
+        }
+
+        docPref?.setOnPreferenceClickListener {
+            ca.pkay.rcloneexplorer.util.DefaultOpenerHelper.showAppPickerDialog(
+                requireContext(), docKey, getString(R.string.pref_default_doc_opener_title), "application/pdf"
+            ) { updateOpenerSummaries() }
+            true
+        }
+
+        resetPref?.setOnPreferenceClickListener {
+            ca.pkay.rcloneexplorer.util.DefaultOpenerHelper.resetAllOpeners(requireContext())
+            updateOpenerSummaries()
+            Toasty.success(requireContext(), getString(R.string.default_openers_reset_success), Toast.LENGTH_SHORT, true).show()
+            true
+        }
     }
 
 }

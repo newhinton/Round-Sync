@@ -224,7 +224,13 @@ class FileExplorerComposeFragment : Fragment(), SortDialog.OnClickListener, Serv
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
-                    startActivity(Intent.createChooser(intent, "Open with..."))
+                    ca.pkay.rcloneexplorer.util.DefaultOpenerHelper.launchWithConfiguredOpener(
+                        this@FileExplorerComposeFragment,
+                        intent,
+                        "Open with...",
+                        fileItem,
+                        onUnknownFallback = { showOpenAsDialog(fileItem) }
+                    )
                     return
                 }
             } catch (e: Exception) {
@@ -299,10 +305,16 @@ class FileExplorerComposeFragment : Fragment(), SortDialog.OnClickListener, Serv
             Dialogs.dismissSilently(loadingDialog)
             if (ready && isAdded) {
                 try {
-                    val chooser = Intent.createChooser(intent, "Open with...")
-                    startActivityForResult(chooser, STREAMING_INTENT_RESULT)
+                    ca.pkay.rcloneexplorer.util.DefaultOpenerHelper.launchWithConfiguredOpener(
+                        this@FileExplorerComposeFragment,
+                        intent,
+                        "Open with...",
+                        fileItem,
+                        STREAMING_INTENT_RESULT,
+                        onUnknownFallback = { showOpenAsDialog(fileItem) }
+                    )
                 } catch (e: Exception) {
-                    Toasty.error(ctx, "No app available to play this media", Toast.LENGTH_SHORT, true).show()
+                    showOpenAsDialog(fileItem)
                 }
             } else if (isAdded) {
                 Toasty.error(ctx, getString(R.string.streaming_task_failed), Toast.LENGTH_LONG, true).show()
@@ -386,11 +398,16 @@ class FileExplorerComposeFragment : Fragment(), SortDialog.OnClickListener, Serv
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
 
-                val chooser = Intent.createChooser(intent, "Open with...")
-                startActivity(chooser)
+                ca.pkay.rcloneexplorer.util.DefaultOpenerHelper.launchWithConfiguredOpener(
+                    this@FileExplorerComposeFragment,
+                    intent,
+                    "Open with...",
+                    fileItem,
+                    onUnknownFallback = { showOpenAsDialog(fileItem) }
+                )
             } catch (e: Exception) {
                 FLog.e("FileExplorer", "Failed launching open intent", e)
-                Toasty.error(ctx, "No application found to open this file", Toast.LENGTH_SHORT, true).show()
+                showOpenAsDialog(fileItem)
             }
         }
     }

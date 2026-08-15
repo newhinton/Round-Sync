@@ -86,7 +86,7 @@ object DirectoryCacheRepository {
         try {
             val cacheDir = File(context.cacheDir, "directory_metadata_cache")
             if (!cacheDir.exists()) cacheDir.mkdirs()
-            ensureDiskQuota(cacheDir)
+            ensureDiskQuota(context, cacheDir)
 
             val sanitized = key.replace("[^a-zA-Z0-9_.-]".toRegex(), "_")
             val file = File(cacheDir, "$sanitized.json")
@@ -119,16 +119,22 @@ object DirectoryCacheRepository {
         }
     }
 
-    private fun ensureDiskQuota(cacheDir: File) {
+    private fun ensureDiskQuota(context: Context, cacheDir: File) {
         val files = cacheDir.listFiles() ?: return
         var totalSize = files.sumOf { it.length() }
-        if (totalSize > MAX_DISK_CACHE_BYTES) {
+        val maxBudget = try {
+            androidx.preference.PreferenceManager.getDefaultSharedPreferences(context)
+                .getLong("pref_key_telemetry_cache_budget", 52428800L)
+        } catch (e: Exception) {
+            52428800L
+        }
+        if (totalSize > maxBudget) {
             // Sort disk cache files by lastModified ascending (oldest viewed first)
             val sortedFiles = files.sortedBy { it.lastModified() }
             for (f in sortedFiles) {
                 totalSize -= f.length()
                 f.delete()
-                if (totalSize <= MAX_DISK_CACHE_BYTES * 0.75) {
+                if (totalSize <= maxBudget * 0.75) {
                     break
                 }
             }
