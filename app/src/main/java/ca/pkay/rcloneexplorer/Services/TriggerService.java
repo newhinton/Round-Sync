@@ -115,25 +115,35 @@ public class TriggerService extends Service {
 
     private void queueSingleIntervalTrigger(Trigger trigger){
         if(trigger.isEnabled()){
+            int intervalMinutes = trigger.getTime();
+            if (intervalMinutes < 15) {
+                intervalMinutes = 15; // WorkManager minimum periodic interval
+            }
+            androidx.work.PeriodicWorkRequest periodicWork = new androidx.work.PeriodicWorkRequest.Builder(
+                ca.pkay.rcloneexplorer.workmanager.SyncWorker.class,
+                intervalMinutes,
+                java.util.concurrent.TimeUnit.MINUTES
+            )
+            .setInputData(new androidx.work.Data.Builder().putLong(ca.pkay.rcloneexplorer.workmanager.SyncWorker.TASK_ID, trigger.getTriggerTarget()).build())
+            .addTag("trigger_" + trigger.getId())
+            .build();
 
-            int intervalMillis = trigger.getTime() * 60 * 1000;
-            long timeToTrigger = System.currentTimeMillis();
-
-            AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-            PendingIntent pi = getIntent(trigger.getId());
-            am.cancel(pi);
-            am.setInexactRepeating(
-                    AlarmManager.RTC_WAKEUP,
-                    timeToTrigger+intervalMillis,
-                    intervalMillis,
-                    pi
+            androidx.work.WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                "trigger_interval_" + trigger.getId(),
+                androidx.work.ExistingPeriodicWorkPolicy.UPDATE,
+                periodicWork
             );
+        } else {
+            cancelTrigger(trigger.getId());
         }
     }
 
     public void cancelTrigger(long triggerID){
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         am.cancel(getIntent(triggerID));
+        try {
+            androidx.work.WorkManager.getInstance(context).cancelUniqueWork("trigger_interval_" + triggerID);
+        } catch (Exception ignored) {}
     }
 
     private void startTask(Trigger trigger){
@@ -203,13 +213,15 @@ public class TriggerService extends Service {
             notification = new Notification.Builder(this, CHANNEL_ID)
                     .setContentTitle(getText(R.string.notification_triggerservice_title))
                     .setContentText(getText(R.string.notification_triggerservice_description))
-                    .setSmallIcon(R.drawable.ic_launcher_foreground)
+                    .setSmallIcon(R.drawable.ic_twotone_rounded_cloud_sync_24)
+                    .setLargeIcon(android.graphics.BitmapFactory.decodeResource(getResources(), R.drawable.app_logo))
                     .build();
         } else {
             NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this)
                     .setContentTitle(getText(R.string.notification_triggerservice_title))
                     .setContentText(getText(R.string.notification_triggerservice_description))
-                    .setSmallIcon(R.drawable.ic_launcher_foreground);
+                    .setSmallIcon(R.drawable.ic_twotone_rounded_cloud_sync_24)
+                    .setLargeIcon(android.graphics.BitmapFactory.decodeResource(getResources(), R.drawable.app_logo));
             notification = notificationBuilder.build();
         }
         startForeground(SERVICE_NOTIFICATION_ID, notification);

@@ -18,11 +18,72 @@
             app:title="@string/show_thumbnails" />
 
         <de.felixnuesse.extract.settings.preferences.FilesizePreference
-            android:defaultValue="1048576"
+            android:defaultValue="26214400"
             android:key="@string/pref_key_thumbnail_size_limit"
             android:title="@string/pref_thumbnails_dlg_title"
             app:dependency="@string/pref_key_show_thumbnails" />
 
+        <de.felixnuesse.extract.settings.preferences.FilesizePreference
+            android:defaultValue="104857600"
+            android:key="@string/pref_key_thumbnail_cache_budget"
+            android:title="@string/pref_thumbnail_cache_budget_title"
+            app:dependency="@string/pref_key_show_thumbnails"
+            app:summary="@string/pref_thumbnail_cache_budget_summary" />
+
+        <Preference
+            android:key="@string/pref_key_clear_thumbnail_cache"
+            android:title="@string/pref_clear_thumbnail_cache_title"
+            app:dependency="@string/pref_key_show_thumbnails"
+            app:summary="@string/pref_clear_thumbnail_cache_summary" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/preference_category_header_telemetry_cache">
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:key="@string/pref_key_enable_telemetry_cache"
+            app:summary="@string/pref_enable_telemetry_cache_summary"
+            app:title="@string/pref_enable_telemetry_cache_title" />
+
+        <de.felixnuesse.extract.settings.preferences.FilesizePreference
+            android:defaultValue="52428800"
+            android:key="@string/pref_key_telemetry_cache_budget"
+            android:title="@string/pref_telemetry_cache_budget_title"
+            app:dependency="@string/pref_key_enable_telemetry_cache"
+            app:summary="@string/pref_telemetry_cache_budget_summary" />
+
+        <Preference
+            android:key="@string/pref_key_clear_telemetry_cache"
+            android:title="@string/pref_clear_telemetry_cache_title"
+            app:dependency="@string/pref_key_enable_telemetry_cache"
+            app:summary="@string/pref_clear_telemetry_cache_summary" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/preference_category_header_default_openers">
+        <Preference
+            android:key="@string/pref_key_default_image_opener"
+            android:title="@string/pref_default_image_opener_title"
+            app:summary="@string/default_opener_ask_every_time" />
+
+        <Preference
+            android:key="@string/pref_key_default_video_opener"
+            android:title="@string/pref_default_video_opener_title"
+            app:summary="@string/default_opener_ask_every_time" />
+
+        <Preference
+            android:key="@string/pref_key_default_audio_opener"
+            android:title="@string/pref_default_audio_opener_title"
+            app:summary="@string/default_opener_ask_every_time" />
+
+        <Preference
+            android:key="@string/pref_key_default_doc_opener"
+            android:title="@string/pref_default_doc_opener_title"
+            app:summary="@string/default_opener_ask_every_time" />
+
+        <Preference
+            android:key="@string/pref_key_reset_default_openers"
+            android:title="@string/pref_reset_default_openers_title"
+            app:summary="@string/pref_reset_default_openers_summary" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/preference_category_header_background_work">
@@ -31,11 +92,6 @@
             android:key="@string/shared_preferences_allow_sync_trigger_while_idle"
             android:title="@string/alarm_while_idle"
             app:summary="@string/alarm_while_idle_summary" />
-        <SwitchPreference
-            android:defaultValue="false"
-            android:key="@string/pref_key_wifi_only_transfers"
-            android:title="@string/transfer_only_on_wifi"
-            app:summary="@string/transfer_only_on_wifi_summary" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/preference_category_header_proxy">

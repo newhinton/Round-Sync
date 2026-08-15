@@ -63,7 +63,7 @@ import ca.pkay.rcloneexplorer.RcloneRcd.ListItem;
 import ca.pkay.rcloneexplorer.Services.RcdService;
 import ca.pkay.rcloneexplorer.util.FLog;
 import io.github.x0b.safdav.provider.SingleRootProvider;
-import java9.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletableFuture;
 
 // Beta quality notes
 //
@@ -1626,7 +1626,7 @@ public class VirtualContentProvider extends SingleRootProvider {
 
         @Override
         public void run() {
-            byte[] buf = new byte[4096];
+            byte[] buf = new byte[65536]; // 64 KB buffer for high SAF pipe throughput
             int len;
             long lengthBarrier = this.streamLength;
             try {

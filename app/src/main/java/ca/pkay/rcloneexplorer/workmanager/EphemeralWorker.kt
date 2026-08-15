@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Parcel
 import androidx.annotation.StringRes
@@ -23,8 +22,8 @@ import ca.pkay.rcloneexplorer.Rclone
 import ca.pkay.rcloneexplorer.notifications.prototypes.WorkerNotification
 import ca.pkay.rcloneexplorer.notifications.support.StatusObject
 import ca.pkay.rcloneexplorer.util.FLog
+import ca.pkay.rcloneexplorer.util.NotificationUtils
 import ca.pkay.rcloneexplorer.util.SyncLog
-import ca.pkay.rcloneexplorer.util.WifiConnectivitiyUtil
 import de.felixnuesse.extract.extensions.tag
 import de.felixnuesse.extract.notifications.implementations.DownloadWorkerNotification
 import org.json.JSONException
@@ -86,20 +85,18 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
     private var mTitle: String = mNotificationManager?.initialTitle ?: ""
 
     override fun doWork(): Result {
-
-        registerBroadcastReceivers()
-
-        updateForegroundNotification(mNotificationManager?.updateNotification(
-            mTitle,
-            mTitle,
-            ArrayList(),
-            0,
-            ongoingNotificationID
-        ))
-
         if (inputData.keyValueMap.containsKey(EPHEMERAL_TYPE)){
             val type = Type.valueOf(inputData.getString(EPHEMERAL_TYPE) ?: "")
             mNotificationManager = prepareNotificationManager(type)
+            mTitle = mNotificationManager?.initialTitle ?: ""
+
+            updateForegroundNotification(mNotificationManager?.updateNotification(
+                mTitle,
+                mTitle,
+                ArrayList(),
+                0,
+                ongoingNotificationID
+            ))
 
             val remoteItem = getRemoteitemFromParcel(REMOTE)
             if(remoteItem == null){
@@ -108,73 +105,64 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
             }
 
             mNotificationManager?.setCancelId(id)
-            if(preconditionsMet()) {
-                // do not instantiate rclone when you dont want it to run.
-                // It will immediately run!
-                when(type){
-                    Type.DOWNLOAD -> {
-                        val target = inputData.getString(DOWNLOAD_TARGETPATH)
-                        val fileItem = getFileitemFromParcel(DOWNLOAD_SOURCE)
+            // Execute task directly without any connection preconditions
+            when(type){
+                Type.DOWNLOAD -> {
+                    val target = inputData.getString(DOWNLOAD_TARGETPATH)
+                    val fileItem = getFileitemFromParcel(DOWNLOAD_SOURCE)
 
-                        if(fileItem == null){
-                            log("$DOWNLOAD_SOURCE: No valid target was passed!")
-                            return Result.failure()
-                        }
-
-                        sRcloneProcess = Rclone(mContext).downloadFile(
-                            remoteItem,
-                            fileItem,
-                            target
-                        )
+                    if(fileItem == null){
+                        log("$DOWNLOAD_SOURCE: No valid target was passed!")
+                        return Result.failure()
                     }
-                    Type.UPLOAD -> {
-                        val target = inputData.getString(UPLOAD_TARGETPATH)
-                        val file = inputData.getString(UPLOAD_FILE)
 
-                        sRcloneProcess = Rclone(mContext).uploadFile(
-                            remoteItem,
-                            target,
-                            file
-                        )
-                    }
-                    Type.MOVE -> {
-                        val target = inputData.getString(MOVE_TARGETPATH)
-                        val fileItem = getFileitemFromParcel(MOVE_FILE)
-
-                        if(fileItem == null){
-                            log("$MOVE_FILE: No valid target was passed!")
-                            return Result.failure()
-                        }
-
-                        sRcloneProcess = Rclone(mContext).moveTo(
-                            remoteItem,
-                            fileItem,
-                            target
-                        )
-                    }
-                    Type.DELETE -> {
-                        val fileItem = getFileitemFromParcel(DELETE_FILE)
-
-                        if(fileItem == null){
-                            log("$DELETE_FILE: No valid target was passed!")
-                            return Result.failure()
-                        }
-
-                        sRcloneProcess = Rclone(mContext).deleteItems(
-                            remoteItem,
-                            fileItem
-                        )
-                    }
+                    sRcloneProcess = Rclone(mContext).downloadFile(
+                        remoteItem,
+                        fileItem,
+                        target
+                    )
                 }
-                handleSync(mTitle)
-            } else {
-                log("Preconditions are not met!")
-                postSync()
-                return Result.failure()
-            }
+                Type.UPLOAD -> {
+                    val target = inputData.getString(UPLOAD_TARGETPATH)
+                    val file = inputData.getString(UPLOAD_FILE)
 
+                    sRcloneProcess = Rclone(mContext).uploadFile(
+                        remoteItem,
+                        target,
+                        file
+                    )
+                }
+                Type.MOVE -> {
+                    val target = inputData.getString(MOVE_TARGETPATH)
+                    val fileItem = getFileitemFromParcel(MOVE_FILE)
+
+                    if(fileItem == null){
+                        log("$MOVE_FILE: No valid target was passed!")
+                        return Result.failure()
+                    }
+
+                    sRcloneProcess = Rclone(mContext).moveTo(
+                        remoteItem,
+                        fileItem,
+                        target
+                    )
+                }
+                Type.DELETE -> {
+                    val fileItem = getFileitemFromParcel(DELETE_FILE)
+
+                    if(fileItem == null){
+                        log("$DELETE_FILE: No valid target was passed!")
+                        return Result.failure()
+                    }
+
+                    sRcloneProcess = Rclone(mContext).deleteItems(
+                        remoteItem,
+                        fileItem
+                    )
+                }
+            }
+            handleSync(mTitle)
             postSync()
-            // Indicate whether the work finished successfully with the Result
             return Result.success()
         }
         log("Critical: No valid ephemeral type passed!")
@@ -191,7 +179,6 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
 
     private fun finishWork() {
         sRcloneProcess?.destroy()
-        mContext.unregisterReceiver(connectivityChangeBroadcastReceiver)
         postSync()
     }
 
@@ -214,26 +201,27 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
                     val line = iterator.next()
                     try {
                         val logline = JSONObject(line)
-                        //todo: migrate this to StatusObject, so that we can handle everything properly.
                         if (logline.getString("level") == "error") {
                             if (sIsLoggingEnabled) {
                                 log2File?.log(line)
                             }
                             statusObject.parseLoglineToStatusObject(logline)
-                        } else if (logline.getString("level") == "warning") {
+                        } else if (logline.getString("level") == "warning" || logline.has("stats")) {
                             statusObject.parseLoglineToStatusObject(logline)
                         }
 
-                        updateForegroundNotification(mNotificationManager?.updateNotification(
+                        val updatedNotification = mNotificationManager?.updateNotification(
                             title,
                             statusObject.notificationContent,
                             statusObject.notificationBigText,
                             statusObject.notificationPercent,
                             ongoingNotificationID
-                        ))
+                        )
+                        updatedNotification?.let {
+                            NotificationUtils.createNotification(mContext, ongoingNotificationID, it)
+                        }
                     } catch (e: JSONException) {
                         Log.e(tag(), "Error: the offending line: $line")
-                        //FLog.e(TAG, "onHandleIntent: error reading json", e)
                     }
                 }
             } catch (e: InterruptedIOException) {
@@ -353,19 +341,6 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
         )
     }
 
-    private fun preconditionsMet(): Boolean {
-        val wifiOnly = mPreferences.getBoolean(mContext.getString(R.string.pref_key_wifi_only_transfers), false)
-        val connection = WifiConnectivitiyUtil.dataConnection(this.applicationContext)
-        if (wifiOnly && connection === WifiConnectivitiyUtil.Connection.METERED) {
-            failureReason = FAILURE_REASON.NO_UNMETERED
-            return false
-        } else if (connection === WifiConnectivitiyUtil.Connection.DISCONNECTED || connection === WifiConnectivitiyUtil.Connection.NOT_AVAILABLE) {
-            failureReason = FAILURE_REASON.NO_CONNECTION
-            return false
-        }
-
-        return true
-    }
 
     private fun sendUploadFinishedBroadcast(remote: String, path: String?) {
         val intent = Intent()
@@ -378,14 +353,12 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
     // Creates an instance of ForegroundInfo which can be used to update the
     // ongoing notification.
     private fun updateForegroundNotification(notification: Notification?) {
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             notification?.let {
                 setForegroundAsync(ForegroundInfo(ongoingNotificationID, it, FOREGROUND_SERVICE_TYPE_DATA_SYNC))
             }
         }
     }
-
 
     private fun log(message: String) {
         FLog.e(tag(), "EphemeralWorker: $message")
@@ -399,77 +372,50 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
         }
     }
 
-    private fun registerBroadcastReceivers() {
-        val intentFilter = IntentFilter()
-        intentFilter.addAction(WifiManager.SUPPLICANT_CONNECTION_CHANGE_ACTION)
-        mContext.registerReceiver(connectivityChangeBroadcastReceiver, intentFilter)
-    }
-
-    private val connectivityChangeBroadcastReceiver: BroadcastReceiver =
-        object : BroadcastReceiver() {
-            override fun onReceive(context: Context, intent: Intent) {
-                if(endNotificationAlreadyPosted){
-                    return
-                }
-                sConnectivityChanged = true
-                failureReason = FAILURE_REASON.CONNECTIVITY_CHANGED
-            }
-        }
-
-    private fun getFileitemFromParcel(key: String): FileItem {
-
-        val sourceParcelByteArray = inputData.getByteArray(key)
-        if(sourceParcelByteArray == null){
-            log("No valid target was passed!")
-            throw NullPointerException("The passed FileItem was null. We cannot continue!")
-        }
-
+    private fun getFileitemFromParcel(key: String): FileItem? {
+        val sourceParcelByteArray = inputData.getByteArray(key) ?: return null
         val parcel = Parcel.obtain()
-        parcel.unmarshall(sourceParcelByteArray, 0, sourceParcelByteArray.size)
-        parcel.setDataPosition(0)
-        return FileItem.CREATOR.createFromParcel(parcel)
+        return try {
+            parcel.unmarshall(sourceParcelByteArray, 0, sourceParcelByteArray.size)
+            parcel.setDataPosition(0)
+            FileItem.CREATOR.createFromParcel(parcel)
+        } catch (e: Exception) {
+            log("Error unmarshalling FileItem: ${e.message}")
+            null
+        } finally {
+            parcel.recycle()
+        }
     }
 
     private fun getRemoteitemFromParcel(key: String): RemoteItem? {
-
         val sourceParcelByteArray = inputData.getByteArray(key)
-        if(sourceParcelByteArray == null){
+        if (sourceParcelByteArray == null) {
             log("No valid target was passed!")
             return null
         }
 
         val parcel = Parcel.obtain()
-        parcel.unmarshall(sourceParcelByteArray, 0, sourceParcelByteArray.size)
-        parcel.setDataPosition(0)
-        return RemoteItem.CREATOR.createFromParcel(parcel)
+        return try {
+            parcel.unmarshall(sourceParcelByteArray, 0, sourceParcelByteArray.size)
+            parcel.setDataPosition(0)
+            RemoteItem.CREATOR.createFromParcel(parcel)
+        } finally {
+            parcel.recycle()
+        }
     }
 
     private fun getCurrentFile(): FileItem {
-        return when(Type.valueOf(inputData.getString(EPHEMERAL_TYPE)?:Type.DOWNLOAD.name)){
-            Type.DOWNLOAD -> {
-                getFileitemFromParcel(DOWNLOAD_SOURCE)
-            }
+        val fallback = FileItem(RemoteItem("", ""), "", "", 0L, "modTime", "mimeType", false, false)
+        return when (Type.valueOf(inputData.getString(EPHEMERAL_TYPE) ?: Type.DOWNLOAD.name)) {
+            Type.DOWNLOAD -> getFileitemFromParcel(DOWNLOAD_SOURCE) ?: fallback
             Type.UPLOAD -> {
                 val pathAndName = inputData.getString(UPLOAD_FILE) ?: ""
-                val name = pathAndName.substring(pathAndName.lastIndexOf("/")+1, pathAndName.length)
-                val path = pathAndName.substring(0, pathAndName.lastIndexOf("/")+1)
-                // TODO: Make this work properly! All the params are guessed!
-                FileItem(
-                        RemoteItem("", ""),
-                        path,
-                        name,
-                        0L,
-                        "modTime",
-                        "mimeType",
-                        false,
-                        false)
+                val name = pathAndName.substring(pathAndName.lastIndexOf("/") + 1)
+                val path = pathAndName.substring(0, pathAndName.lastIndexOf("/") + 1)
+                FileItem(RemoteItem("", ""), path, name, 0L, "modTime", "mimeType", false, false)
             }
-            Type.MOVE -> {
-                getFileitemFromParcel(MOVE_FILE)
-            }
-            Type.DELETE -> {
-                getFileitemFromParcel(DELETE_FILE)
-            }
+            Type.MOVE -> getFileitemFromParcel(MOVE_FILE) ?: fallback
+            Type.DELETE -> getFileitemFromParcel(DELETE_FILE) ?: fallback
         }
     }
 }

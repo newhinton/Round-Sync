@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.widget.LinearLayout
 import androidx.appcompat.widget.TooltipCompat
+import androidx.core.content.ContextCompat
 import ca.pkay.rcloneexplorer.R
 import ca.pkay.rcloneexplorer.databinding.CustomuiCrumbviewBinding
 
@@ -82,7 +83,7 @@ class CrumbView : LinearLayout {
             textFieldPadding = getPixelFromDp(8)
         } else {
             binding.root.background = null
-            var color = resources.getColor(R.color.textColorHighlight)
+            val color = ContextCompat.getColor(context, R.color.textColorHighlight)
             binding.arrow.setColorFilter(color)
             binding.icon.setColorFilter(color)
             binding.title.setTextColor(color)

@@ -81,7 +81,6 @@ class DatabaseHandler(context: Context?) :
                 results.add(taskFromCursor(cursor))
             }
             cursor.close()
-            db.close()
             return results
         }
 
@@ -104,7 +103,6 @@ class DatabaseHandler(context: Context?) :
             results.add(taskFromCursor(cursor))
         }
         cursor.close()
-        db.close()
         return if (results.size == 0) {
             null
         } else results[0]
@@ -113,7 +111,6 @@ class DatabaseHandler(context: Context?) :
     fun createTask(taskToStore: Task, withId: Boolean = false): Task {
         val db = writableDatabase
         val newRowId = db.insert(Task.TABLE_NAME, null, if(withId) getTaskContentValuesWithID(taskToStore) else getTaskContentValues(taskToStore))
-        db.close()
         taskToStore.id = newRowId
         return taskToStore
     }
@@ -126,7 +123,6 @@ class DatabaseHandler(context: Context?) :
             Task.COLUMN_NAME_ID + " = ?",
             arrayOf(taskToUpdate.id.toString())
         )
-        db.close()
     }
 
     private val taskProjection: Array<String>
@@ -171,11 +167,45 @@ class DatabaseHandler(context: Context?) :
 
     fun deleteTask(id: Long): Int {
         val db = writableDatabase
-        val selection = Task.COLUMN_NAME_ID + " LIKE ?"
-        val selectionArgs = arrayOf(id.toString())
-        val retcode = db.delete(Task.TABLE_NAME, selection, selectionArgs)
-        db.close()
-        return retcode
+        db.beginTransaction()
+        try {
+            db.delete(Trigger.TABLE_NAME, Trigger.COLUMN_NAME_TARGET + " = ?", arrayOf(id.toString()))
+            val selection = Task.COLUMN_NAME_ID + " LIKE ?"
+            val selectionArgs = arrayOf(id.toString())
+            val count = db.delete(Task.TABLE_NAME, selection, selectionArgs)
+            db.setTransactionSuccessful()
+            return count
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    fun deleteTriggersForTask(taskId: Long): Int {
+        val db = writableDatabase
+        return db.delete(Trigger.TABLE_NAME, Trigger.COLUMN_NAME_TARGET + " = ?", arrayOf(taskId.toString()))
+    }
+
+    fun getTriggersForTask(taskId: Long): List<Trigger> {
+        val db = readableDatabase
+        val projection = triggerProjection
+        val selection = Trigger.COLUMN_NAME_TARGET + " = ?"
+        val selectionArgs = arrayOf(taskId.toString())
+        val sortOrder = Trigger.COLUMN_NAME_ID + " ASC"
+        val cursor = db.query(
+            Trigger.TABLE_NAME,
+            projection,
+            selection,
+            selectionArgs,
+            null,
+            null,
+            sortOrder
+        )
+        val results: MutableList<Trigger> = ArrayList()
+        while (cursor.moveToNext()) {
+            results.add(triggerFromCursor(cursor))
+        }
+        cursor.close()
+        return results
     }
 
     private fun getTaskContentValues(task: Task): ContentValues {
@@ -216,7 +246,6 @@ class DatabaseHandler(context: Context?) :
                 results.add(triggerFromCursor(cursor))
             }
             cursor.close()
-            db.close()
             return results
         }
 
@@ -240,7 +269,6 @@ class DatabaseHandler(context: Context?) :
             results.add(triggerFromCursor(cursor))
         }
         cursor.close()
-        db.close()
         return if (results.size == 0) {
             null
         } else results[0]
@@ -249,7 +277,6 @@ class DatabaseHandler(context: Context?) :
     fun createTrigger(triggerToStore: Trigger, withId: Boolean = false): Trigger {
         val db = writableDatabase
         val newRowId = db.insert(Trigger.TABLE_NAME, null, if(withId) getTriggerContentValuesWithID(triggerToStore) else getTriggerContentValues(triggerToStore))
-        db.close()
         triggerToStore.id = newRowId
         return triggerToStore
     }
@@ -262,16 +289,13 @@ class DatabaseHandler(context: Context?) :
                 Trigger.COLUMN_NAME_ID + " = ?",
                 arrayOf(triggerToUpdate.id.toString())
         )
-        db.close()
     }
 
     fun deleteTrigger(id: Long): Int {
         val db = writableDatabase
         val selection = Trigger.COLUMN_NAME_ID + " LIKE ?"
         val selectionArgs = arrayOf(id.toString())
-        val retcode = db.delete(Trigger.TABLE_NAME, selection, selectionArgs)
-        db.close()
-        return retcode
+        return db.delete(Trigger.TABLE_NAME, selection, selectionArgs)
     }
 
     private fun getTriggerContentValuesWithID(t: Trigger): ContentValues {
@@ -338,7 +362,6 @@ class DatabaseHandler(context: Context?) :
                 results.add(filterFromCursor(cursor))
             }
             cursor.close()
-            db.close()
             return results
         }
 
@@ -362,7 +385,6 @@ class DatabaseHandler(context: Context?) :
             results.add(filterFromCursor(cursor))
         }
         cursor.close()
-        db.close()
         return if (results.size == 0) {
             null
         } else results[0]
@@ -371,7 +393,6 @@ class DatabaseHandler(context: Context?) :
     fun createFilter(filterToStore: Filter, withId: Boolean = false): Filter {
         val db = writableDatabase
         val newRowId = db.insert(Filter.TABLE_NAME, null, if(withId) getFilterContentValuesWithID(filterToStore) else getFilterContentValues(filterToStore))
-        db.close()
         filterToStore.id = newRowId
         return filterToStore
     }
@@ -384,16 +405,13 @@ class DatabaseHandler(context: Context?) :
                 Filter.COLUMN_NAME_ID + " = ?",
                 arrayOf(filterToUpdate.id.toString())
         )
-        db.close()
     }
 
     fun deleteFilter(id: Long): Int {
         val db = writableDatabase
         val selection = Filter.COLUMN_NAME_ID + " LIKE ?"
         val selectionArgs = arrayOf(id.toString())
-        val retcode = db.delete(Filter.TABLE_NAME, selection, selectionArgs)
-        db.close()
-        return retcode
+        return db.delete(Filter.TABLE_NAME, selection, selectionArgs)
     }
 
     private fun getFilterContentValuesWithID(t: Filter): ContentValues {
@@ -424,14 +442,15 @@ class DatabaseHandler(context: Context?) :
     }
 
     fun deleteEveryting() {
-        for (trigger in allTrigger) {
-            deleteTrigger(trigger.id)
-        }
-        for (task in allTasks) {
-            deleteTask(task.id)
-        }
-        for (filter in allFilters) {
-            deleteFilter(filter.id)
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            db.delete(Trigger.TABLE_NAME, null, null)
+            db.delete(Task.TABLE_NAME, null, null)
+            db.delete(Filter.TABLE_NAME, null, null)
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
         }
     }
 

@@ -73,7 +73,7 @@ public class TasksRecyclerViewAdapter extends RecyclerView.Adapter<TasksRecycler
 
         int direction = selectedTask.getDirection();
 
-        if(direction == SyncDirectionObject.SYNC_LOCAL_TO_REMOTE || direction == SyncDirectionObject.COPY_LOCAL_TO_REMOTE){
+        if(direction == SyncDirectionObject.SYNC_LOCAL_TO_REMOTE || direction == SyncDirectionObject.COPY_LOCAL_TO_REMOTE || direction == SyncDirectionObject.MOVE_LOCAL_TO_REMOTE){
             holder.fromID.setVisibility(View.GONE);
             holder.fromPath.setText(selectedTask.getLocalPath());
 
@@ -81,7 +81,7 @@ public class TasksRecyclerViewAdapter extends RecyclerView.Adapter<TasksRecycler
             holder.toPath.setText(selectedTask.getRemotePath());
         }
 
-        if(direction == SyncDirectionObject.SYNC_REMOTE_TO_LOCAL || direction == SyncDirectionObject.COPY_REMOTE_TO_LOCAL){
+        if(direction == SyncDirectionObject.SYNC_REMOTE_TO_LOCAL || direction == SyncDirectionObject.COPY_REMOTE_TO_LOCAL || direction == SyncDirectionObject.MOVE_REMOTE_TO_LOCAL){
             holder.fromID.setText(String.format("%s:", selectedTask.getRemoteId()));
             holder.fromPath.setText(selectedTask.getRemotePath());
 
@@ -104,6 +104,10 @@ public class TasksRecyclerViewAdapter extends RecyclerView.Adapter<TasksRecycler
             case SyncDirectionObject.COPY_LOCAL_TO_REMOTE:
             case SyncDirectionObject.COPY_REMOTE_TO_LOCAL:
                 holder.taskSyncDirection.setText(view.getResources().getString(R.string.copy));
+                break;
+            case SyncDirectionObject.MOVE_LOCAL_TO_REMOTE:
+            case SyncDirectionObject.MOVE_REMOTE_TO_LOCAL:
+                holder.taskSyncDirection.setText(view.getResources().getString(R.string.move));
                 break;
             case SyncDirectionObject.SYNC_BIDIRECTIONAL_INITIAL:
             case SyncDirectionObject.SYNC_BIDIRECTIONAL:

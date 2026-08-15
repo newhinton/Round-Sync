@@ -100,19 +100,15 @@ public class FilePicker extends AppCompatActivity implements FilePickerAdapter.O
             root = current = new File(availableStorage.get(0));
         }
 
-        File[] files = current.listFiles();
         fileList = new ArrayList<>();
-        if (null != files) {
-            fileList.addAll(Arrays.asList(files));
-        }
-        sortDirectory();
-
         RecyclerView recyclerView = findViewById(R.id.file_picker_list);
         recyclerView.setHasFixedSize(true);
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(layoutManager);
         filePickerAdapter = new FilePickerAdapter(this, fileList, destinationPickerType, findViewById(R.id.empty_folder_view));
         recyclerView.setAdapter(filePickerAdapter);
+
+        loadDirectoryAsync(current);
 
         speedDialView = findViewById(R.id.fab_activity_file_picker);
         if (!destinationPickerType) {
@@ -135,6 +131,23 @@ public class FilePicker extends AppCompatActivity implements FilePickerAdapter.O
         breadcrumbView.setOnClickListener(this);
         breadcrumbView.setVisibility(View.VISIBLE);
         buildCrumbsFromCurrent();
+    }
+
+    private void loadDirectoryAsync(File dir) {
+        new Thread(() -> {
+            File[] files = dir.listFiles();
+            ArrayList<File> resultList = new ArrayList<>();
+            if (files != null) {
+                resultList.addAll(Arrays.asList(files));
+            }
+            sortDirectoryList(resultList);
+            runOnUiThread(() -> {
+                fileList = resultList;
+                if (filePickerAdapter != null) {
+                    filePickerAdapter.setNewData(fileList);
+                }
+            });
+        }).start();
     }
 
     @Override
@@ -247,13 +260,7 @@ public class FilePicker extends AppCompatActivity implements FilePickerAdapter.O
             } else {
                 actionBar.setTitle(current.getName());
             }
-            fileList.clear();
-            File[] files = current.listFiles();
-            if (null != files) {
-                fileList.addAll(Arrays.asList(files));
-            }
-            sortDirectory();
-            filePickerAdapter.setNewData(fileList);
+            loadDirectoryAsync(current);
 
             if (destinationPickerType) {
                 speedDialView.show();
@@ -266,13 +273,7 @@ public class FilePicker extends AppCompatActivity implements FilePickerAdapter.O
     public void onDirectoryClicked(File file) {
         actionBar.setTitle(file.getName());
         current = file;
-        fileList.clear();
-        File[] files = file.listFiles();
-        if(null != files) {
-            fileList.addAll(Arrays.asList(files));
-        }
-        sortDirectory();
-        filePickerAdapter.setNewData(fileList);
+        loadDirectoryAsync(current);
 
         if (destinationPickerType) {
             speedDialView.show();
@@ -385,30 +386,35 @@ public class FilePicker extends AppCompatActivity implements FilePickerAdapter.O
     }
 
     private void sortDirectory() {
+        sortDirectoryList(fileList);
+    }
+
+    private void sortDirectoryList(ArrayList<File> list) {
+        if (list == null) return;
         switch (sortOrder) {
             case SortDialog.MOD_TIME_DESCENDING:
-                Collections.sort(fileList, new FileComparators.SortFileModTimeDescending());
+                Collections.sort(list, new FileComparators.SortFileModTimeDescending());
                 sortOrder = SortDialog.MOD_TIME_ASCENDING;
                 break;
             case SortDialog.MOD_TIME_ASCENDING:
-                Collections.sort(fileList, new FileComparators.SortFileModTimeAscending());
+                Collections.sort(list, new FileComparators.SortFileModTimeAscending());
                 sortOrder = SortDialog.MOD_TIME_DESCENDING;
                 break;
             case SortDialog.SIZE_DESCENDING:
-                Collections.sort(fileList, new FileComparators.SortFileSizeDescending());
+                Collections.sort(list, new FileComparators.SortFileSizeDescending());
                 sortOrder = SortDialog.SIZE_ASCENDING;
                 break;
             case SortDialog.SIZE_ASCENDING:
-                Collections.sort(fileList, new FileComparators.SortFileSizeAscending());
+                Collections.sort(list, new FileComparators.SortFileSizeAscending());
                 sortOrder = SortDialog.SIZE_DESCENDING;
                 break;
             case SortDialog.ALPHA_ASCENDING:
-                Collections.sort(fileList, new FileComparators.SortFileAlphaAscending());
+                Collections.sort(list, new FileComparators.SortFileAlphaAscending());
                 sortOrder = SortDialog.ALPHA_ASCENDING;
                 break;
             case SortDialog.ALPHA_DESCENDING:
             default:
-                Collections.sort(fileList, new FileComparators.SortFileAlphaDescending());
+                Collections.sort(list, new FileComparators.SortFileAlphaDescending());
                 sortOrder = SortDialog.ALPHA_DESCENDING;
         }
     }

@@ -57,10 +57,11 @@ import ca.pkay.rcloneexplorer.Services.ThumbnailsLoadingService;
 import ca.pkay.rcloneexplorer.util.FLog;
 import ca.pkay.rcloneexplorer.util.LargeParcel;
 import de.felixnuesse.ui.BreadcrumbView;
+import ca.pkay.rcloneexplorer.RecyclerViewAdapters.FileExplorerClickListener;
 import es.dmoral.toasty.Toasty;
 import jp.wasabeef.recyclerview.animators.LandingAnimator;
 
-public class RemoteFolderPickerFragment extends Fragment implements   FileExplorerRecyclerViewAdapter.OnClickListener,
+public class RemoteFolderPickerFragment extends Fragment implements   FileExplorerClickListener,
                                                                             SwipeRefreshLayout.OnRefreshListener,
                                                                             BreadcrumbView.OnClickListener,
                                                                             SortDialog.OnClickListener,
@@ -237,18 +238,21 @@ public class RemoteFolderPickerFragment extends Fragment implements   FileExplor
         fab = view.findViewById(R.id.selectFloatingButton);
 
 
-        originalToolbarTitle = ((FragmentActivity) context).getTitle().toString();
-        setTitle();
-        breadcrumbView = ((FragmentActivity) context).findViewById(R.id.breadcrumb_view);
-        breadcrumbView.setOnClickListener(this);
-        breadcrumbView.setVisibility(View.VISIBLE);
-        // this will be called twice for an unknown reason. Therefore we need to clear the Crumbs.
-        breadcrumbView.clearCrumbs();
-        if (!mInitialPath.isEmpty()) {
-            directoryObject.setPath(mInitialPath);
-            breadcrumbView.buildBreadCrumbsFromPath(remote.getDisplayName()+directoryObject.getCurrentPath());
-        } else {
-            breadcrumbView.addCrumb(remote.getDisplayName(), "//");
+        if (context instanceof FragmentActivity) {
+            originalToolbarTitle = ((FragmentActivity) context).getTitle() != null ? ((FragmentActivity) context).getTitle().toString() : "";
+            setTitle();
+            breadcrumbView = ((FragmentActivity) context).findViewById(R.id.breadcrumb_view);
+            if (breadcrumbView != null) {
+                breadcrumbView.setOnClickListener(this);
+                breadcrumbView.setVisibility(View.VISIBLE);
+                breadcrumbView.clearCrumbs();
+                if (!mInitialPath.isEmpty()) {
+                    directoryObject.setPath(mInitialPath);
+                    breadcrumbView.buildBreadCrumbsFromPath(remote.getDisplayName() + directoryObject.getCurrentPath());
+                } else {
+                    breadcrumbView.addCrumb(remote.getDisplayName(), "//");
+                }
+            }
         }
 
         if (savedInstanceState != null && savedInstanceState.getBoolean(SAVED_SEARCH_MODE, false)) {
@@ -422,10 +426,16 @@ public class RemoteFolderPickerFragment extends Fragment implements   FileExplor
     }
 
     private void exitFragment() {
-        breadcrumbView.clearCrumbs();
-        ((FragmentActivity) context).setTitle(originalToolbarTitle);
-        FragmentManager fm = this.getActivity().getSupportFragmentManager();
-        fm.beginTransaction().remove(this).commit();
+        if (breadcrumbView != null) {
+            breadcrumbView.clearCrumbs();
+        }
+        if (context instanceof FragmentActivity && originalToolbarTitle != null) {
+            ((FragmentActivity) context).setTitle(originalToolbarTitle);
+        }
+        if (getActivity() != null) {
+            FragmentManager fm = getActivity().getSupportFragmentManager();
+            fm.beginTransaction().remove(this).commit();
+        }
     }
 
     private void showSFTPgoToDialog() {
@@ -660,13 +670,17 @@ public class RemoteFolderPickerFragment extends Fragment implements   FileExplor
     @Override
     public void onStop() {
         super.onStop();
-        if (isThumbnailsServiceRunning) {
+        if (isThumbnailsServiceRunning && context != null) {
             Intent intent = new Intent(context, ThumbnailsLoadingService.class);
             context.stopService(intent);
             isThumbnailsServiceRunning = false;
         }
-        ((FragmentActivity) context).setTitle(originalToolbarTitle);
-        LocalBroadcastManager.getInstance(context).unregisterReceiver(backgroundTaskBroadcastReceiver);
+        if (context instanceof FragmentActivity && originalToolbarTitle != null) {
+            ((FragmentActivity) context).setTitle(originalToolbarTitle);
+        }
+        if (context != null) {
+            LocalBroadcastManager.getInstance(context).unregisterReceiver(backgroundTaskBroadcastReceiver);
+        }
     }
 
     @Override
@@ -675,9 +689,13 @@ public class RemoteFolderPickerFragment extends Fragment implements   FileExplor
         if (fetchDirectoryTask != null) {
             fetchDirectoryTask.cancel(true);
         }
-        ((FragmentActivity) context).setTitle(originalToolbarTitle);
-        breadcrumbView.clearCrumbs();
-        breadcrumbView.setVisibility(View.GONE);
+        if (context instanceof FragmentActivity && originalToolbarTitle != null) {
+            ((FragmentActivity) context).setTitle(originalToolbarTitle);
+        }
+        if (breadcrumbView != null) {
+            breadcrumbView.clearCrumbs();
+            breadcrumbView.setVisibility(View.GONE);
+        }
         prefChangeListener = null;
         context = null;
     }

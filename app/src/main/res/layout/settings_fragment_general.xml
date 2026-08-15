@@ -123,46 +123,7 @@
 
         </RelativeLayout>
 
-        <RelativeLayout
-            android:id="@+id/wifi_only"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:clickable="true"
-            android:focusable="true"
-            android:paddingTop="@dimen/settings_padding_topbottom"
-            android:paddingBottom="@dimen/settings_padding_topbottom">
 
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignParentStart="true"
-                android:layout_centerVertical="true"
-                android:layout_toStartOf="@id/wifi_only_switch"
-                android:orientation="vertical"
-                android:paddingStart="0dp"
-                android:paddingEnd="16dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/transfer_only_on_wifi"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/transfer_only_on_wifi_summary" />
-
-            </LinearLayout>
-
-            <Switch
-                android:id="@+id/wifi_only_switch"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_centerVertical="true"
-                android:layout_alignParentEnd="true" />
-
-        </RelativeLayout>
 
         <RelativeLayout
             android:id="@+id/alarm_while_idle"

@@ -197,7 +197,7 @@ class SyncServiceNotifications(var mContext: Context) {
         content: String,
         bigTextArray: ArrayList<String>,
         percent: Int,
-        notificationId: Int
+        _notificationId: Int
     ): Notification? {
         if(content.isBlank()){
             FLog.e(TAG, "Missing notification content!")

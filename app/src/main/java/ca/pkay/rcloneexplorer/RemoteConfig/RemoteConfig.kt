@@ -8,6 +8,7 @@ import android.view.MenuItem
 import android.view.View
 import android.widget.SearchView
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.fragment.app.Fragment
@@ -49,6 +50,12 @@ class RemoteConfig : AppCompatActivity(), ProviderSelectedListener {
             actionBar.setDisplayHomeAsUpEnabled(true)
             actionBar.setDisplayShowHomeEnabled(true)
         }
+
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                handleBackAction()
+            }
+        })
 
         val fragmentTransaction = supportFragmentManager.beginTransaction()
         if (savedInstanceState != null) {
@@ -152,11 +159,6 @@ class RemoteConfig : AppCompatActivity(), ProviderSelectedListener {
         return true
     }
 
-    override fun onBackPressed() {
-        super.onBackPressed()
-        handleBackAction()
-    }
-
     private fun handleBackAction() {
         if(mSearchBar.visibility == View.VISIBLE) {
             toggleSearch(false)
@@ -181,11 +183,6 @@ class RemoteConfig : AppCompatActivity(), ProviderSelectedListener {
     }
 
     override fun onProviderSelected(provider: Provider) {
-        if (provider == null) {
-            Toasty.error(this, getString(R.string.nothing_selected), Toast.LENGTH_SHORT, true)
-                .show()
-            return
-        }
         toggleSearch(false)
         mFragment = DynamicRemoteConfigFragment(provider.name)
         startConfig(provider)

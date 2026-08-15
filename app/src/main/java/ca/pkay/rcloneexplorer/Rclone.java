@@ -421,13 +421,12 @@ public class Rclone {
     }
 
     private Process getRuntimeProcess(String[] command, String[] env) throws IOException {
-        try{
-            Runtime.getRuntime().exec(rclone);
-        } catch (IOException e){
-            FLog.e("rclone", "Error executing rclone!" +e.getMessage());
-            throw new IOException("Error executing rclone!" +e.getMessage());
+        try {
+            return Runtime.getRuntime().exec(command, env);
+        } catch (IOException e) {
+            FLog.e("rclone", "Error executing rclone command: " + e.getMessage());
+            throw e;
         }
-        return Runtime.getRuntime().exec(command, env);
     }
 
     @Nullable
@@ -549,11 +548,13 @@ public class Rclone {
         }
 
         JSONObject selectedConfig = configs.optJSONObject(name);
-        Iterator<String> keys = selectedConfig.keys();
+        if (selectedConfig != null) {
+            Iterator<String> keys = selectedConfig.keys();
 
-        while(keys.hasNext()) {
-            String key = keys.next();
-            options.put(key,  selectedConfig.optString(key));
+            while(keys.hasNext()) {
+                String key = keys.next();
+                options.put(key,  selectedConfig.optString(key));
+            }
         }
 
         options.put(RCLONE_CONFIG_NAME_KEY,  name);
@@ -715,11 +716,27 @@ public class Rclone {
             Collections.addAll(directionParameter, "copy", localPath, remoteSection);
             directionParameter.addAll(defaultParameter);
             command = createCommandWithOptions(directionParameter);
-        }else if (syncDirection == SyncDirectionObject.COPY_REMOTE_TO_LOCAL) {
+        } else if (syncDirection == SyncDirectionObject.COPY_REMOTE_TO_LOCAL) {
             Collections.addAll(directionParameter, "copy", remoteSection, localPath);
             directionParameter.addAll(defaultParameter);
             command = createCommandWithOptions(directionParameter);
-        }else {
+        } else if (syncDirection == SyncDirectionObject.MOVE_LOCAL_TO_REMOTE) {
+            Collections.addAll(directionParameter, "move", localPath, remoteSection);
+            directionParameter.addAll(defaultParameter);
+            command = createCommandWithOptions(directionParameter);
+        } else if (syncDirection == SyncDirectionObject.MOVE_REMOTE_TO_LOCAL) {
+            Collections.addAll(directionParameter, "move", remoteSection, localPath);
+            directionParameter.addAll(defaultParameter);
+            command = createCommandWithOptions(directionParameter);
+        } else if (syncDirection == SyncDirectionObject.SYNC_BIDIRECTIONAL) {
+            Collections.addAll(directionParameter, "bisync", localPath, remoteSection);
+            directionParameter.addAll(defaultParameter);
+            command = createCommandWithOptions(directionParameter);
+        } else if (syncDirection == SyncDirectionObject.SYNC_BIDIRECTIONAL_INITIAL) {
+            Collections.addAll(directionParameter, "bisync", localPath, remoteSection, "--resync");
+            directionParameter.addAll(defaultParameter);
+            command = createCommandWithOptions(directionParameter);
+        } else {
             return null;
         }
 
@@ -1112,6 +1129,20 @@ public class Rclone {
     }
 
     public AboutResult aboutRemote(RemoteItem remoteItem) {
+        if (remoteItem.isRemoteType(RemoteItem.LOCAL)) {
+            try {
+                String path = getLocalRemotePathPrefix(remoteItem, context);
+                File file = new File(path.isEmpty() ? Environment.getExternalStorageDirectory().getAbsolutePath() : path);
+                if (file.exists()) {
+                    android.os.StatFs stat = new android.os.StatFs(file.getAbsolutePath());
+                    long total = stat.getTotalBytes();
+                    long free = stat.getAvailableBytes();
+                    long used = total - free;
+                    return new AboutResult(used, total, free, -1);
+                }
+            } catch (Exception ignored) {}
+        }
+
         String remoteName = remoteItem.getName() + ':';
         String[] command = createCommand("about", "--json", remoteName);
         StringBuilder output = new StringBuilder();
@@ -1156,7 +1187,7 @@ public class Rclone {
         return stats;
     }
 
-    public class AboutResult {
+    public static class AboutResult {
         private final long used;
         private final long total;
         private final long free;

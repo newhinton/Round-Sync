@@ -171,11 +171,6 @@ class StatusObject(var mContext: Context){
                 )
             )
 
-            var eta = mStats.get("eta")
-            if(eta == null) {
-                eta = "0";
-            }
-
             notificationBigText.add(
                 String.format(
                     mContext.getString(R.string.sync_notification_remaining),

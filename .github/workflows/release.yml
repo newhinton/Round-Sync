@@ -1,0 +1,134 @@
+name: Build & Release Remote Manager
+
+on:
+  workflow_dispatch:
+    inputs:
+      make_latest:
+        description: 'Make this build the LATEST release (instead of Pre-Release)'
+        required: false
+        type: boolean
+        default: false
+  push:
+    branches:
+      - '**'
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Universal APK & Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: gradle
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Setup Android SDK/NDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install NDK from gradle.properties
+        run: |
+          NDK_VERSION="$(grep -E "^de\.felixnuesse\.extract\.ndkVersion=" gradle.properties | cut -d'=' -f2)"
+          sdkmanager "ndk;${NDK_VERSION}"
+
+      - name: Decode Signing Keystore and local.properties
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 || secrets.SIGNING_KEYSTORE || secrets.SIGNING_KEY }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || secrets.SIGNING_KEY_PASSWORD || secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS || secrets.SIGNING_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          touch local.properties
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > release_keystore.jks
+            echo "KEYSTORE_FILE=release_keystore.jks" >> local.properties
+            echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> local.properties
+            echo "KEY_ALIAS=$KEY_ALIAS" >> local.properties
+            echo "KEY_PASSWORD=$KEY_PASSWORD" >> local.properties
+          fi
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Extract Version Name
+        id: version
+        run: |
+          VERSION_NAME=$(grep -oP "versionName\s*['\"]?\s*=\s*['\"]?\K[^'\"\s]+" app/build.gradle || echo "1.0.0")
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+          echo "Extracted Version: $VERSION_NAME"
+
+      - name: Build Release APK
+        run: |
+          if [ -f "release_keystore.jks" ]; then
+            ./gradlew assembleRelease
+          else
+            ./gradlew assembleDebug
+          fi
+
+      - name: Upload APK to Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: RemoteManager-APK
+          path: app/build/outputs/apk/**/*.apk
+
+      - name: Create Release & Upload APK
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MAKE_LATEST: ${{ github.event.inputs.make_latest || 'false' }}
+        run: |
+          APK_PATH=$(find app/build/outputs/apk -name "*.apk" | head -n 1)
+          echo "Found APK at $APK_PATH"
+          
+          if [ "$MAKE_LATEST" = "true" ]; then
+            TARGET_TAG="v${VERSION_NAME}"
+          else
+            TARGET_TAG="v${VERSION_NAME}-beta"
+          fi
+          echo "Target tag: $TARGET_TAG"
+          
+          if gh release view "$TARGET_TAG" >/dev/null 2>&1; then
+            echo "Checking existing APK assets in release/pre-release $TARGET_TAG..."
+            gh release view "$TARGET_TAG" --json assets --jq '.assets[] | select(.name | endswith(".apk")) | "\(.name) \(.downloadCount)"' | while read -r name count; do
+              if [ -n "$name" ]; then
+                echo "Found existing APK asset: $name with download count: $count"
+                if [ "$count" -lt 5 ]; then
+                  echo "Download count is less than 5. Deleting $name..."
+                  gh release delete-asset "$TARGET_TAG" "$name" -y
+                else
+                  echo "Download count is $count (5 or more). Keeping $name."
+                fi
+              fi
+            done
+            echo "Uploading new APK to $TARGET_TAG..."
+            gh release upload "$TARGET_TAG" "$APK_PATH" --clobber
+          else
+            echo "Release $TARGET_TAG does not exist. Creating..."
+            if [ "$MAKE_LATEST" = "true" ]; then
+              gh release create "$TARGET_TAG" "$APK_PATH" \
+                --title "Release $TARGET_TAG" \
+                --notes "Automated production release via GitHub Actions."
+            else
+              gh release create "$TARGET_TAG" "$APK_PATH" \
+                --title "Pre-Release $TARGET_TAG" \
+                --notes "Automated early access build via GitHub Actions." \
+                --prerelease
+            fi
+          fi

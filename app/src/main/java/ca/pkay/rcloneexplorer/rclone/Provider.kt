@@ -18,9 +18,10 @@ class Provider(val name: String) {
             item.commandHelp = data.optString("CommandHelp")
 
             val options = data.optJSONArray("Options")
-
-            for (i in 0 until (options?.length() ?: 0)) {
-                ProviderOption.newInstance(options.getJSONObject(i))?.let { item.options.add(it) }
+            if (options != null) {
+                for (i in 0 until options.length()) {
+                    ProviderOption.newInstance(options.getJSONObject(i))?.let { item.options.add(it) }
+                }
             }
 
             return item

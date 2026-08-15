@@ -36,8 +36,35 @@ public class SyncDirectionObject {
     public static final int SYNC_BIDIRECTIONAL_INITIAL = 5;
     public static final int SYNC_BIDIRECTIONAL = 6;
 
+    public static final int MOVE_LOCAL_TO_REMOTE = 7;
+    public static final int MOVE_REMOTE_TO_LOCAL = 8;
+
 
     public static String[] getOptionsArray(Context context) {
         return context.getResources().getStringArray(R.array.sync_direction_array);
+    }
+
+    public static int getDirectionFromPosition(int position) {
+        switch (position) {
+            case 0: return SYNC_LOCAL_TO_REMOTE;
+            case 1: return SYNC_REMOTE_TO_LOCAL;
+            case 2: return COPY_LOCAL_TO_REMOTE;
+            case 3: return COPY_REMOTE_TO_LOCAL;
+            case 4: return MOVE_LOCAL_TO_REMOTE;
+            case 5: return MOVE_REMOTE_TO_LOCAL;
+            default: return SYNC_LOCAL_TO_REMOTE;
+        }
+    }
+
+    public static int getPositionFromDirection(int direction) {
+        switch (direction) {
+            case SYNC_LOCAL_TO_REMOTE: return 0;
+            case SYNC_REMOTE_TO_LOCAL: return 1;
+            case COPY_LOCAL_TO_REMOTE: return 2;
+            case COPY_REMOTE_TO_LOCAL: return 3;
+            case MOVE_LOCAL_TO_REMOTE: return 4;
+            case MOVE_REMOTE_TO_LOCAL: return 5;
+            default: return 0;
+        }
     }
 }

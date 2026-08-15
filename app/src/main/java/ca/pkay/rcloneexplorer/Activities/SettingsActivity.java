@@ -1,9 +1,9 @@
 package ca.pkay.rcloneexplorer.Activities;
 
-
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.View;
 
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
@@ -12,7 +12,6 @@ import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
-import ca.pkay.rcloneexplorer.Settings.FileAccessPreferencesFragment;
 import ca.pkay.rcloneexplorer.Settings.FileAccessSettingsFragment;
 import ca.pkay.rcloneexplorer.Settings.LogPreferencesFragment;
 import ca.pkay.rcloneexplorer.Settings.NotificationPreferencesFragment;
@@ -48,6 +47,14 @@ public class SettingsActivity extends AppCompatActivity implements SettingsFragm
             actionBar.setDisplayShowHomeEnabled(true);
         }
 
+        getSupportFragmentManager().addOnBackStackChangedListener(() -> {
+            if (getSupportFragmentManager().getBackStackEntryCount() == 0) {
+                if (findViewById(R.id.appBar) != null) {
+                    findViewById(R.id.appBar).setVisibility(View.GONE);
+                }
+            }
+        });
+
         FragmentManager fragmentManager = getSupportFragmentManager();
         for (int i = 0; i < fragmentManager.getBackStackEntryCount(); i++) {
             fragmentManager.popBackStack();
@@ -55,7 +62,10 @@ public class SettingsActivity extends AppCompatActivity implements SettingsFragm
 
         startSettingsFragment();
 
-        if (savedInstanceState != null) {
+        int startCategory = getIntent().getIntExtra("START_CATEGORY", 0);
+        if (startCategory > 0) {
+            onSettingCategoryClicked(startCategory);
+        } else if (savedInstanceState != null) {
             Fragment fragment = getSupportFragmentManager().findFragmentByTag(SAVED_FRAGMENT);
             if (fragment != null) {
                 restoreFragment(fragment);
@@ -75,13 +85,8 @@ public class SettingsActivity extends AppCompatActivity implements SettingsFragm
     }
 
     @Override
-    protected void onStart() {
-        super.onStart();
-    }
-
-    @Override
     public boolean onSupportNavigateUp() {
-        onBackPressed();
+        getOnBackPressedDispatcher().onBackPressed();
         return true;
     }
 
@@ -100,12 +105,19 @@ public class SettingsActivity extends AppCompatActivity implements SettingsFragm
     }
 
     private void startSettingsFragment() {
+        if (findViewById(R.id.appBar) != null) {
+            findViewById(R.id.appBar).setVisibility(View.GONE);
+        }
         FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
-        transaction.replace(R.id.flFragment, SettingsFragment.newInstance());
+        transaction.replace(R.id.flFragment, SettingsFragment.newInstance(true));
         transaction.commit();
     }
 
     private void startGeneralSettingsFragment() {
+        if (findViewById(R.id.appBar) != null) {
+            findViewById(R.id.appBar).setVisibility(View.VISIBLE);
+        }
+        setTitle(R.string.pref_header_general);
         FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
         transaction.replace(R.id.flFragment, new GeneralPreferencesFragment(), SAVED_FRAGMENT);
         transaction.addToBackStack(null);
@@ -113,15 +125,21 @@ public class SettingsActivity extends AppCompatActivity implements SettingsFragm
     }
 
     private void startFileAccessSettingsFragment() {
+        if (findViewById(R.id.appBar) != null) {
+            findViewById(R.id.appBar).setVisibility(View.VISIBLE);
+        }
+        setTitle(R.string.pref_header_file_access);
         FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
         transaction.replace(R.id.flFragment, FileAccessSettingsFragment.newInstance(), SAVED_FRAGMENT);
-        //todo:  for now, use the old one until i can fully migrate the new one.
-        //transaction.replace(R.id.flFragment, new FileAccessPreferencesFragment(), SAVED_FRAGMENT);
         transaction.addToBackStack(null);
         transaction.commit();
     }
 
     private void startLookAndFeelSettingsFragment() {
+        if (findViewById(R.id.appBar) != null) {
+            findViewById(R.id.appBar).setVisibility(View.VISIBLE);
+        }
+        setTitle(R.string.look_and_feel);
         FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
         transaction.replace(R.id.flFragment, new ThemingPreferencesFragment(), SAVED_FRAGMENT);
         transaction.addToBackStack(null);
@@ -129,6 +147,10 @@ public class SettingsActivity extends AppCompatActivity implements SettingsFragm
     }
 
     private void startNotificationSettingsFragment() {
+        if (findViewById(R.id.appBar) != null) {
+            findViewById(R.id.appBar).setVisibility(View.VISIBLE);
+        }
+        setTitle(R.string.notifications_pref_title);
         FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
         transaction.replace(R.id.flFragment, new NotificationPreferencesFragment(), SAVED_FRAGMENT);
         transaction.addToBackStack(null);
@@ -136,6 +158,10 @@ public class SettingsActivity extends AppCompatActivity implements SettingsFragm
     }
 
     private void startLoggingSettingsActivity() {
+        if (findViewById(R.id.appBar) != null) {
+            findViewById(R.id.appBar).setVisibility(View.VISIBLE);
+        }
+        setTitle(R.string.logging_settings_header);
         FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
         transaction.replace(R.id.flFragment, new LogPreferencesFragment(), SAVED_FRAGMENT);
         transaction.addToBackStack(null);
