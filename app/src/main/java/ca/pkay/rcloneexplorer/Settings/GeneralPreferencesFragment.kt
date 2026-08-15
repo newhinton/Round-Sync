@@ -76,6 +76,24 @@ class GeneralPreferencesFragment : PreferenceFragmentCompat() {
             true
         }
 
+        val clearTelemetryCachePreference = findPreference(getString(R.string.pref_key_clear_telemetry_cache)) as Preference?
+        clearTelemetryCachePreference?.setOnPreferenceClickListener {
+            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                try {
+                    ca.pkay.rcloneexplorer.data.RemoteTelemetryCacheRepository.clear(requireContext())
+                    ca.pkay.rcloneexplorer.data.DirectoryCacheRepository.clear(requireContext())
+                    withContext(Dispatchers.Main) {
+                        Toasty.success(requireContext(), getString(R.string.telemetry_cache_cleared), Toast.LENGTH_SHORT, true).show()
+                    }
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        Toasty.error(requireContext(), "Failed to clear cache: ${e.localizedMessage}", Toast.LENGTH_SHORT, true).show()
+                    }
+                }
+            }
+            true
+        }
+
         val shortcutsPreference = findPreference("AppShortcutTempKey") as Preference?
         shortcutsPreference?.setOnPreferenceClickListener {
             showAppShortcutDialog()

@@ -92,9 +92,18 @@ public class RemotePropertiesDialog extends DialogFragment {
 
         View storageContainer = view.findViewById(R.id.remote_storage_container);
         remoteStorageStats = view.findViewById(R.id.remote_storage_stats);
-        if (RemoteItem.LOCAL == remote.getType()) {
-            updateStorageUsage();
+        
+        // Instant display from persistent cache
+        ca.pkay.rcloneexplorer.Rclone.AboutResult cachedResult = ca.pkay.rcloneexplorer.data.RemoteTelemetryCacheRepository.INSTANCE.get(context, remote.getName());
+        if (cachedResult != null && !cachedResult.hasFailed()) {
+            storageUsed = cachedResult.getUsed();
+            storageTotal = cachedResult.getTotal();
+            storageFree = cachedResult.getFree();
+            storageTrashed = cachedResult.getTrashed();
+            showStorageMetrics();
         }
+
+        updateStorageUsage();
         storageContainer.setOnClickListener(v -> updateStorageUsage());
 
         View authorizeContainer = view.findViewById(R.id.remote_authorization_container);
@@ -130,16 +139,23 @@ public class RemotePropertiesDialog extends DialogFragment {
     }
 
     private void updateStorageUsage() {
-        remoteStorageStats.setText(R.string.calculating);
+        if (storageUsed <= 0 && storageTotal <= 0) {
+            remoteStorageStats.setText(R.string.calculating);
+        }
         new AboutRemoteTask(rclone, remote, result -> {
             if (result.hasFailed()) {
-                remoteStorageStats.setText(R.string.remote_properties_about_failed);
+                if (storageUsed <= 0 && storageTotal <= 0) {
+                    remoteStorageStats.setText(R.string.remote_properties_about_failed);
+                }
                 return;
             }
             storageUsed = result.getUsed();
             storageTotal = result.getTotal();
             storageFree = result.getFree();
             storageTrashed = result.getTrashed();
+            if (context != null) {
+                ca.pkay.rcloneexplorer.data.RemoteTelemetryCacheRepository.INSTANCE.put(context, remote.getName(), result);
+            }
             showStorageMetrics();
         }).execute();
     }

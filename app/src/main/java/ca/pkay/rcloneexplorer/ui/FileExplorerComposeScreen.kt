@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ca.pkay.rcloneexplorer.Items.FileItem
 import ca.pkay.rcloneexplorer.Items.RemoteItem
+import ca.pkay.rcloneexplorer.R
 import ca.pkay.rcloneexplorer.Rclone
 import ca.pkay.rcloneexplorer.data.*
 import ca.pkay.rcloneexplorer.ui.components.*
@@ -1138,8 +1139,13 @@ fun GridFileCard(
     val isLocal = fileItem.remote.isRemoteType(RemoteItem.LOCAL) || fileItem.remote.isPathAlias
     val isSaf = fileItem.remote.isRemoteType(RemoteItem.SAFW)
 
-    val imageModel: Any? = remember(fileItem, thumbnailServerAuth, thumbnailServerPort) {
-        if (!showThumbnails || !isPhoto) {
+    val maxThumbnailSize = remember {
+        androidx.preference.PreferenceManager.getDefaultSharedPreferences(context)
+            .getLong(context.getString(R.string.pref_key_thumbnail_size_limit), 26214400L)
+    }
+
+    val imageModel: Any? = remember(fileItem, thumbnailServerAuth, thumbnailServerPort, maxThumbnailSize) {
+        if (!showThumbnails || !isPhoto || fileItem.size > maxThumbnailSize) {
             null
         } else if (isLocal) {
             val localPrefix = try { Rclone.getLocalRemotePathPrefix(fileItem.remote, context) } catch (e: Exception) { "" }
@@ -1216,7 +1222,7 @@ fun GridFileCard(
                             .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
                             .allowRgb565(true)
                             .crossfade(true)
-                            .size(180, 180)
+                            .size(160, 160)
                             .build(),
                         contentDescription = fileItem.name,
                         contentScale = ContentScale.Crop,
@@ -1312,8 +1318,13 @@ fun ListFileCard(
     val isLocal = fileItem.remote.isRemoteType(RemoteItem.LOCAL) || fileItem.remote.isPathAlias
     val isSaf = fileItem.remote.isRemoteType(RemoteItem.SAFW)
 
-    val imageModel: Any? = remember(fileItem, thumbnailServerAuth, thumbnailServerPort) {
-        if (!showThumbnails || !isPhoto) {
+    val maxThumbnailSize = remember {
+        androidx.preference.PreferenceManager.getDefaultSharedPreferences(context)
+            .getLong(context.getString(R.string.pref_key_thumbnail_size_limit), 26214400L)
+    }
+
+    val imageModel: Any? = remember(fileItem, thumbnailServerAuth, thumbnailServerPort, maxThumbnailSize) {
+        if (!showThumbnails || !isPhoto || fileItem.size > maxThumbnailSize) {
             null
         } else if (isLocal) {
             val localPrefix = try { Rclone.getLocalRemotePathPrefix(fileItem.remote, context) } catch (e: Exception) { "" }
@@ -1389,7 +1400,7 @@ fun ListFileCard(
                             .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
                             .allowRgb565(true)
                             .crossfade(true)
-                            .size(180, 180)
+                            .size(160, 160)
                             .build(),
                         contentDescription = fileItem.name,
                         contentScale = ContentScale.Crop,

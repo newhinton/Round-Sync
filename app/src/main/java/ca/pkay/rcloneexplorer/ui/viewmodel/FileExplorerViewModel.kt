@@ -117,7 +117,7 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
         isNavigatingBack: Boolean = false
     ) {
         val currentRemote = _uiState.value.remote ?: return
-        val cachedFiles = DirectoryCacheRepository.get(currentRemote.name, path)
+        val cachedFiles = DirectoryCacheRepository.getWithDiskFallback(getApplication(), currentRemote, path)
         val showHidden = _uiState.value.showHiddenFiles
         val rclonePath = normalizeRclonePath(currentRemote.name, path)
 
@@ -173,7 +173,7 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
                         if (!isActive || _uiState.value.currentPath != path) return@launch
 
                         if (freshItems != null) {
-                            DirectoryCacheRepository.put(currentRemote.name, path, freshItems)
+                            DirectoryCacheRepository.putWithDiskPersist(getApplication(), currentRemote.name, path, freshItems)
                             val freshSorted = sortFiles(freshItems, sortOrder)
                             val freshFiltered = applyFiltersAndSearch(
                                 freshSorted,
@@ -222,7 +222,7 @@ class FileExplorerViewModel(application: Application) : AndroidViewModel(applica
                 }
 
                 if (result != null) {
-                    DirectoryCacheRepository.put(currentRemote.name, path, result)
+                    DirectoryCacheRepository.putWithDiskPersist(getApplication(), currentRemote.name, path, result)
                     val sorted = sortFiles(result, sortOrder)
                     val filtered = applyFiltersAndSearch(
                         sorted,

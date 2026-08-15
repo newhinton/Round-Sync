@@ -1129,6 +1129,20 @@ public class Rclone {
     }
 
     public AboutResult aboutRemote(RemoteItem remoteItem) {
+        if (remoteItem.isRemoteType(RemoteItem.LOCAL)) {
+            try {
+                String path = getLocalRemotePathPrefix(remoteItem, context);
+                File file = new File(path.isEmpty() ? Environment.getExternalStorageDirectory().getAbsolutePath() : path);
+                if (file.exists()) {
+                    android.os.StatFs stat = new android.os.StatFs(file.getAbsolutePath());
+                    long total = stat.getTotalBytes();
+                    long free = stat.getAvailableBytes();
+                    long used = total - free;
+                    return new AboutResult(used, total, free, -1);
+                }
+            } catch (Exception ignored) {}
+        }
+
         String remoteName = remoteItem.getName() + ':';
         String[] command = createCommand("about", "--json", remoteName);
         StringBuilder output = new StringBuilder();
@@ -1173,7 +1187,7 @@ public class Rclone {
         return stats;
     }
 
-    public class AboutResult {
+    public static class AboutResult {
         private final long used;
         private final long total;
         private final long free;

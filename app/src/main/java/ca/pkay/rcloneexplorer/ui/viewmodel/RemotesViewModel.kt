@@ -44,16 +44,20 @@ class RemotesViewModel(application: Application) : AndroidViewModel(application)
     val uiState: StateFlow<RemotesUiState> = _uiState.asStateFlow()
 
     init {
+        val cachedQuotas = ca.pkay.rcloneexplorer.data.RemoteTelemetryCacheRepository.getAll(application)
+        _uiState.update { it.copy(storageQuotas = cachedQuotas) }
         loadRemotes()
     }
 
     fun loadRemotes(force: Boolean = false) {
         viewModelScope.launch {
             val hasExisting = _uiState.value.remotes.isNotEmpty()
+            val cachedQuotas = ca.pkay.rcloneexplorer.data.RemoteTelemetryCacheRepository.getAll(getApplication())
             _uiState.update {
                 it.copy(
                     isLoading = !hasExisting || force,
                     isRefreshing = hasExisting && !force,
+                    storageQuotas = if (cachedQuotas.isNotEmpty()) cachedQuotas else it.storageQuotas,
                     errorMessage = null
                 )
             }
@@ -85,8 +89,13 @@ class RemotesViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun fetchStorageQuota(remote: RemoteItem) {
-        if (_uiState.value.storageQuotas.containsKey(remote.name) ||
-            _uiState.value.loadingQuotas.contains(remote.name)) return
+        // If already cached, make sure it's in UI state
+        val cached = ca.pkay.rcloneexplorer.data.RemoteTelemetryCacheRepository.get(getApplication(), remote.name)
+        if (cached != null && !_uiState.value.storageQuotas.containsKey(remote.name)) {
+            _uiState.update { it.copy(storageQuotas = it.storageQuotas + (remote.name to cached)) }
+        }
+
+        if (_uiState.value.loadingQuotas.contains(remote.name)) return
 
         _uiState.update {
             it.copy(loadingQuotas = it.loadingQuotas + remote.name)
@@ -100,6 +109,10 @@ class RemotesViewModel(application: Application) : AndroidViewModel(application)
                     FLog.e(TAG, "Error fetching quota for ${remote.name}", e)
                     null
                 }
+            }
+
+            if (result != null && !result.hasFailed()) {
+                ca.pkay.rcloneexplorer.data.RemoteTelemetryCacheRepository.put(getApplication(), remote.name, result)
             }
 
             _uiState.update {
@@ -139,6 +152,8 @@ class RemotesViewModel(application: Application) : AndroidViewModel(application)
             withContext(Dispatchers.IO) {
                 try {
                     rclone.deleteRemote(remote.name)
+                    ca.pkay.rcloneexplorer.data.RemoteTelemetryCacheRepository.remove(getApplication(), remote.name)
+                    ca.pkay.rcloneexplorer.data.DirectoryCacheRepository.invalidateRemote(remote.name)
                 } catch (e: Exception) {
                     FLog.e(TAG, "Error deleting remote", e)
                 }

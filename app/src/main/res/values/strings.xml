@@ -634,4 +634,12 @@
     <string name="intro_update_checks_description">If you want to recieve updates, you can enable the switch below! We will notify if an update is available, and you can then choose to apply it.</string>
     <string name="thumbnails">Thumbnails</string>
     <string name="thumbnails_loading_notification_title">Loading Thumbnails</string>
+    <string name="preference_category_header_telemetry_cache">Remote Metadata &amp; Telemetry Cache</string>
+    <string name="pref_key_enable_telemetry_cache" translatable="false">pref_key_enable_telemetry_cache</string>
+    <string name="pref_enable_telemetry_cache_title">Cache Storage Quotas &amp; Directory Listings</string>
+    <string name="pref_enable_telemetry_cache_summary">Saves remote storage telemetry and directory listings locally so remotes load instantly, even on low internet or app restart</string>
+    <string name="pref_key_clear_telemetry_cache" translatable="false">pref_key_clear_telemetry_cache</string>
+    <string name="pref_clear_telemetry_cache_title">Clear Remote Telemetry &amp; Metadata Cache</string>
+    <string name="pref_clear_telemetry_cache_summary">Purge all locally cached remote storage quotas and folder metadata</string>
+    <string name="telemetry_cache_cleared">Remote telemetry and metadata cache cleared</string>
 </resources>

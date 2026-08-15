@@ -38,6 +38,20 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory app:title="@string/preference_category_header_telemetry_cache">
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:key="@string/pref_key_enable_telemetry_cache"
+            app:summary="@string/pref_enable_telemetry_cache_summary"
+            app:title="@string/pref_enable_telemetry_cache_title" />
+
+        <Preference
+            android:key="@string/pref_key_clear_telemetry_cache"
+            android:title="@string/pref_clear_telemetry_cache_title"
+            app:dependency="@string/pref_key_enable_telemetry_cache"
+            app:summary="@string/pref_clear_telemetry_cache_summary" />
+    </PreferenceCategory>
+
     <PreferenceCategory android:title="@string/preference_category_header_background_work">
         <SwitchPreference
             android:defaultValue="true"
