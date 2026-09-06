@@ -153,9 +153,9 @@ public class SafDAVServer extends NanoHTTPD {
     }
 
     private Response notImplementedResponse(IHTTPSession session, String signature) {
+        // Don't dump headers: they may include the local WebDAV Authorization credential.
         Log.e(TAG, signature + ": Request { method " + session.getMethod()
-                + ", uri: " + session.getUri()
-                + ", headers: " + session.getHeaders().toString());
+                + ", uri: " + session.getUri() + " }");
         Log.e(TAG, signature + ": not implemented", new Exception("Stack Trace"));
         return null;
     }

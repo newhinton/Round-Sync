@@ -15,7 +15,9 @@ import io.github.x0b.safdav.file.ItemNotFoundException;
 import io.github.x0b.safdav.file.SafException;
 
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
@@ -225,8 +227,30 @@ public class DocumentsContractAccess implements ItemAccess<SafFastItem> {
     }
 
     @Override
-    public void writeFile(Uri documentUri, InputStream outputStream, long len) {
-        sfa.writeFile(documentUri, outputStream, len);
+    public void writeFile(Uri documentUri, InputStream stream, long len) {
+        // Write directly through the ContentResolver with a 64 KB buffer instead of delegating
+        // to SafFileAccess, avoiding an extra indirection and a much smaller copy buffer.
+        try (OutputStream os = context.getContentResolver().openOutputStream(documentUri)) {
+            if (os == null) {
+                throw new FileAccessError();
+            }
+            byte[] buffer = new byte[64 * 1024];
+            int blen = stream.read(buffer);
+            long remaining = len;
+            while (blen != -1) {
+                os.write(buffer, 0, blen);
+                remaining -= blen;
+                if (remaining < 1) {
+                    break;
+                }
+                blen = stream.read(buffer);
+            }
+            os.flush();
+        } catch (FileNotFoundException e) {
+            throw new ItemNotFoundException(e);
+        } catch (IOException e) {
+            throw new FileAccessError(e);
+        }
     }
 
     private Uri getParent(Uri uri) {
@@ -312,7 +336,7 @@ public class DocumentsContractAccess implements ItemAccess<SafFastItem> {
     private String getDisplayNameCompat(Uri uri) {
         String[] projection = new String[]{DocumentsContract.Document.COLUMN_DISPLAY_NAME};
         try (Cursor cursor = context.getContentResolver().query(uri, projection, null, null, null)) {
-            if (cursor.moveToFirst() && cursor.isNull(0)) {
+            if (cursor.moveToFirst() && !cursor.isNull(0)) {
                 return cursor.getString(0);
             } else {
                 return null;

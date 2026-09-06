@@ -9,8 +9,8 @@ import androidx.preference.PreferenceCategory
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceManager
 import ca.pkay.rcloneexplorer.R
-import de.felixnuesse.extract.settings.preferences.ButtonPreference
-import de.felixnuesse.extract.updates.UpdateChecker
+import de.schuelken.cloudbridge.settings.preferences.ButtonPreference
+import de.schuelken.cloudbridge.updates.UpdateChecker
 import es.dmoral.toasty.Toasty
 
 
@@ -44,7 +44,7 @@ class NotificationPreferencesFragment : PreferenceFragmentCompat(),
             if (intent.resolveActivity(requireContext().packageManager) != null) {
                 startActivity(intent)
             } else {
-                Toasty.error(requireContext(), "Couldn't find activity to start", Toast.LENGTH_SHORT, true).show()
+                Toasty.error(requireContext(), getString(R.string.couldnt_find_activity), Toast.LENGTH_SHORT, true).show()
             }
         }
     }

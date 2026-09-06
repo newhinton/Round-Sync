@@ -61,6 +61,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Stack;
 
@@ -94,6 +95,7 @@ import ca.pkay.rcloneexplorer.workmanager.EphemeralTaskManager;
 import ca.pkay.rcloneexplorer.workmanager.SyncManager;
 import de.felixnuesse.ui.BreadcrumbView;
 import es.dmoral.toasty.Toasty;
+import com.google.android.material.snackbar.Snackbar;
 import java9.util.stream.Collectors;
 import java9.util.stream.StreamSupport;
 import jp.wasabeef.recyclerview.animators.LandingAnimator;
@@ -798,7 +800,7 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
      */
     @Override
     public void onClickText(FileItem fileItem) {
-        new DownloadAndOpen(DownloadAndOpen.OPEN_AS_TEXT).execute(fileItem);
+        new DownloadAndOpen(DownloadAndOpen.OPEN_AS_TEXT).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, fileItem);
     }
 
     @Override
@@ -813,7 +815,7 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
 
     @Override
     public void onClickImage(FileItem fileItem) {
-        new DownloadAndOpen(DownloadAndOpen.OPEN_AS_IMAGE).execute(fileItem);
+        new DownloadAndOpen(DownloadAndOpen.OPEN_AS_IMAGE).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, fileItem);
     }
 
     private void showFileProperties(FileItem fileItem) {
@@ -880,8 +882,8 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
         }
 
         for (FileItem item : content) {
-            String fileName = item.getName().toLowerCase();
-            if (fileName.contains(search.toLowerCase())) {
+            String fileName = item.getName().toLowerCase(Locale.ROOT);
+            if (fileName.contains(search.toLowerCase(Locale.ROOT))) {
                 results.add(item);
             }
         }
@@ -1181,7 +1183,7 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
             new StreamTask().execute(fileItem);
         } else {
             // download and open
-            new DownloadAndOpen().execute(fileItem);
+            new DownloadAndOpen().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, fileItem);
         }
     }
 
@@ -1463,15 +1465,44 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
                 .setNegativeButton(getResources().getString(R.string.cancel), null)
                 .setPositiveButton(getResources().getString(R.string.delete), (dialog, which) -> {
                     recyclerViewAdapter.cancelSelection();
-                    for (FileItem deleteItem : deleteList) {
-                        EphemeralTaskManager.Companion.queueDelete(this.context, remote, deleteItem, directoryObject.getCurrentPath());
+                    View view = getView();
+                    if (view == null) {
+                        enqueueDeletes(deleteList);
+                        return;
                     }
-                    Toasty.info(context, getString(R.string.deleting_info), Toast.LENGTH_SHORT, true).show();
+                    // RC-37: defer the destructive enqueue until the Snackbar undo window elapses.
+                    // Once a delete worker has started it cannot be reliably cancelled, so we only
+                    // enqueue when the user lets the Snackbar time out (no Undo tap).
+                    final List<FileItem> pendingDeletes = new ArrayList<>(deleteList);
+                    Snackbar snackbar = Snackbar.make(view, getString(R.string.deleting_info), Snackbar.LENGTH_LONG);
+                    snackbar.setAction(R.string.undo, v -> {
+                        pendingDeletes.clear();
+                        Toasty.info(context, getString(R.string.cancel), Toast.LENGTH_SHORT, true).show();
+                    });
+                    snackbar.addCallback(new Snackbar.Callback() {
+                        @Override
+                        public void onDismissed(Snackbar transientBottomBar, int event) {
+                            super.onDismissed(transientBottomBar, event);
+                            if (event != DISMISS_EVENT_ACTION && !pendingDeletes.isEmpty()) {
+                                enqueueDeletes(pendingDeletes);
+                            }
+                        }
+                    });
+                    snackbar.show();
                 });
         if(deleteList.size() == 1) {
             builder.setMessage(getString(R.string.name_will_be_deleted, deleteList.get(0).getName()));
         }
         builder.create().show();
+    }
+
+    private void enqueueDeletes(List<FileItem> deleteList) {
+        if (context == null) {
+            return;
+        }
+        for (FileItem deleteItem : deleteList) {
+            EphemeralTaskManager.Companion.queueDelete(this.context, remote, deleteItem, directoryObject.getCurrentPath());
+        }
     }
 
     private void renameFiles() {
@@ -1656,8 +1687,10 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
                 if (silentFetch) {
                     return;
                 }
+                // UI-021: keep the currently-displayed content rather than blanking the list on a
+                // transient rclone error; the user can pull-to-refresh to retry.
                 Toasty.error(context, getString(R.string.error_getting_dir_content), Toast.LENGTH_SHORT, true).show();
-                fileItems = new ArrayList<>();
+                return;
             }
 
             directoryObject.setContent(fileItems);

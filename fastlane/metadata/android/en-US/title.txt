@@ -1,1 +1,1 @@
-Round Sync - Rclone for Android
+CloudBridge Rclone for Android

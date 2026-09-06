@@ -2,7 +2,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <PreferenceCategory android:title="@string/preference_category_header_logging">
 
-        <SwitchPreference
+        <SwitchPreferenceCompat
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:defaultValue="false"
@@ -13,7 +13,7 @@
 
     <PreferenceCategory android:title="@string/preference_category_header_rclone">
 
-        <de.felixnuesse.extract.settings.preferences.ButtonPreference
+        <de.schuelken.cloudbridge.settings.preferences.ButtonPreference
             android:title="@string/pref_send_sigquit_title"
             app:summary="@string/pref_send_sigquit_summary"
             android:key="TempKeySigquit" />

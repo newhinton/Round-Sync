@@ -11,21 +11,22 @@
 
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
-
     <application
-        android:allowBackup="true"
+        android:name="ca.pkay.rcloneexplorer.CloudBridgeApp"
+        android:allowBackup="false"
+        android:enableOnBackInvokedCallback="false"
         android:icon="${appIcon}"
         android:label="@string/app_name"
         android:networkSecurityConfig="@xml/network_security_config"
@@ -36,9 +37,9 @@
         tools:ignore="GoogleAppIndexingWarning,MissingTvBanner"
         tools:targetApi="33">
         <receiver
-            android:name="de.felixnuesse.extract.updates.UpdateUserchoiceReceiver"
+            android:name="de.schuelken.cloudbridge.updates.UpdateUserchoiceReceiver"
             android:enabled="true"
-            android:exported="true" />
+            android:exported="false" />
 
         <activity android:name=".Activities.OnboardingActivity" />
         <activity
@@ -46,7 +47,7 @@
             android:exported="true"
             android:label="@string/app_short_name"
             android:launchMode="singleTop"
-            android:theme="@style/AppTheme.NoActionBar">
+            android:theme="@style/Theme.App.Starting">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -85,14 +86,14 @@
             android:foregroundServiceType="dataSync" />
         <service
             android:name=".Services.TriggerService"
-            android:exported="true"
+            android:exported="false"
             android:foregroundServiceType="dataSync" />
         <service
             android:name=".Services.RcdService"
             android:foregroundServiceType="dataSync" /> <!-- Used to expose tasks to other apps, no other functionality -->
         <service
             android:name=".Services.SyncService"
-            android:exported="true" /> <!-- This is a default service required for any and all Workers. Do not remove. -->
+            android:exported="false" /> <!-- This is a default service required for any and all Workers. Do not remove. -->
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync" />
@@ -100,21 +101,21 @@
         <receiver android:name=".BroadcastReceivers.ServeCancelAction" />
         <receiver android:name=".Services.RcdService$RcdServiceAction" />
         <receiver
-            android:name=".BroadcastReceivers.BootReciever"
+            android:name=".BroadcastReceivers.BootReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
         <receiver
-            android:name=".BroadcastReceivers.TriggerReciever"
-            android:exported="true" />
+            android:name=".BroadcastReceivers.TriggerReceiver"
+            android:exported="false" />
         <receiver
-            android:name=".BroadcastReceivers.ClearReportBroadcastReciever"
+            android:name=".BroadcastReceivers.ClearReportBroadcastReceiver"
             android:exported="false" />
         <receiver
             android:name=".BroadcastReceivers.SyncRestartAction"
-            android:exported="true" />
+            android:exported="false" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -124,6 +125,19 @@
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_provider_paths" />
+        </provider>
+
+        <!-- Disable the default WorkManager initializer so that the custom Configuration
+             provided by CloudBridgeApp is used (lazy initialization on first access). -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
         </provider>
 
         <activity
@@ -232,16 +246,6 @@
                 android:name="autoStoreLocales"
                 android:value="true" />
         </service>
-
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.fileprovider"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/paths"/>
-        </provider>
 
     </application>
 

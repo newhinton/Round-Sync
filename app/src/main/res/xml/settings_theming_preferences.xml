@@ -8,7 +8,7 @@
         android:key="@string/pref_key_theme"
         android:title="@string/theme_title" />
 
-    <SwitchPreference
+    <SwitchPreferenceCompat
         android:defaultValue="true"
         android:key="@string/pref_key_wrap_filenames"
         android:title="@string/wrap_filenames"

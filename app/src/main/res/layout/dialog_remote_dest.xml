@@ -44,8 +44,8 @@
                     android:layout_width="wrap_content"
                     android:layout_height="match_parent"
                     android:contentDescription="@string/file_icon"
-                    android:paddingLeft="16dp"
-                    android:paddingRight="16dp"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
                     android:src="@drawable/ic_arrow_back" />
 
                 <LinearLayout

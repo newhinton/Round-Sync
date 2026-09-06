@@ -80,7 +80,7 @@ public class SafFileAccess implements ItemAccess<SafFileItem> {
                 throw new FileAccessError();
             }
             try {
-                byte[] buffer = new byte[1024];
+                byte[] buffer = new byte[64 * 1024];
                 int blen = stream.read(buffer);
                 while (blen != -1) {
                     len -= blen;

@@ -8,8 +8,8 @@ assignees: ''
 ---
 
 <!---
-If you just have a question around Round Sync-usage, you might find something in the documentation:
-https://roundsync.com/
+If you just have a question around CloudBridge-usage, you might find something in the documentation:
+https://thies2005.github.io/CloudBridge/
 
 If you have a question regarding rclone functionality (e.g. config files), the forum is a good place to ask:
 https://forum.rclone.org/
@@ -19,8 +19,8 @@ If you still think you have found a bug, please fill out the following questions
 -->
 - [ ] I have read the above note
 
-#### What version of Round Sync are you using (About -> App version)?
-<!-- Example: 2.1.0 -->
+#### What version of CloudBridge are you using (About -> App version)?
+<!-- Example: 1.0.1 -->
 
 
 #### What is your Android version, phone model and manufacturer?
@@ -33,7 +33,7 @@ If you still think you have found a bug, please fill out the following questions
 Example:
   1. Open a remote
   2. Select "Delete" on a folder
-  3. Round Sync crashes 
+  3. CloudBridge crashes 
 
 Please also enable rclone logging (Settings > Logging > Log Rclone errors). You're going to need the log for the last question.
 

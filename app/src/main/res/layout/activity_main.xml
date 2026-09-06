@@ -45,6 +45,7 @@
                     android:id="@+id/imageView"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:importantForAccessibility="no"
                     android:padding="16dp"
                     app:srcCompat="@drawable/ic_twotone_settings_24"
                     app:tint="@drawable/nav_item_textcolor_state" />
@@ -67,6 +68,7 @@
                 <ImageView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:importantForAccessibility="no"
                     android:padding="16dp"
                     app:srcCompat="@drawable/ic_twotone_info_24"
                     app:tint="@drawable/nav_item_textcolor_state" />

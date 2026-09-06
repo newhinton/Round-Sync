@@ -22,6 +22,9 @@ public class Log2File {
 
     public void log(String message) {
         File path = context.getExternalFilesDir("logs");
+        if (path == null) {
+            return;
+        }
         File logFile = new File(path, "log.txt");
 
         clearLogsIfTooBif(logFile);
@@ -37,7 +40,7 @@ public class Log2File {
 
     private void clearLogsIfTooBif(File logFile) {
         int fileSize = Integer.parseInt(String.valueOf(logFile.length() / 1024));
-        if (fileSize > 10000000) { // 10 MB
+        if (fileSize > 10000) { // 10 MB
             logFile.delete();
         }
     }

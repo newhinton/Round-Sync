@@ -11,10 +11,10 @@ jobs:
       changed: ${{ steps.changeDetection.outputs.should-run }}
       files: ${{ steps.changeDetection.outputs.files }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Get changed files
         id: changed-files
-        uses: tj-actions/changed-files@v44
+        uses: tj-actions/changed-files@ed68ef82c095e0d48ec87eccea555d944a631a4c # v46
       - name: Verify build.gradle changed
         id: changeDetection
         env:
@@ -36,7 +36,7 @@ jobs:
     needs: string-change-verification
     if: needs.string-change-verification.outputs.changed == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
       - name: Prepare Profanity Check
@@ -55,7 +55,7 @@ jobs:
           TRANSLATIONS=$(./scripts/generateFilelist.sh ${{ github.event.pull_request.commits }} ${{needs.string-change-verification.outputs.files}})
           echo "TRANSLATIONS=$TRANSLATIONS" >> $GITHUB_OUTPUT
         shell: sh
-      - uses: fabasoad/translation-action@main
+      - uses: fabasoad/translation-action@1476a9db97feaa816029bc027103eb89f3b017bf # v4.2.4
         id: google-translate
         with:
           provider: google
@@ -68,7 +68,7 @@ jobs:
           ./scripts/checkProfanity.py translated_texts.txt
         shell: sh
       - name: Upload Raw Translations
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: Translations
           path: |

@@ -21,6 +21,7 @@ import android.widget.CompoundButton
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import androidx.appcompat.widget.Toolbar
+import androidx.core.view.WindowCompat
 import ca.pkay.rcloneexplorer.Items.Task
 import ca.pkay.rcloneexplorer.Items.Trigger
 import ca.pkay.rcloneexplorer.Services.TriggerService
@@ -58,6 +59,7 @@ class TriggerActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, true)
         ActivityHelper.applyTheme(this)
         setContentView(R.layout.activity_trigger)
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
@@ -99,6 +101,7 @@ class TriggerActivity : AppCompatActivity() {
                         this.resources.getString(R.string.triggeractivity_trigger_not_found)
                     ).show()
                     finish()
+                    return
                 }
                 mTrigger = notNullTrigger!!
             }

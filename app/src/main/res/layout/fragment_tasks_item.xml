@@ -111,7 +111,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginEnd="2dp"
                         android:singleLine="true"
-                        android:text="fromid"
+                        tools:text="fromid"
                         android:textColor="@color/textColorHighlight"
                         android:textStyle="italic"
                         tools:ignore="HardcodedText" />
@@ -121,7 +121,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:singleLine="true"
-                        android:text="fromPath"
+                        tools:text="fromPath"
                         tools:ignore="HardcodedText" />
 
                 </LinearLayout>
@@ -138,7 +138,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginEnd="2dp"
                         android:singleLine="true"
-                        android:text="toid"
+                        tools:text="toid"
                         android:textAllCaps="false"
                         android:textColor="@color/textColorHighlight"
                         android:textStyle="italic"
@@ -149,7 +149,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:singleLine="true"
-                        android:text="toPath"
+                        tools:text="toPath"
                         tools:ignore="HardcodedText" />
 
                 </LinearLayout>

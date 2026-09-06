@@ -1,6 +1,6 @@
 # Security Policy
 
-Please contact us directly about security issues: security@felixnuesse.de. Please give appropriate time to respond.
+Please contact us directly about security issues: [136268370+thies2005@users.noreply.github.com](mailto:136268370+thies2005@users.noreply.github.com). Please give appropriate time to respond.
 
 This is a community project without 24/7 operations or formal security review. While we try to make the app as secure as possible, we cannot offer any guarantees. Do not rely on the encryption for your safety.
 

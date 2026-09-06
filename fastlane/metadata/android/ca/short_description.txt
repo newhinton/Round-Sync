@@ -1,1 +1,0 @@
-Un gestor de fitxers per a Android que usa rclone per connectar-se al núvol.

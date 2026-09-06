@@ -229,9 +229,9 @@ public class FileAccessSettingsFragment extends Fragment {
                 break;
             case onAllFilesSettingOpened:
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager()) {
-                    Toasty.success(context, "You can now access all local storage", Toast.LENGTH_LONG, true).show();
+                    Toasty.success(context, getString(R.string.all_storage_accessible), Toast.LENGTH_LONG, true).show();
                 } else {
-                    Toasty.info(context, "Manage files not granted", Toast.LENGTH_LONG, true).show();
+                    Toasty.info(context, getString(R.string.manage_files_not_granted), Toast.LENGTH_LONG, true).show();
                 }
                 break;
         }

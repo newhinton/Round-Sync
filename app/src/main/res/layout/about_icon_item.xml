@@ -17,8 +17,8 @@
         android:id="@+id/smashicons"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:paddingLeft="4dp"
-        android:paddingRight="4dp"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp"
         android:textColor="?attr/colorSecondary"
         android:text="@string/smashicons"/>
 
@@ -32,7 +32,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textColor="?attr/colorSecondary"
-        android:paddingLeft="4dp"
-        android:paddingRight="4dp"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp"
         android:text="@string/flaticon"/>
 </LinearLayout>

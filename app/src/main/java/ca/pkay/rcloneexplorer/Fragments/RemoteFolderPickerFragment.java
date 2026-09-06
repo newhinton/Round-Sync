@@ -11,7 +11,6 @@ import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Base64;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -40,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Stack;
 
@@ -507,8 +507,8 @@ public class RemoteFolderPickerFragment extends Fragment implements   FileExplor
         }
 
         for (FileItem item : content) {
-            String fileName = item.getName().toLowerCase();
-            if (fileName.contains(search.toLowerCase())) {
+            String fileName = item.getName().toLowerCase(Locale.ROOT);
+            if (fileName.contains(search.toLowerCase(Locale.ROOT))) {
                 results.add(item);
             }
         }
@@ -732,7 +732,6 @@ public class RemoteFolderPickerFragment extends Fragment implements   FileExplor
 
     @Override
     public void onBreadCrumbClicked(String path) {
-        Log.e("TAG", path);
         if (isSearchMode) {
             searchClicked();
         }

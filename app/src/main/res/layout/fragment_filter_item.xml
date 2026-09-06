@@ -27,7 +27,6 @@
             android:hint="@string/filter_entry_filter_text"
             android:importantForAutofill="no"
             android:inputType="text"
-            android:text="Name"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@+id/filter_entry_delete"
             app:layout_constraintStart_toEndOf="@+id/filter_entry_filter_type"

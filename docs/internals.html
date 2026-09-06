@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How CloudBridge works — technical documentation</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="site">
+  <div class="inner">
+    <h1>CloudBridge</h1>
+    <p>A cloud file manager for Android, powered by rclone.</p>
+    <nav class="site">
+      <a href="index.html">Home</a>
+      <a href="internals.html" aria-current="page">How it works</a>
+      <a href="privacy.html">Privacy policy</a>
+      <a href="https://github.com/thies2005/CloudBridge">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <h2>How CloudBridge works — the full technical tour</h2>
+  <p>
+    This page documents the complete CloudBridge system: the app architecture, how
+    rclone is embedded, the build pipeline, automatic releases, the update
+    mechanism, and the Google Play publishing flow. It is meant for contributors
+    and for anyone who wants to understand what is running on their device.
+  </p>
+
+  <h2 id="architecture">1. Project architecture</h2>
+  <p>The repository contains three Gradle modules:</p>
+  <table>
+    <tr><th>Module</th><th>Language</th><th>Purpose</th></tr>
+    <tr>
+      <td><code>app</code></td>
+      <td>Java + Kotlin</td>
+      <td>The Android application: UI, services, background tasks. Older code lives in the <code>ca.pkay.rcloneexplorer</code> namespace (inherited from rcloneExplorer), newer code in <code>de.schuelken.cloudbridge</code>.</td>
+    </tr>
+    <tr>
+      <td><code>rclone</code></td>
+      <td>Go</td>
+      <td>Cross-compiles <a href="https://rclone.org">rclone</a> into <code>librclone.so</code> for every Android ABI. No rclone binary is executed; the library is loaded via JNI.</td>
+    </tr>
+    <tr>
+      <td><code>safdav</code></td>
+      <td>Java</td>
+      <td>Bridges Android's Storage Access Framework (SAF) to WebDAV, so rclone can read and write SD cards, USB sticks and other SAF-provided storage.</td>
+    </tr>
+  </table>
+
+  <h2 id="rclone-integration">2. How rclone is embedded</h2>
+  <p>
+    rclone is a Go program. The <code>rclone</code> module builds it with the official
+    Go NDK toolchain as a shared library (<code>librclone.so</code>) that exposes the
+    <a href="https://rclone.org/rc/">rclone remote-control API</a> over a C interface.
+    The app calls into this library through JNI and exchanges JSON requests and
+    responses — for example to list a directory, start a sync, or create a remote.
+  </p>
+  <ul>
+    <li>The exact rclone source is pinned in <code>gradle.properties</code> (<code>de.schuelken.cloudbridge.rCloneRepoUrl</code> and <code>rCloneRef</code>). Builds fetch that exact commit into <code>rclone/cache/</code>.</li>
+    <li>CloudBridge uses a project fork (<code>github.com/thies2005/rclone</code>) that adds an Internxt auto-token-renewal fix and other Android-specific patches.</li>
+    <li>Upgrading rclone normally means changing one line (<code>rCloneRef</code>) and rebuilding — the whole point of this setup is upgradeability.</li>
+    <li>Your rclone configuration (remotes, OAuth tokens, crypt passwords) is a normal rclone config file in the app's private storage. You can export or import it from within the app.</li>
+  </ul>
+
+  <h2 id="build-system">3. Build system</h2>
+  <p>Prerequisites: JDK 17, Go 1.25+, Android SDK with the NDK version pinned in <code>gradle.properties</code>.</p>
+  <pre><code>./gradlew assembleOssDebug     # debug APK
+./gradlew assembleOssRelease   # signed release APKs
+./gradlew bundleOssRelease -PnoAbiSplits   # AAB for Google Play</code></pre>
+  <ul>
+    <li><strong>Flavors:</strong> the <code>edition</code> dimension has <code>oss</code> (the standard build) and <code>rs</code>.</li>
+    <li><strong>ABI splits:</strong> release builds produce one APK per ABI (arm64-v8a, armeabi-v7a, x86, x86_64) plus a universal APK. APK splitting must be disabled for AAB builds — that is what the <code>-PnoAbiSplits</code> switch does.</li>
+    <li><strong>Signing:</strong> local builds read <code>keystore.properties</code> (git-ignored); CI reads <code>CB_STORE_FILE</code>, <code>CB_STORE_PASSWORD</code>, <code>CB_KEY_ALIAS</code>, <code>CB_KEY_PASSWORD</code> environment variables. If neither exists, the debug key is used so fresh checkouts still build.</li>
+    <li><strong>First build</strong> downloads the pinned rclone source and cross-compiles it for all four ABIs — expect roughly 20–30 minutes. Later builds are incremental.</li>
+    <li><strong>Debug builds</strong> append <code>.debug</code> to the application id, so debug and release can be installed side by side.</li>
+  </ul>
+
+  <h2 id="versioning">4. Version numbers</h2>
+  <ul>
+    <li><code>versionName</code> follows <em>major.minor.patch</em> (currently 1.0.1) and is set in <code>app/build.gradle</code>.</li>
+    <li><code>versionCode</code> <strong>must end in 0</strong>. The last digit is reserved for ABI offsets added to split APKs (arm64 gets +7, x86_64 +9, and so on), so every APK of one build gets a unique, increasing code.</li>
+    <li>CI betas compute the code automatically: <code>versionCode = commitCount × 10</code> and <code>versionName = &lt;base&gt;-beta.&lt;shortsha&gt;</code>. Because the commit count only grows, every build is a valid upgrade of the previous one — on GitHub and on Google Play alike.</li>
+  </ul>
+
+  <h2 id="ci-cd">5. CI/CD — how a push becomes a release</h2>
+  <p>The workflow <code>.github/workflows/android.yml</code> runs on every push to <code>master</code>:</p>
+  <ol>
+    <li>Check out the full history (needed for the commit-count version code).</li>
+    <li>Install the pinned JDK, Go and NDK versions from <code>gradle.properties</code>.</li>
+    <li>Decode the release keystore from the encrypted repository secret <code>CB_KEYSTORE_BASE64</code> into a temporary file. Passwords arrive as masked secrets. The keystore is never committed.</li>
+    <li>Build all signed release APKs (<code>assembleOssRelease</code>) and the signed AAB (<code>bundleOssRelease -PnoAbiSplits</code>).</li>
+    <li>Create a GitHub pre-release tagged <code>v1.0.1-beta.&lt;shortsha&gt;</code> with the five APKs and the <code>.aab</code> attached. Previous beta releases are kept.</li>
+  </ol>
+  <p>
+    Other workflows: <code>lint.yml</code> runs unit tests and lint on pull requests,
+    <code>dependencies.yml</code> rebuilds when <code>build.gradle</code> changes, and
+    <code>translations.yml</code> checks translated resources for profanity.
+  </p>
+
+  <h2 id="updater">6. The update checker</h2>
+  <p>
+    If enabled, a WorkManager job runs about every 14 days and asks the GitHub API
+    whether a newer release tag exists. When it finds one, it shows a
+    <strong>notification only</strong>: "A new version might be available." Tapping it
+    opens the release page in your browser, where you can read the changelog and
+    download the APK yourself. There is also an "Ignore Update" action for this version.
+  </p>
+  <div class="note">
+    CloudBridge deliberately does <strong>not</strong> download or install APKs on its
+    own. In-app self-updating is forbidden by Google Play policy, and manual
+    installation keeps you in control of what runs on your device. For the same
+    reason the app requests no install permissions.
+  </div>
+  <p>
+    On installations that came from an app store (Play Store, F-Droid and similar),
+    the update check disables itself automatically — the store keeps you up to date.
+  </p>
+
+  <h2 id="storage-access-framework">7. Storage Access Framework (SAF)</h2>
+  <p>
+    Android does not let normal apps write to SD cards or USB sticks directly.
+    CloudBridge solves this with the <code>safdav</code> module: it exposes any
+    SAF document tree (as granted by you via the system picker) through a local
+    WebDAV server, and rclone can then use that WebDAV endpoint like any other
+    remote. This is how sync tasks can include external storage.
+  </p>
+
+  <h2 id="play-store">8. Google Play pipeline</h2>
+  <p>Releasing on Play works alongside GitHub releases, not instead of them:</p>
+  <ol>
+    <li><strong>Artifact:</strong> Play requires an <em>Android App Bundle</em> (<code>.aab</code>), produced by CI on every push and attached to the beta release.</li>
+    <li><strong>Signing:</strong> the AAB is signed with the project's upload key. On first upload, Google enrolls the app in <em>Play App Signing</em>: Google holds the final signing key and re-signs everything it distributes. Keep the upload keystore and its passwords safe — every future update must be signed with it.</li>
+    <li><strong>Upload:</strong> the AAB from the GitHub release is uploaded in Play Console to a testing track first (internal testing reviews in minutes), then promoted to production.</li>
+    <li><strong>versionCode:</strong> every upload must have a higher code than the last. The CI scheme (commit count × 10) guarantees this automatically.</li>
+    <li><strong>Policies that matter for CloudBridge:</strong> the <code>MANAGE_EXTERNAL_STORAGE</code> permission requires a declaration form (allowed for file managers, since broad file access is the core feature), the Data safety form can state that no data is collected (see the <a href="privacy.html">privacy policy</a>), and in-app self-updating is not allowed — which is why the update checker is notification-only.</li>
+  </ol>
+
+  <h2 id="local-development">9. Local development</h2>
+  <pre><code>git clone https://github.com/thies2005/CloudBridge
+cd CloudBridge
+./gradlew assembleOssDebug
+# APK: app/build/outputs/apk/oss/debug/</code></pre>
+  <ul>
+    <li><code>local.properties</code> must point to your Android SDK (<code>sdk.dir</code>).</li>
+    <li>Useful checks before opening a PR: <code>./gradlew testOssDebugUnitTest lint -x :rclone:buildAll</code>.</li>
+    <li>Windows builds need the rclone module's NDK handling (see <code>WINDOWS_BUILD_GUIDE.md</code>).</li>
+  </ul>
+
+  <h2 id="troubleshooting">10. Troubleshooting</h2>
+  <table>
+    <tr><th>Symptom</th><th>Cause / fix</th></tr>
+    <tr><td>First build takes ~30 minutes</td><td>rclone is being downloaded and cross-compiled for four ABIs. Normal; subsequent builds are incremental.</td></tr>
+    <tr><td><code>AAB build fails: Multiple shrunk-resources files</code></td><td>APK splits were enabled during a bundle build. Use <code>bundleOssRelease -PnoAbiSplits</code>.</td></tr>
+    <tr><td>NDK / Go version mismatch</td><td>Both are pinned in <code>gradle.properties</code> (<code>ndkVersion</code>, <code>goVersion</code>) — install exactly those.</td></tr>
+    <tr><td>Rclone behaves differently than upstream</td><td>The project uses its own fork with Android-specific fixes (for example Internxt token renewal). Compare against <code>rCloneRepoUrl</code>/<code>rCloneRef</code> in <code>gradle.properties</code>.</td></tr>
+    <tr><td>Release APK only signed with debug key</td><td>No <code>keystore.properties</code> and no <code>CB_*</code> environment variables found — see section 3.</td></tr>
+  </table>
+</main>
+
+<footer class="site">
+  <div class="inner">
+    CloudBridge is released under the <a href="https://github.com/thies2005/CloudBridge/blob/master/LICENSE">GPLv3 license</a>.
+  </div>
+</footer>
+</body>
+</html>

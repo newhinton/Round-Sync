@@ -24,20 +24,27 @@ import ca.pkay.rcloneexplorer.notifications.prototypes.WorkerNotification
 import ca.pkay.rcloneexplorer.notifications.support.StatusObject
 import ca.pkay.rcloneexplorer.util.FLog
 import ca.pkay.rcloneexplorer.util.SyncLog
+import ca.pkay.rcloneexplorer.util.TransferLocks
 import ca.pkay.rcloneexplorer.util.WifiConnectivitiyUtil
-import de.felixnuesse.extract.extensions.tag
-import de.felixnuesse.extract.notifications.implementations.DownloadWorkerNotification
+import de.schuelken.cloudbridge.extensions.tag
+import de.schuelken.cloudbridge.notifications.implementations.DownloadWorkerNotification
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.BufferedReader
+import java.io.File
 import java.io.IOException
 import java.io.InputStreamReader
 import java.io.InterruptedIOException
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 import kotlin.random.Random
 import android.util.Log
-import de.felixnuesse.extract.notifications.implementations.DeleteWorkerNotification
-import de.felixnuesse.extract.notifications.implementations.MoveWorkerNotification
-import de.felixnuesse.extract.notifications.implementations.UploadWorkerNotification
+import android.webkit.MimeTypeMap
+import de.schuelken.cloudbridge.notifications.implementations.DeleteWorkerNotification
+import de.schuelken.cloudbridge.notifications.implementations.MoveWorkerNotification
+import de.schuelken.cloudbridge.notifications.implementations.UploadWorkerNotification
 
 
 class EphemeralWorker (private var mContext: Context, workerParams: WorkerParameters): Worker(mContext, workerParams) {
@@ -111,7 +118,9 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
             if(preconditionsMet()) {
                 // do not instantiate rclone when you dont want it to run.
                 // It will immediately run!
-                when(type){
+                val transferLocks = TransferLocks.acquire(mContext, "ephemeral")
+                try {
+                    when(type){
                     Type.DOWNLOAD -> {
                         val target = inputData.getString(DOWNLOAD_TARGETPATH)
                         val fileItem = getFileitemFromParcel(DOWNLOAD_SOURCE)
@@ -167,6 +176,9 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
                     }
                 }
                 handleSync(mTitle)
+                } finally {
+                    transferLocks?.release()
+                }
             } else {
                 log("Preconditions are not met!")
                 postSync()
@@ -210,6 +222,11 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
             try {
                 val reader = BufferedReader(InputStreamReader(localProcessReference.errorStream))
                 val iterator = reader.lineSequence().iterator()
+                // Throttle notification rebuilds: rclone emits a stats line roughly every second,
+                // but with -vvv there can be many more log lines. Rebuilding a Notification and
+                // calling setForegroundAsync() on every line wastes CPU that the transfer needs.
+                var lastNotifyMs = 0L
+                val minNotifyIntervalMs = 500L
                 while(iterator.hasNext()) {
                     val line = iterator.next()
                     try {
@@ -219,18 +236,26 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
                             if (sIsLoggingEnabled) {
                                 log2File?.log(line)
                             }
-                            statusObject.parseLoglineToStatusObject(logline)
-                        } else if (logline.getString("level") == "warning") {
-                            statusObject.parseLoglineToStatusObject(logline)
                         }
 
-                        updateForegroundNotification(mNotificationManager?.updateNotification(
-                            title,
-                            statusObject.notificationContent,
-                            statusObject.notificationBigText,
-                            statusObject.notificationPercent,
-                            ongoingNotificationID
-                        ))
+                        // Process all log lines so stats/progress advance the notification
+                        statusObject.parseLoglineToStatusObject(logline)
+
+                        // Only rebuild when there is content to show, and at most once per
+                        // minNotifyIntervalMs to avoid notification churn on busy logs.
+                        if (statusObject.notificationContent.isNotEmpty()) {
+                            val now = System.currentTimeMillis()
+                            if (now - lastNotifyMs >= minNotifyIntervalMs) {
+                                lastNotifyMs = now
+                                updateForegroundNotification(mNotificationManager?.updateNotification(
+                                    title,
+                                    statusObject.notificationContent,
+                                    statusObject.notificationBigText,
+                                    statusObject.notificationPercent,
+                                    ongoingNotificationID
+                                ))
+                            }
+                        }
                     } catch (e: JSONException) {
                         Log.e(tag(), "Error: the offending line: $line")
                         //FLog.e(TAG, "onHandleIntent: error reading json", e)
@@ -425,9 +450,13 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
         }
 
         val parcel = Parcel.obtain()
-        parcel.unmarshall(sourceParcelByteArray, 0, sourceParcelByteArray.size)
-        parcel.setDataPosition(0)
-        return FileItem.CREATOR.createFromParcel(parcel)
+        try {
+            parcel.unmarshall(sourceParcelByteArray, 0, sourceParcelByteArray.size)
+            parcel.setDataPosition(0)
+            return FileItem.CREATOR.createFromParcel(parcel)
+        } finally {
+            parcel.recycle()
+        }
     }
 
     private fun getRemoteitemFromParcel(key: String): RemoteItem? {
@@ -439,9 +468,13 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
         }
 
         val parcel = Parcel.obtain()
-        parcel.unmarshall(sourceParcelByteArray, 0, sourceParcelByteArray.size)
-        parcel.setDataPosition(0)
-        return RemoteItem.CREATOR.createFromParcel(parcel)
+        try {
+            parcel.unmarshall(sourceParcelByteArray, 0, sourceParcelByteArray.size)
+            parcel.setDataPosition(0)
+            return RemoteItem.CREATOR.createFromParcel(parcel)
+        } finally {
+            parcel.recycle()
+        }
     }
 
     private fun getCurrentFile(): FileItem {
@@ -453,14 +486,25 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
                 val pathAndName = inputData.getString(UPLOAD_FILE) ?: ""
                 val name = pathAndName.substring(pathAndName.lastIndexOf("/")+1, pathAndName.length)
                 val path = pathAndName.substring(0, pathAndName.lastIndexOf("/")+1)
-                // TODO: Make this work properly! All the params are guessed!
+                val localFile = File(pathAndName)
+                val size = localFile.length()
+                val rfc3339 = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
+                rfc3339.timeZone = TimeZone.getTimeZone("UTC")
+                val modTime = rfc3339.format(Date(localFile.lastModified()))
+                val dotIndex = name.lastIndexOf('.')
+                val mimeType = if (dotIndex >= 0 && dotIndex < name.length - 1) {
+                    val extension = name.substring(dotIndex + 1).lowercase()
+                    MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension) ?: "application/octet-stream"
+                } else {
+                    "application/octet-stream"
+                }
                 FileItem(
                         RemoteItem("", ""),
                         path,
                         name,
-                        0L,
-                        "modTime",
-                        "mimeType",
+                        size,
+                        modTime,
+                        mimeType,
                         false,
                         false)
             }

@@ -17,7 +17,7 @@
             app:key="@string/pref_key_show_thumbnails"
             app:title="@string/show_thumbnails" />
 
-        <de.felixnuesse.extract.settings.preferences.FilesizePreference
+        <de.schuelken.cloudbridge.settings.preferences.FilesizePreference
             android:defaultValue="1048576"
             android:key="@string/pref_key_thumbnail_size_limit"
             android:title="@string/pref_thumbnails_dlg_title"
@@ -26,20 +26,27 @@
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/preference_category_header_background_work">
-        <SwitchPreference
+        <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="@string/shared_preferences_allow_sync_trigger_while_idle"
             android:title="@string/alarm_while_idle"
             app:summary="@string/alarm_while_idle_summary" />
-        <SwitchPreference
+        <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="@string/pref_key_wifi_only_transfers"
             android:title="@string/transfer_only_on_wifi"
             app:summary="@string/transfer_only_on_wifi_summary" />
+        <ListPreference
+            android:defaultValue="4"
+            android:entries="@array/transfers_entries"
+            android:entryValues="@array/transfers_values"
+            android:key="@string/pref_key_transfers"
+            android:title="@string/pref_transfers_title"
+            app:useSimpleSummaryProvider="true" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/preference_category_header_proxy">
-        <SwitchPreference
+        <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="@string/pref_key_use_proxy"
             android:title="@string/pref_use_proxy_title"
@@ -62,7 +69,7 @@
             app:useSimpleSummaryProvider="true" />
 
 
-        <de.felixnuesse.extract.settings.preferences.EditIntPreference
+        <de.schuelken.cloudbridge.settings.preferences.EditIntPreference
             android:inputType="number"
             android:key="@string/pref_key_proxy_port"
             android:numeric="integer"

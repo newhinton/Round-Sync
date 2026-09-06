@@ -274,17 +274,84 @@
                             android:layout_height="wrap_content"
                             android:src="@drawable/ic_person_outline"
                             android:contentDescription="@string/maintainer_name" />
+                <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/maintainer_name"
+                        android:textStyle="bold"
+                        android:paddingStart="32dp"
+                        android:paddingEnd="0dp"/>
+                </LinearLayout>
+
+                <LinearLayout
+                        android:id="@+id/maintainer_github_link"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:orientation="horizontal"
+                        android:layout_gravity="center_vertical"
+                        android:gravity="center_vertical"
+                        android:clickable="true"
+                        android:focusable="true" >
+
+                    <ImageView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:src="@drawable/ic_mark_github"
+                            android:contentDescription="@string/follow_on_github" />
                     <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="@string/maintainer_name"
+                            android:text="@string/follow_on_github"
+                            android:textStyle="bold"
+                            android:paddingStart="32dp"
+                            android:paddingEnd="0dp"/>
+                </LinearLayout>
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:theme="@style/SecondaryCardStyle"
+            app:cardCornerRadius="@dimen/cardCornerRadius"
+            app:contentPadding="@dimen/cardPadding">
+
+            <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical">
+                <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/previous_maintainer"
+                        android:paddingBottom="16dp" />
+
+                <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:orientation="horizontal"
+                        android:layout_gravity="center_vertical"
+                        android:gravity="center_vertical" >
+
+                    <ImageView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:src="@drawable/ic_person_outline"
+                            android:contentDescription="@string/previous_maintainer_name" />
+                    <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/previous_maintainer_name"
                             android:textStyle="bold"
                             android:paddingStart="32dp"
                             android:paddingEnd="0dp"/>
                 </LinearLayout>
 
                 <LinearLayout
-                        android:id="@+id/maintainer_github_link"
+                        android:id="@+id/previous_maintainer_github_link"
                         android:layout_width="match_parent"
                         android:layout_height="48dp"
                         android:orientation="horizontal"

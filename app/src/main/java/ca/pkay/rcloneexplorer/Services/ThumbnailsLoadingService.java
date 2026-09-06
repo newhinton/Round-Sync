@@ -36,7 +36,14 @@ public class ThumbnailsLoadingService extends IntentService {
         }
 
         RemoteItem remote = intent.getParcelableExtra(REMOTE_ARG);
-        String hiddenPath = "/" + intent.getStringExtra(HIDDEN_PATH) + '/' + remote.getName();
+        if (remote == null) {
+            return;
+        }
+        String hiddenPathExtra = intent.getStringExtra(HIDDEN_PATH);
+        if (hiddenPathExtra == null) {
+            hiddenPathExtra = "";
+        }
+        String hiddenPath = "/" + hiddenPathExtra + '/' + remote.getName();
         int serverPort = intent.getIntExtra(SERVER_PORT, 29179);
         FLog.d(TAG, "onHandleIntent: hiddenPath=%s", hiddenPath);
         process = rclone.serve(Rclone.SERVE_PROTOCOL_HTTP, serverPort, false, null, null, remote, "", hiddenPath);

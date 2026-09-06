@@ -27,6 +27,7 @@ import ca.pkay.rcloneexplorer.RcloneRcd;
 import ca.pkay.rcloneexplorer.util.FLog;
 import ca.pkay.rcloneexplorer.util.FlagsUtil;
 import ca.pkay.rcloneexplorer.util.NotificationUtils;
+import ca.pkay.rcloneexplorer.util.TransferLocks;
 
 
 public class RcdService extends Service implements RcloneRcd.JobsUpdateHandler {
@@ -52,8 +53,12 @@ public class RcdService extends Service implements RcloneRcd.JobsUpdateHandler {
 
     private RcloneRcd rcloneRcd;
     private boolean shutdown;
-    private Boolean available;
+    private volatile boolean available;
+    private final Object onlineLock = new Object();
     private long initNanosTimestamp = 0;
+    // Held only while VCP/rcd jobs are actively running, so the device does not enter Doze
+    // and stall transfers with the screen off.
+    private TransferLocks activeTransferLocks;
 
     private final IBinder binder = new RcdBinder();
     private NotificationManagerCompat notificationManager;
@@ -116,6 +121,12 @@ public class RcdService extends Service implements RcloneRcd.JobsUpdateHandler {
 
         if (running > 0) {
             builder.setOngoing(true).setProgress(100, 25, true);
+            if (activeTransferLocks == null) {
+                activeTransferLocks = TransferLocks.acquire(this, "rcd");
+            }
+        } else if (activeTransferLocks != null) {
+            activeTransferLocks.release();
+            activeTransferLocks = null;
         }
 
         NotificationUtils.createNotification(this, PERSISTENT_NOTIFICATION_ID, builder.build());
@@ -274,6 +285,10 @@ public class RcdService extends Service implements RcloneRcd.JobsUpdateHandler {
 
     private void shutdown() {
         FLog.d(TAG, "Service shutting down");
+        if (activeTransferLocks != null) {
+            activeTransferLocks.release();
+            activeTransferLocks = null;
+        }
         if (null != rcloneRcd) {
             rcloneRcd.stopRcd();
             rcloneRcd = null;
@@ -302,36 +317,45 @@ public class RcdService extends Service implements RcloneRcd.JobsUpdateHandler {
     public boolean waitOnline(long timeout) {
         long retries = timeout / 150;
         while (retries > 0) {
-            synchronized (available) {
-                try {
-                    rcloneRcd.isOnline();
-                } catch (NullPointerException | RcloneRcd.RcdIOException e) {
+            synchronized (onlineLock) {
+                boolean online = false;
+                if (null == rcloneRcd) {
                     FLog.v(TAG, "rcd not yet online");
+                } else {
                     try {
-                        available.wait(150);
-                    } catch (InterruptedException ignored) {
+                        rcloneRcd.isOnline();
+                        online = true;
+                    } catch (RcloneRcd.RcdIOException e) {
+                        FLog.v(TAG, "rcd not yet online");
                     }
-                    retries--;
-                    continue;
                 }
-                available = true;
-                break;
+                if (online) {
+                    available = true;
+                    break;
+                }
+                try {
+                    onlineLock.wait(150);
+                } catch (InterruptedException ignored) {
+                }
+                retries--;
             }
         }
         return available;
     }
 
     public RcloneRcd getLocalRcd() {
-        if (null == rcloneRcd || !rcloneRcd.isAlive()) {
-            FLog.d(TAG, "Creating rcd process");
-            rcloneRcd = new RcloneRcd(getApplicationContext(), this);
-            rcloneRcd.startRcd();
-        } else if (rcloneRcd.hasCrashed()) {
-            FLog.d(TAG, "Reviving rclone");
-            rcloneRcd = new RcloneRcd(getApplicationContext(), this);
-            rcloneRcd.startRcd();
+        synchronized (onlineLock) {
+            if (null == rcloneRcd || !rcloneRcd.isAlive()) {
+                FLog.d(TAG, "Creating rcd process");
+                rcloneRcd = new RcloneRcd(getApplicationContext(), this);
+                rcloneRcd.startRcd();
+            } else if (rcloneRcd.hasCrashed()) {
+                FLog.d(TAG, "Reviving rclone");
+                rcloneRcd = new RcloneRcd(getApplicationContext(), this);
+                rcloneRcd.startRcd();
+            }
+            return rcloneRcd;
         }
-        return rcloneRcd;
     }
 
     private void setNotificationChannel() {

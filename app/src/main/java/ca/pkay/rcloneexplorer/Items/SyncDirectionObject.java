@@ -36,6 +36,47 @@ public class SyncDirectionObject {
     public static final int SYNC_BIDIRECTIONAL_INITIAL = 5;
     public static final int SYNC_BIDIRECTIONAL = 6;
 
+    // Cloud-to-cloud (remote-to-remote) sync/copy. Uses Task.remoteId2/remotePath2 as destination.
+    public static final int SYNC_REMOTE_TO_REMOTE = 7;
+    public static final int COPY_REMOTE_TO_REMOTE = 8;
+
+    /**
+     * Direction constants in the same order as {@code R.array.sync_direction_array}. The array is
+     * sparse (bisync entries are commented out), so the spinner position cannot be derived from
+     * the constant value via {@code position + 1}. Use this map instead.
+     */
+    public static final int[] SPINNER_TO_DIRECTION = new int[]{
+            SYNC_LOCAL_TO_REMOTE,      // 0
+            SYNC_REMOTE_TO_LOCAL,      // 1
+            COPY_LOCAL_TO_REMOTE,      // 2
+            COPY_REMOTE_TO_LOCAL,      // 3
+            SYNC_REMOTE_TO_REMOTE,     // 4
+            COPY_REMOTE_TO_REMOTE,     // 5
+    };
+
+    /**
+     * Returns the direction constant for a spinner position, or {@code SYNC_LOCAL_TO_REMOTE}
+     * (the safe default) if the position is out of range.
+     */
+    public static int directionForSpinnerPosition(int position) {
+        if (position < 0 || position >= SPINNER_TO_DIRECTION.length) {
+            return SYNC_LOCAL_TO_REMOTE;
+        }
+        return SPINNER_TO_DIRECTION[position];
+    }
+
+    /**
+     * Returns the spinner position for a direction constant, or {@code 0} if the direction is
+     * not in the array (e.g. bisync 5/6, which is commented out).
+     */
+    public static int spinnerPositionForDirection(int direction) {
+        for (int i = 0; i < SPINNER_TO_DIRECTION.length; i++) {
+            if (SPINNER_TO_DIRECTION[i] == direction) {
+                return i;
+            }
+        }
+        return 0;
+    }
 
     public static String[] getOptionsArray(Context context) {
         return context.getResources().getStringArray(R.array.sync_direction_array);

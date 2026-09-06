@@ -112,15 +112,17 @@ public class StreamingService extends IntentService {
                 break;
         }
 
+        boolean exitedNormally = false;
         if (runningProcess != null) {
             try {
                 runningProcess.waitFor();
+                exitedNormally = true;
             } catch (InterruptedException e) {
                 FLog.e(TAG, "onHandleIntent: error waiting for process", e);
             }
         }
 
-        if (runningProcess != null && runningProcess.exitValue() != 0) {
+        if (exitedNormally && runningProcess.exitValue() != 0) {
             rclone.logErrorOutput(runningProcess);
         }
 

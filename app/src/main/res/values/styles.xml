@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
 
     <style name="AppTheme.NoActionBar" parent="AppTheme">
         <item name="windowActionBar">false</item>
@@ -29,17 +29,17 @@
     <!-- Card Styles need to be applied to the card directly.-->
     <style name="MainViewToolbar">
         <item name="cardBackgroundColor">?attr/colorPrimary</item>
-        <item name="android:textColor">?attr/colorOnSecondary</item>
-        <item name="android:tint">?attr/colorOnSecondary</item>
-        <item name="tint">?attr/colorOnSecondary</item>
-        <item name="iconTint">?attr/colorOnSecondary</item>
-        <item name="actionMenuTextColor">?attr/colorOnSecondary</item>
-        <item name="android:actionMenuTextColor">?attr/colorOnSecondary</item>
+        <item name="android:textColor">?attr/colorOnPrimary</item>
+        <item name="android:tint">?attr/colorOnPrimary</item>
+        <item name="tint">?attr/colorOnPrimary</item>
+        <item name="iconTint">?attr/colorOnPrimary</item>
+        <item name="actionMenuTextColor">?attr/colorOnPrimary</item>
+        <item name="android:actionMenuTextColor">?attr/colorOnPrimary</item>
         <item name="popupTheme">@style/MainViewToolbarOverflowMenu</item>
-        <item name="android:textColorPrimary">?attr/colorOnSecondary</item>
+        <item name="android:textColorPrimary">?attr/colorOnPrimary</item>
     </style>
 
-    <style name="MainViewToolbarOverflowMenu" parent="ThemeOverlay.AppCompat.Dark.ActionBar">
+    <style name="MainViewToolbarOverflowMenu" parent="ThemeOverlay.Material3.Dark.ActionBar">
         <item name="android:colorBackground">?attr/colorSecondary</item>
         <item name="android:textColor">?attr/colorSecondary</item>
         <item name="android:textColorPrimary">?attr/colorSecondary</item>
@@ -84,7 +84,7 @@
         <item name="android:tint">?attr/colorOnSecondaryContainer</item>
     </style>
 
-    <style name="RoundedCornersDialog" parent="@style/MaterialAlertDialog.MaterialComponents">
+    <style name="RoundedCornersDialog" parent="@style/MaterialAlertDialog.Material3">
         <item name="shapeAppearanceOverlay">@style/ShapeAppearanceOverlay.Dialog.Rounded</item>
         <item name="android:padding">@dimen/dialogPadding</item>
     </style>
@@ -94,5 +94,14 @@
     </style>
     <style name="BreadcrumbText" parent="">
         <item name="android:textColor">@color/md_theme_light_background</item>
+    </style>
+
+    <!-- Splash screen entry theme (androidx.core:core-splashscreen). MainActivity calls
+         SplashScreen.installSplashScreen(this); postSplashScreenTheme restores the real theme. -->
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/seed</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
+        <item name="android:windowOptOutEdgeToEdgeEnforcement" tools:ignore="NewApi">true</item>
     </style>
 </resources>

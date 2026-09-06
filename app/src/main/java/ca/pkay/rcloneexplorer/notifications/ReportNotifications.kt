@@ -12,7 +12,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import ca.pkay.rcloneexplorer.BroadcastReceivers.ClearReportBroadcastReciever
+import ca.pkay.rcloneexplorer.BroadcastReceivers.ClearReportBroadcastReceiver
 import ca.pkay.rcloneexplorer.R
 import ca.pkay.rcloneexplorer.util.NotificationUtils
 import kotlinx.coroutines.flow.first
@@ -157,7 +157,7 @@ class ReportNotifications(var mContext: Context) {
 
 
     private fun createDeleteIntent(action: String): PendingIntent? {
-        val intent = Intent(mContext, ClearReportBroadcastReciever::class.java)
+        val intent = Intent(mContext, ClearReportBroadcastReceiver::class.java)
         intent.action = action
         return PendingIntent.getBroadcast(
             mContext,

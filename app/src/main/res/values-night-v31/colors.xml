@@ -1,4 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="textColorHighlight">@color/md_theme_dark_primary</color>
+    <!-- Dark-mode overrides for the "convenience" aliases on API 31+. The md_theme_dark_*
+         tokens themselves are remapped to system accent colors in values-v31/colors.xml. -->
+    <color name="colorAccent">@color/md_theme_dark_secondary</color>
+    <color name="textColorTertiary">@color/md_theme_dark_tertiary</color>
+    <color name="textColorPrimary">@color/md_theme_dark_onPrimary</color>
+    <color name="textColorSecondary">@color/md_theme_dark_onSecondary</color>
+    <color name="textColorHighlight">@color/md_theme_dark_tertiaryContainer</color>
+    <color name="cardColor">@color/md_theme_dark_primaryContainer</color>
+    <color name="dividerColor">@color/md_theme_dark_secondaryContainer</color>
+    <color name="fabOverlayColor">@color/md_theme_dark_secondary</color>
 </resources>

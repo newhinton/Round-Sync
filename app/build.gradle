@@ -3,26 +3,42 @@ apply plugin: 'kotlin-android'
 apply plugin: 'kotlinx-serialization'
 
 android {
+    // Release signing: credentials come from a git-ignored keystore.properties
+    // (local builds) or CB_* env vars (CI). Falls back to the debug key when
+    // neither is present so fresh checkouts still build an installable APK.
+    def keystoreProperties = new Properties()
+    def keystorePropertiesFile = rootProject.file("keystore.properties")
+    if (keystorePropertiesFile.exists()) {
+        keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+    }
+    def releaseStorePath = keystoreProperties['storeFile'] ?: System.getenv('CB_STORE_FILE')
+    def releaseKeyConfigured = releaseStorePath != null && file(releaseStorePath).exists()
     signingConfigs {
         release {
-            keyAlias 'fdroid'
-            storeFile file('.config/android/roundsync.keystore')
+            if (releaseKeyConfigured) {
+                keyAlias = keystoreProperties['keyAlias'] ?: System.getenv('CB_KEY_ALIAS')
+                storeFile file(releaseStorePath)
+                storePassword = keystoreProperties['storePassword'] ?: System.getenv('CB_STORE_PASSWORD')
+                keyPassword = keystoreProperties['keyPassword'] ?: System.getenv('CB_KEY_PASSWORD')
+            }
         }
     }
-    ndkVersion project.properties['de.felixnuesse.extract.ndkVersion']
+    ndkVersion project.properties['de.schuelken.cloudbridge.ndkVersion']
     defaultConfig {
         generatedDensities = []
         vectorDrawables.generatedDensities = []
-        applicationId 'de.felixnuesse.extract'
+        applicationId 'de.schuelken.cloudbridge'
         minSdkVersion 23
-        compileSdk 34
-        targetSdkVersion 34
-        versionCode 410 // last digit is reserved for ABI, only ever end on 0!
-        versionName '2.5.6'
+        compileSdk 36
+        targetSdkVersion 36
+        // CI bumps these per beta via CB_VERSION_CODE / CB_VERSION_NAME env vars.
+        // versionCode must end in 0 (last digit reserved for ABI offsets).
+        versionCode System.getenv('CB_VERSION_CODE') ? System.getenv('CB_VERSION_CODE').toInteger() : 20
+        versionName System.getenv('CB_VERSION_NAME') ? System.getenv('CB_VERSION_NAME') : '1.0.1'
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField "java.lang.String", "CLI", System.getenv('RCX_BUILD_CLI') ? System.getenv('RCX_BUILD_CLI') : "\"c03129b6-b09f-9cb4-8fcd-7f143b8f94ef\""
         buildConfigField "java.lang.String", "VCP_AUTHORITY", "\"" + applicationId + ".vcp\"";
-        setProperty("archivesBaseName",  "roundsync_v"+versionName)
+        setProperty("archivesBaseName",  "cloudbridge_v"+versionName)
 
         externalNativeBuild {
             ndkBuild {
@@ -47,12 +63,17 @@ android {
         release {
             minifyEnabled true
             shrinkResources true
+            // Strip debug symbols from the packaged .so files; Play Console
+            // extracts them for native (librclone) crash/ANR symbolization.
+            ndk {
+                debugSymbolLevel 'SYMBOL_TABLE'
+            }
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             manifestPlaceholders = [
                     appIcon: "@mipmap/ic_launcher",
                     appIconRound: "@mipmap/ic_launcher_round"
             ]
-            signingConfig signingConfigs.release
+            signingConfig releaseKeyConfigured ? signingConfigs.release : signingConfigs.debug
         }
     }
 
@@ -64,11 +85,11 @@ android {
 
     flavorDimensions += 'edition'
     productFlavors {
-        // Default GitHub and Google Play build
+        // Round-Sync edition flavor (currently identical to oss, kept for compatibility)
         rs {
             dimension 'edition'
         }
-        // OSS build
+        // OSS build — the default for GitHub releases and Google Play
         oss {
             dimension 'edition'
         }
@@ -76,7 +97,8 @@ android {
 
     splits {
         abi {
-            enable true
+            // AAB builds fail while APK splits are enabled; pass -PnoAbiSplits for bundleOssRelease
+            enable !project.hasProperty('noAbiSplits')
             reset()
             include 'x86', 'x86_64', 'armeabi-v7a', 'arm64-v8a'
             universalApk true
@@ -120,8 +142,8 @@ android {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-DEBUG"
             buildConfigField "java.lang.String", "VCP_AUTHORITY", "\"" + defaultConfig.applicationId + ".debug.vcp\"";
-            resValue("string", "app_name", "RS Debug")
-            resValue("string", "app_short_name", "RS Debug")
+            resValue("string", "app_name", "CB Debug")
+            resValue("string", "app_short_name", "CB Debug")
         }
     }
 
@@ -153,7 +175,6 @@ repositories {
 }
 
 dependencies {
-    implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.vectordrawable:vectordrawable:1.1.0'
     implementation 'androidx.cardview:cardview:1.0.0'
@@ -172,15 +193,18 @@ dependencies {
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
 
+    // Coroutines + lifecycle scopes (used by WorkManager CoroutineWorker and the AsyncTask migration)
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
+
 
     // Thumbnails
     implementation 'com.github.bumptech.glide:glide:4.16.0'
     implementation 'androidx.work:work-runtime-ktx:2.9.0'
     implementation 'androidx.preference:preference:1.2.1'
-    annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
     // REST Client
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
-    debugImplementation 'com.squareup.okhttp3:logging-interceptor:4.9.1'
+    debugImplementation 'com.squareup.okhttp3:logging-interceptor:4.12.0'
     // JSON
     implementation 'com.fasterxml.jackson.core:jackson-core:2.14.1'
     implementation 'com.fasterxml.jackson.core:jackson-annotations:2.14.1'
@@ -204,7 +228,4 @@ dependencies {
 
     // Splash screen
     implementation("androidx.core:core-splashscreen:1.0.1")
-
-    //Updates
-    implementation 'com.github.Sharkaboi:AppUpdateChecker:v1.0.5'
 }

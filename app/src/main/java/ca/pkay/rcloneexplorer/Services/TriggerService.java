@@ -20,7 +20,7 @@ import androidx.preference.PreferenceManager;
 
 import java.util.Calendar;
 
-import ca.pkay.rcloneexplorer.BroadcastReceivers.TriggerReciever;
+import ca.pkay.rcloneexplorer.BroadcastReceivers.TriggerReceiver;
 import ca.pkay.rcloneexplorer.Database.DatabaseHandler;
 import ca.pkay.rcloneexplorer.Items.Trigger;
 import ca.pkay.rcloneexplorer.R;
@@ -152,16 +152,12 @@ public class TriggerService extends Service {
             return;
         }
 
-        //Intent i = SyncService.createInternalStartIntent(this, trigger.getWhatToTrigger());
-        //context.startService(i);
-
-
         SyncManager sm = new SyncManager(this.context);
         sm.queue(trigger);
     }
 
     private PendingIntent getIntent(long triggerId){
-        Intent i = new Intent(context, TriggerReciever.class);
+        Intent i = new Intent(context, TriggerReceiver.class);
         i.setAction(TRIGGER_RECIEVE);
         i.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
         i.putExtra(TRIGGER_ID, triggerId);

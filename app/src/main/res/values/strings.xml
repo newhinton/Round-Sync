@@ -1,7 +1,7 @@
 <resources>
-    <string name="app_name">Round Sync</string>
+    <string name="app_name">CloudBridge</string>
     <string name="app_description">Rclone for Android</string>
-    <string name="app_short_name">Round Sync</string>
+    <string name="app_short_name">CloudBridge</string>
 
     <string name="title_activity_about">About</string>
     <string name="title_activity_changelog">Changelog</string>
@@ -29,7 +29,9 @@
     <string name="author_name" translatable="false">Patryk Kaczmarkiewicz &lt;github.com/patrykcoding&gt;</string>
     <string name="follow_on_github">Follow on GitHub</string>
     <string name="maintainer">Maintainer</string>
-    <string name="maintainer_name" translatable="false">Felix Nüsse &lt;github.com/newhinton&gt;</string>
+    <string name="maintainer_name" translatable="false">Thies &lt;github.com/thies2005&gt;</string>
+    <string name="previous_maintainer">Previous Maintainer</string>
+    <string name="previous_maintainer_name" translatable="false">Felix Nüsse &lt;github.com/newhinton&gt;</string>
     <string name="old_maintainer">Old Maintainer</string>
     <string name="old_maintainer_name" translatable="false">x0b &lt;github.com/x0b&gt;</string>
     <string name="empty_folder">The folder is empty</string>
@@ -44,10 +46,12 @@
     <string name="cancel">Cancel</string>
     <string name="select">Select</string>
     <string name="app_icon">App Icon</string>
-    <string name="github_app_url" translatable="false">https://github.com/newhinton/Round-Sync</string>
-    <string name="github_issue_url" translatable="false">https://github.com/newhinton/Round-Sync/issues/new/choose</string>
+    <string name="github_app_url" translatable="false">https://github.com/thies2005/CloudBridge</string>
+    <string name="github_issue_url" translatable="false">https://github.com/thies2005/CloudBridge/issues/new/choose</string>
     <string name="github_author_url" translatable="false">https://github.com/patrykcoding</string>
-    <string name="github_maintainer_url" translatable="false">https://github.com/newhinton</string>
+    <string name="github_maintainer_url" translatable="false">https://github.com/thies2005</string>
+    <string name="github_previous_maintainer_url" translatable="false">https://github.com/newhinton</string>
+    <string name="github_old_maintainer_url" translatable="false">https://github.com/x0b</string>
     <string name="replace_config_file_question">Replace the current configuration file?</string>
     <string name="config_file_lost_statement">Your current configuration will be lost</string>
     <string name="continue_statement">Continue</string>
@@ -120,18 +124,21 @@
     <string name="smashicons" translatable="false">Smashicons</string>
     <string name="from">from</string>
     <string name="flaticon" translatable="false">Flaticon</string>
-    <string name="intro_welcome_title">Welcome!</string>
-    <string name="intro_welcome_description">Round Sync is a file management tool that can handle files stored on your device or in the cloud. For more questions, visit github.com/newhinton/Round-Sync.</string>
+    <string name="intro_welcome_title">Welcome to CloudBridge!</string>
+    <string name="intro_welcome_description">CloudBridge is a file management tool that can handle files stored on your device or in the cloud.\n\ngithub.com/thies2005/CloudBridge</string>
     <string name="intro_storage_title">Storage access</string>
-    <string name="intro_storage_description">Round Sync relies on rclone and needs your permission to access all files. Please grant storage access when prompted, otherwise the application will not work properly.</string>
+    <string name="intro_storage_description">CloudBridge relies on rclone and needs your permission to access all files. Please grant storage access when prompted, otherwise the application will not work properly.</string>
     <string name="intro_community_title">Community</string>
-    <string name="intro_community_description">Round Sync is a community driven project. To contribute and improve the application, you can enable anonymous bug reporting. For more information, please visit felixnuesse.de/privacy-roundsync.</string>
+    <string name="intro_community_description">CloudBridge is a community driven project. To contribute and improve the application, you can enable anonymous bug reporting.</string>
+    <string name="intro_thankyou_title">Thank You</string>
+    <string name="intro_thankyou_description">CloudBridge is a fork of Round-Sync (github.com/newhinton/Round-Sync) by Felix Nüsse, which itself is a fork of RCX (github.com/x0b/rcx) by x0b.\n\nThis fork was created due to slow development on Round-Sync, with a focus on extra features for Internxt cloud storage.</string>
 
     <string name="file_access">File Access</string>
     <string name="look_and_feel">Look and Feel</string>
     <string name="dark_theme">Dark theme</string>
     <string name="transfer_only_on_wifi">Transfer files only over Wi-Fi</string>
     <string name="transfer_only_on_wifi_summary">Require Wi-Fi connection for file transfers</string>
+    <string name="pref_transfers_title">Concurrent transfers</string>
     <string name="pref_use_proxy_title">Use Proxy</string>
     <string name="pref_use_proxy_summary">Use proxy for all supported data transfers (HTTP, HTTPS)</string>
     <string name="pref_proxy_protocol">Proxy Protocol</string>
@@ -144,14 +151,14 @@
     <string name="pref_locale_dlg_title">Select Language</string>
     <string name="pref_locale_restart_notice">Changing the language will take effect after restarting the app</string>
     <string name="use_logs">Log rclone errors</string>
-    <string name="use_logs_summary">Error logs will be saved to a local file at (Android/data/de.felixnuesse.extract/files/logs)</string>
+    <string name="use_logs_summary">Error logs will be saved to a local file at (Android/data/de.schuelken.cloudbridge/files/logs)</string>
     <string name="notifications_pref_title">Notifications</string>
     <string name="open_notification_settings_title">More notification settings</string>
     <string name="open_notification_settings_summary">Open the settings to further change how we notify you!</string>
     <string name="open_notification_settings_button">Open!</string>
     <string name="content_description_circle">circle</string>
     <string name="loading">Loading</string>
-    <string name="app_not_configured">Round Sync is not configured</string>
+    <string name="app_not_configured">CloudBridge is not configured</string>
     <string name="open_app_to_configure">Please open the app to set it up first</string>
     <string name="error_retrieving_files">Error retrieving files</string>
     <string name="background_service_broadcast" translatable="false">ca.pkay.rcexplorer.BACKGROUND_SERVICE_BROADCAST</string>
@@ -169,6 +176,7 @@
     <string name="operation_failed_unknown_rclone_error">%1$s could not be synchronized due to an unknown rclone-error</string>
     <string name="operation_failed_cancelled">Sync was cancelled</string>
     <string name="operation_failed_notask">There was no task to start!</string>
+    <string name="operation_failed_unsupported_direction">%1$s could not be synchronized because its sync direction is not supported by this version</string>
     <string name="moving_service">Moving Service</string>
     <string name="delete_service">Delete Service</string>
     <string name="syncing_service">Syncing %1$s</string>
@@ -185,14 +193,15 @@
     <string name="serve_dlna">DLNA</string>
     <string name="provider_webdav">Webdav</string>
     <string name="error_creating_remote">Error creating remote</string>
+    <string name="cancelled">Cancelled</string>
     <string name="remote_creation_success">Remote created successfully</string>
     <string name="next">Next</string>
     <string name="title_activity_remote_config">Select type</string>
     <string name="error_exporting_config_file">Error exporting config file</string>
     <string name="app_update_notification_title">App update available!</string>
-    <string name="app_update_notification_description">Version %1$s was found! Do you want to apply it?</string>
+    <string name="app_update_notification_description">A new version (%1$s) might be available. Tap to open the release page.</string>
     <string name="app_updates_notification_action_ignore">Ignore Update</string>
-    <string name="app_updates_notification_action_apply">Apply Update</string>
+    <string name="app_updates_notification_action_apply">Open Release Page</string>
     <string name="app_updates_notifications">Get notified about app updates</string>
     <string name="app_update_notification_channel_name">Update Notifications</string>
     <string name="app_update_notification_channel_description">Shows notifications related to app updates</string>
@@ -297,7 +306,7 @@
     <string name="virtual_content_provider_exception_error">Support info: \n%1$s</string>
     <string name="virtual_content_provider_null_content">Failed to retrieve remote or directory contents. Check the log file for more details.</string>
     <string name="virtual_content_provider_service_error">Failed to connect to rclone service. Force stop the app and try again.</string>
-    <string name="virtual_content_provider_no_remotes">No remotes configured. Open Round Sync to add a storage location.</string>
+    <string name="virtual_content_provider_no_remotes">No remotes configured. Open CloudBridge to add a storage location.</string>
     <string name="remote_properties_remote_name">Remote name</string>
     <string name="remote_properties_storage_usage">Storage usage</string>
     <string name="remote_properties_storage_stats">%1$s / %2$s used (%3$s free)</string>
@@ -328,12 +337,17 @@
     <string name="sync_direction_remote_local">Sync remote to local</string>
     <string name="tasks">Tasks</string>
     <string name="edit">Edit</string>
+    <string name="reauthenticate">Re-authenticate</string>
+    <string name="session_expired_notification_title">CloudBridge: Session expired</string>
+    <string name="session_expired_notification_text">Session for %1$s expired. Tap to manually re-authenticate.</string>
     <string name="start_task">Start Task</string>
     <string name="copy_taskid">Copy TaskID</string>
     <string name="task_copied_id_to_clipboard">Copied ID "%s" to clipboard!</string>
     <string name="importer_unknown_error">Unknown error importing task!</string>
     <string name="sync_direction_copy_local_remote">Copy local to remote</string>
     <string name="sync_direction_copy_remote_local">Copy remote to local</string>
+    <string name="sync_direction_remote_remote">Sync remote to remote</string>
+    <string name="sync_direction_copy_remote_remote">Copy remote to remote</string>
     <string name="copy">Copy</string>
     <string name="operation_success">%s sync successful</string>
     <string name="operation_success_description_zero">There was nothing to do.</string>
@@ -354,7 +368,11 @@
     <string name="task_edit_label_name">General Information</string>
     <string name="task_edit_label_local">Local Storage Path</string>
     <string name="task_edit_label_remote">Remote Storage Path</string>
+    <string name="task_edit_label_remote_destination">Destination Remote Path</string>
     <string name="task_edit_label_direction">Direction</string>
+    <string name="task_edit_label_transfers">Concurrent transfers</string>
+    <string name="task_edit_transfers_default">Use global setting</string>
+    <string name="task_edit_transfers_hint">Override the global concurrent transfers setting for this task</string>
     <string name="task_edit_hint_title">Title</string>
     <string name="task_edit_hint_local">Local Path</string>
     <string name="task_edit_hint_remote">Remote Path</string>
@@ -385,6 +403,10 @@
     <string name="pref_send_sigquit_summary">Stops all rclone processes with kill -SIGQUIT. Requires logging enabled.</string>
     <string name="sync_notification_transferred">Transferred %1$s of %2$s</string>
     <string name="sync_notification_speed">"Speed:     %s"</string>
+    <string name="sync_notification_upload_speed">"Upload:    %s"</string>
+    <string name="sync_notification_download_speed">"Download:  %s"</string>
+    <string name="sync_notification_session_uploaded">"Uploaded:  %s"</string>
+    <string name="sync_notification_session_downloaded">"Downloaded: %s"</string>
     <string name="sync_notification_remaining">"Remaining: %s"</string>
     <string name="sync_notification_errors">"Errors:    %d"</string>
     <string name="sync_notification_deletions">"Deletions: %d"</string>
@@ -427,8 +449,8 @@
         <item quantity="other">%s Files were uploaded!</item>
     </plurals>
 
-    <string name="abi_not_supported_arm_downgrade">Unfortunately, this Round Sync version is not compatible with your device. Try the armeabi-v7a APK from github.com/newhinton/Round-Sync/releases/latest.</string>
-    <string name="abi_not_supported">Your device does not support this version of Round Sync.</string>
+    <string name="abi_not_supported_arm_downgrade">Unfortunately, this CloudBridge version is not compatible with your device. Try the armeabi-v7a APK from github.com/thies2005/CloudBridge/releases/latest.</string>
+    <string name="abi_not_supported">Your device does not support this version of CloudBridge.</string>
     <string name="trigger">Triggers</string>
     <string name="title_activity_trigger">Triggers</string>
     <string name="enabled">Enabled</string>
@@ -479,12 +501,15 @@
     <string name="alarm_while_idle_summary">May consume more battery, but disabled can cause heavy delays.</string>
     <string name="task_data_validation_error_no_local_path">You have not selected a local path yet</string>
     <string name="task_data_validation_error_no_remote_path">You have not selected a remote path yet</string>
+    <string name="task_data_validation_error_same_remote">Source and destination remote paths cannot be identical</string>
     <string name="bisync">Bidirectional</string>
     <string name="description_sync_direction">This determines the source and destination for the data transfer.</string>
     <string name="description_sync_direction_sync_tolocal">Synchronize files from remote storage to local storage. It can also delete files from the local storage if they don\'t exist on the remote storage. Only the local storage is updated with changes.</string>
     <string name="description_sync_direction_sync_toremote">Synchronize files from local storage to remote storage. Any files that are not present locally will be deleted from the remote storage. Only affects the files on the remote storage.</string>
     <string name="description_sync_direction_copy_toremote">Copy new or modified files from local storage to remote storage. No files are deleted, existing files on the remote may be overwritten.</string>
     <string name="description_sync_direction_copy_tolocal">Copy new or modified files from remote storage to local storage. No files are deleted, existing files on the local storage may be overwritten.</string>
+    <string name="description_sync_direction_sync_remotetoremote">Synchronize files from the source remote to the destination remote. Any files that are not present on the source will be deleted from the destination. Only affects the files on the destination remote.</string>
+    <string name="description_sync_direction_copy_remotetoremote">Copy new or modified files from the source remote to the destination remote. No files are deleted, existing files on the destination may be overwritten.</string>
     <string name="description_sync_direction_sync_bidirectional">Make sure local and remote storage have the same files by transferring, downloading, and deleting files as needed to maintain an identical folder structure.</string>
     <string name="filter_type_include">Include</string>
     <string name="filter_type_exclude">Exclude</string>
@@ -622,4 +647,46 @@
     <string name="pref_proxy_password">Password</string>
     <string name="intro_update_checks_title">Update Notifications</string>
     <string name="intro_update_checks_description">If you want to recieve updates, you can enable the switch below! We will notify if an update is available, and you can then choose to apply it.</string>
+
+    <!-- Internxt 2FA -->
+    <string name="internxt_2fa_title">Two-Factor Authentication</string>
+    <string name="internxt_2fa_message">Enter the 6-digit code from your authenticator app to complete Internxt login.</string>
+    <string name="internxt_2fa_hint">6-digit code</string>
+
+    <string name="internxt_auth_method_title">Authentication Method</string>
+    <string name="internxt_auth_method_message">Choose your login type:\n\nTemporary keeps only the current session token and may require manual reconnect after expiry (especially with 2FA).\nAuto-Login stores a 2FA seed for automatic re-authentication.</string>
+    <string name="internxt_auth_option_temp">Login until expire (2FA Code)</string>
+    <string name="internxt_auth_option_perm">Auto-Login (2FA Seed)</string>
+
+    <string name="internxt_reauth_title">Re-authenticate Internxt</string>
+    <string name="internxt_reauth_message">Choose how to refresh this Internxt session. A one-time code logs in until the next expiry. A 2FA seed enables automatic re-authentication.</string>
+    <string name="internxt_reauth_progress">Re-authenticating Internxt…</string>
+    <string name="internxt_reauth_success">Internxt re-authenticated successfully</string>
+
+    <string name="internxt_totp_secret_title">2FA Secret (Seed)</string>
+    <string name="internxt_totp_secret_message">Enter your 2FA secret (seed) to enable auto-login. This is the code you scanned or typed into your authenticator app.</string>
+    <string name="internxt_totp_secret_hint">Base32 Secret (e.g. JBSWY3DPEHPK3PXP)</string>
+
+    <!-- Reset App -->
+    <string name="reset_app_title">Reset App</string>
+    <string name="reset_app_description">Delete all remotes, tasks, triggers and preferences</string>
+    <string name="reset_app_icon_content_description">Reset App Icon</string>
+    <string name="reset_app_confirm_title">Reset CloudBridge?</string>
+    <string name="reset_app_confirm_message">This will delete ALL remotes, tasks, triggers, preferences and cached data. This action cannot be undone.\n\nThe app will restart after reset.</string>
+    <string name="reset_app_success">App data cleared. Restarting…</string>
+
+    <!-- Audit remediation: extracted hardcoded UI strings (RC-32) -->
+    <string name="task_run_on_failure">Run on Failure</string>
+    <string name="task_run_on_success">Run on Success</string>
+    <string name="notification_reports_title">Task Reports</string>
+    <string name="stopping_everything">CloudBridge: Stopping everything</string>
+    <string name="couldnt_find_activity">Couldn\'t find activity to start</string>
+    <string name="install_webview_retry">Install WebView and try again</string>
+    <string name="all_storage_accessible">You can now access all local storage</string>
+    <string name="manage_files_not_granted">Manage files not granted</string>
+    <string name="log_entry_copied">Log entry copied to clipboard</string>
+    <string name="undo">Undo</string>
+    <string name="remote_options_content_description">Remote options</string>
+    <string name="pinned_content_description">Pinned</string>
+    <string name="no_log_entries">No sync log entries yet</string>
 </resources>

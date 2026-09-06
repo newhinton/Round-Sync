@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark-mode overrides for the "convenience" color aliases declared in values/colors.xml.
+         Pointing them at the md_theme_dark_* tokens so they no longer resolve to light colors. -->
+    <color name="white">@android:color/white</color>
+    <color name="colorAccent">@color/md_theme_dark_secondary</color>
+    <color name="textColorTertiary">@color/md_theme_dark_tertiary</color>
+    <color name="textColorPrimary">@color/md_theme_dark_onPrimary</color>
+    <color name="textColorSecondary">@color/md_theme_dark_onSecondary</color>
+    <color name="textColorHighlight">@color/md_theme_dark_tertiaryContainer</color>
+    <color name="cardColor">@color/md_theme_dark_primaryContainer</color>
+    <color name="iconTint">@android:color/white</color>
+    <color name="dividerColor">@color/md_theme_dark_secondaryContainer</color>
+    <color name="fabOverlayColor">@color/md_theme_dark_secondary</color>
+</resources>

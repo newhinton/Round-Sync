@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy Policy — CloudBridge</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="site">
+  <div class="inner">
+    <h1>CloudBridge</h1>
+    <p>A cloud file manager for Android, powered by rclone.</p>
+    <nav class="site">
+      <a href="index.html">Home</a>
+      <a href="internals.html">How it works</a>
+      <a href="privacy.html" aria-current="page">Privacy policy</a>
+      <a href="https://github.com/thies2005/CloudBridge">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <h2>Privacy Policy for CloudBridge</h2>
+  <p><strong>Last updated: September 6, 2026</strong></p>
+
+  <p>
+    CloudBridge is a cloud file manager for Android. This policy explains what data
+    the app processes and where that data goes. The short version:
+    <strong>CloudBridge does not collect, transmit or sell your personal data.</strong>
+    The app contains no analytics, no advertising and no crash-reporting SDKs.
+    All your files and login credentials stay on your device and go directly to the
+    cloud providers you configure — never to the developer.
+  </p>
+
+  <h2>1. Who is responsible</h2>
+  <p>
+    CloudBridge is an open-source project developed and maintained by Thies
+    ("the developer"). You can reach the developer at
+    <a href="mailto:136268370+thies2005@users.noreply.github.com">136268370+thies2005@users.noreply.github.com</a>
+    or via the <a href="https://github.com/thies2005/CloudBridge">GitHub project</a>.
+  </p>
+
+  <h2>2. Data stored and processed on your device</h2>
+  <p>The following data is created and stored <strong>locally on your device only</strong>:</p>
+  <ul>
+    <li><strong>Cloud account credentials and OAuth tokens</strong> for the remotes you configure. These are stored in the rclone configuration file in the app's private storage. They are used solely to access <em>your</em> accounts on <em>your</em> instruction.</li>
+    <li><strong>App settings</strong> (theme, preferences, task definitions).</li>
+    <li><strong>Files you download or upload</strong> with CloudBridge, in the locations you choose.</li>
+    <li><strong>Crypt passwords</strong> you configure for encrypted remotes. These never leave the device except in encrypted form as part of normal rclone operations.</li>
+  </ul>
+  <p>You can delete all of this at any time by removing the remotes/tasks in the app, clearing the app's storage, or uninstalling the app.</p>
+
+  <h2>3. Data transferred to third parties (only on your instruction)</h2>
+  <p>
+    When you browse, upload, download or sync files, CloudBridge connects
+    <strong>directly from your device to the cloud providers you configured</strong>
+    (for example Google Drive, OneDrive, Dropbox, Nextcloud, Internxt, or any
+    rclone-compatible provider). Those transfers use each provider's own protocols
+    and are subject to the respective provider's privacy policy. The developer has
+    no access to this data and operates no server that your files pass through.
+  </p>
+
+  <h2>4. Update check</h2>
+  <p>
+    If you enable update notifications, the app periodically asks the GitHub API
+    whether a newer release of CloudBridge exists. The request contains only the
+    repository name and version comparison data — it does not contain any personal
+    data, identifiers or usage statistics. When an update is found, the app shows a
+    notification with a link to the release page; it does not download or install
+    anything by itself.
+  </p>
+
+  <h2>5. Permissions and why the app needs them</h2>
+  <table>
+    <tr><th>Permission</th><th>Purpose</th></tr>
+    <tr><td><code>INTERNET</code> / <code>ACCESS_NETWORK_STATE</code> / <code>ACCESS_WIFI_STATE</code></td><td>Connecting to your cloud providers; checking connection state before transfers.</td></tr>
+    <tr><td><code>MANAGE_EXTERNAL_STORAGE</code> / <code>WRITE_EXTERNAL_STORAGE</code></td><td>Core feature: managing files on local storage, SD cards and USB devices. Without broad file access, a file manager cannot work. Access is used only for the files and folders you act on.</td></tr>
+    <tr><td><code>POST_NOTIFICATIONS</code></td><td>Showing transfer, sync and update notifications.</td></tr>
+    <tr><td><code>FOREGROUND_SERVICE</code> / <code>FOREGROUND_SERVICE_DATA_SYNC</code> / <code>WAKE_LOCK</code></td><td>Running syncs and transfers reliably in the background while you can watch their progress.</td></tr>
+    <tr><td><code>RECEIVE_BOOT_COMPLETED</code> / <code>SCHEDULE_EXACT_ALARM</code></td><td>Restarting your scheduled sync tasks after a device reboot and running them at the configured times.</td></tr>
+    <tr><td><code>REQUEST_IGNORE_BATTERY_OPTIMIZATIONS</code></td><td>Optional: lets long-running background syncs continue when the device dozes. The app asks before this is enabled.</td></tr>
+  </table>
+
+  <h2>6. Google Play</h2>
+  <p>
+    If you installed CloudBridge from Google Play, Google processes technical
+    information about the installation and updates (such as device identifiers and
+    install metrics) under <a href="https://policies.google.com/privacy">Google's own privacy policy</a>.
+    The developer only sees aggregated, anonymized install counts provided by the
+    Play Console.
+  </p>
+
+  <h2>7. Your rights (GDPR)</h2>
+  <p>
+    Because the developer does not collect or process any personal data, there is no
+    personal data held by the developer that could be accessed, corrected or deleted.
+    Data on your device is under your full control at all times. If you have any
+    privacy concern or question about this policy, contact the developer at the
+    address above.
+  </p>
+
+  <h2>8. Children</h2>
+  <p>CloudBridge is a general-purpose file tool and is not directed at children under 13.</p>
+
+  <h2>9. Changes to this policy</h2>
+  <p>
+    If this policy changes, the updated version will be published on this page
+    with a new "last updated" date, and it will be linked from the app's repository.
+  </p>
+
+  <h2>10. Open source</h2>
+  <p>
+    You do not have to take these statements on faith: CloudBridge is fully open
+    source, and you can inspect every line of code in the
+    <a href="https://github.com/thies2005/CloudBridge">public repository</a>.
+  </p>
+</main>
+
+<footer class="site">
+  <div class="inner">
+    CloudBridge is released under the <a href="https://github.com/thies2005/CloudBridge/blob/master/LICENSE">GPLv3 license</a>.
+  </div>
+</footer>
+</body>
+</html>

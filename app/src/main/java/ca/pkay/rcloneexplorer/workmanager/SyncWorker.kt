@@ -15,6 +15,7 @@ import androidx.work.Worker
 import androidx.work.WorkerParameters
 import ca.pkay.rcloneexplorer.Database.DatabaseHandler
 import ca.pkay.rcloneexplorer.Items.RemoteItem
+import ca.pkay.rcloneexplorer.Items.SyncDirectionObject
 import ca.pkay.rcloneexplorer.Items.Task
 import ca.pkay.rcloneexplorer.Log2File
 import ca.pkay.rcloneexplorer.R
@@ -26,6 +27,7 @@ import ca.pkay.rcloneexplorer.notifications.SyncServiceNotifications.Companion.G
 import ca.pkay.rcloneexplorer.notifications.support.StatusObject
 import ca.pkay.rcloneexplorer.util.FLog
 import ca.pkay.rcloneexplorer.util.SyncLog
+import ca.pkay.rcloneexplorer.util.TransferLocks
 import ca.pkay.rcloneexplorer.util.WifiConnectivitiyUtil
 import kotlinx.serialization.json.Json
 import org.json.JSONException
@@ -56,7 +58,7 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
 
 
     internal enum class FAILURE_REASON {
-        NO_FAILURE, NO_UNMETERED, NO_CONNECTION, RCLONE_ERROR, CONNECTIVITY_CHANGED, CANCELLED, NO_TASK
+        NO_FAILURE, NO_UNMETERED, NO_CONNECTION, RCLONE_ERROR, CONNECTIVITY_CHANGED, CANCELLED, NO_TASK, UNSUPPORTED_DIRECTION
     }
 
     // Objects
@@ -155,21 +157,68 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
         if (mTask.title == "") {
             mTitle = mTask.remotePath
         }
-        if(arePreconditionsMet()) {
-            val taskFilter = if(mTask.filterId != null ) mDatabase.getFilter(mTask.filterId!!) else null;
-            val taskFilterList = taskFilter?.getFilters() ?: ArrayList()
-            sRcloneProcess = mRclone.sync(
-                remoteItem,
-                mTask.localPath,
-                mTask.remotePath,
-                mTask.direction,
-                mTask.md5sum,
-                taskFilterList,
-                mTask.deleteExcluded
-            )
-            handleSync(mTitle)
-            sendUploadFinishedBroadcast(remoteItem.name, mTask.remotePath)
+        statusObject.syncDirection = mTask.direction
+        if (!isDirectionSupported(mTask.direction)) {
+            failureReason = FAILURE_REASON.UNSUPPORTED_DIRECTION
+            return
         }
+        if(arePreconditionsMet()) {
+            val transferLocks = TransferLocks.acquire(mContext, "sync")
+            try {
+                val taskFilter = if(mTask.filterId != null ) mDatabase.getFilter(mTask.filterId!!) else null;
+                val taskFilterList = taskFilter?.getFilters() ?: ArrayList()
+                val isCloudToCloud = mTask.direction == SyncDirectionObject.SYNC_REMOTE_TO_REMOTE
+                        || mTask.direction == SyncDirectionObject.COPY_REMOTE_TO_REMOTE
+                sRcloneProcess = if (isCloudToCloud) {
+                    val remoteItem2 = RemoteItem(mTask.remoteId2, mTask.remoteType2, "")
+                    mRclone.sync(
+                        remoteItem,
+                        mTask.remotePath,
+                        remoteItem2,
+                        mTask.remotePath2,
+                        mTask.direction,
+                        mTask.md5sum,
+                        taskFilterList,
+                        mTask.deleteExcluded,
+                        mTask.transfers?.toString()
+                    )
+                } else {
+                    mRclone.sync(
+                        remoteItem,
+                        mTask.localPath,
+                        mTask.remotePath,
+                        mTask.direction,
+                        mTask.md5sum,
+                        taskFilterList,
+                        mTask.deleteExcluded,
+                        mTask.transfers?.toString()
+                    )
+                }
+                if (sRcloneProcess == null) {
+                    failureReason = FAILURE_REASON.RCLONE_ERROR
+                    log("Sync: Rclone process could not be started for direction ${mTask.direction}")
+                    return
+                }
+                handleSync(mTitle)
+                if (isCloudToCloud) {
+                    // Refresh any open FileExplorer on the destination remote so copied content appears.
+                    sendUploadFinishedBroadcast(mTask.remoteId2, mTask.remotePath2)
+                } else {
+                    sendUploadFinishedBroadcast(remoteItem.name, mTask.remotePath)
+                }
+            } finally {
+                transferLocks?.release()
+            }
+        }
+    }
+
+    private fun isDirectionSupported(direction: Int): Boolean {
+        return direction == SyncDirectionObject.SYNC_LOCAL_TO_REMOTE ||
+               direction == SyncDirectionObject.SYNC_REMOTE_TO_LOCAL ||
+               direction == SyncDirectionObject.COPY_LOCAL_TO_REMOTE ||
+               direction == SyncDirectionObject.COPY_REMOTE_TO_LOCAL ||
+               direction == SyncDirectionObject.SYNC_REMOTE_TO_REMOTE ||
+               direction == SyncDirectionObject.COPY_REMOTE_TO_REMOTE
     }
 
     private fun handleSync(title: String) {
@@ -188,18 +237,22 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
                             if (sIsLoggingEnabled) {
                                 log2File?.log(line)
                             }
-                            statusObject.parseLoglineToStatusObject(logline)
-                        } else if (logline.getString("level") == "warning") {
-                            statusObject.parseLoglineToStatusObject(logline)
                         }
+                        
+                        // Process all log lines for stats/progress updates, not just error/warning
+                        // This fixes the notification being stuck on "starting sync"
+                        statusObject.parseLoglineToStatusObject(logline)
 
-                        updateForegroundNotification(mNotificationManager.updateSyncNotification(
-                            title,
-                            statusObject.notificationContent,
-                            statusObject.notificationBigText,
-                            statusObject.notificationPercent,
-                            ongoingNotificationID
-                        ))
+                        // Only update notification if we have content to show
+                        if (statusObject.notificationContent.isNotEmpty()) {
+                            updateForegroundNotification(mNotificationManager.updateSyncNotification(
+                                title,
+                                statusObject.notificationContent,
+                                statusObject.notificationBigText,
+                                statusObject.notificationPercent,
+                                ongoingNotificationID
+                            ))
+                        }
                     } catch (e: JSONException) {
                         FLog.e(TAG, "SyncService-Error: the offending line: $line")
                         //FLog.e(TAG, "onHandleIntent: error reading json", e)
@@ -257,6 +310,9 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
             }
             FAILURE_REASON.RCLONE_ERROR -> {
                 content = mContext.getString(R.string.operation_failed_unknown_rclone_error, mTitle)
+            }
+            FAILURE_REASON.UNSUPPORTED_DIRECTION -> {
+                content = mContext.getString(R.string.operation_failed_unsupported_direction, mTitle)
             }
         }
         followupTask(mTask.onFailFollowup)

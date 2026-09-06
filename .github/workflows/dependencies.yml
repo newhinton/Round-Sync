@@ -9,10 +9,10 @@ jobs:
     outputs:
       changed: ${{ steps.changeDetection.outputs.should-run }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Get changed files
         id: changed-files
-        uses: tj-actions/changed-files@v44
+        uses: tj-actions/changed-files@ed68ef82c095e0d48ec87eccea555d944a631a4c # v46
       - name: Verify build.gradle changed
         id: changeDetection
         env:
@@ -31,25 +31,28 @@ jobs:
     needs: dependency-change-verification
     if: needs.dependency-change-verification.outputs.changed == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Read Go version from project
-        run: echo "GO_VERSION=$(grep -E "^de\.felixnuesse\.extract\.goVersion=" gradle.properties | cut -d'=' -f2)"
+        run: |
+          GO_VERSION=$(grep -E "^de\.schuelken\.cloudbridge\.goVersion=" gradle.properties | cut -d'=' -f2)
+          echo "GO_VERSION=$GO_VERSION" >> $GITHUB_ENV
+          echo "Go version: $GO_VERSION"
       - name: Set up JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@17f84c3641ba7b8f6deff6309fc4c864478f5d62 # v3
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: gradle
       - name: Set up Go from gradle.properties
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: '${{env.GO_VERSION}}'
         id: go
       - name: Setup Android SDK/NDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
       - name: Install NDK from gradle.properties
         run: |
-          NDK_VERSION="$(grep -E "^de\.felixnuesse\.extract\.ndkVersion=" gradle.properties | cut -d'=' -f2)"
+          NDK_VERSION="$(grep -E "^de\.schuelken\.cloudbridge\.ndkVersion=" gradle.properties | cut -d'=' -f2)"
           sdkmanager "ndk;${NDK_VERSION}"
       - name: Build app
         run: ./gradlew assembleOssDebug
@@ -58,8 +61,9 @@ jobs:
         run: |
           # prepare scanapk with apktool.
           wget https://github.com/iBotPeaches/Apktool/releases/download/v$apktoolVersion/apktool_$apktoolVersion.jar
-          # Wrapper for apktool_*.jar
-          wget https://github.com/iBotPeaches/Apktool/raw/master/scripts/linux/apktool
+          # Wrapper for apktool_*.jar. Upstream removed scripts/linux/apktool (404), so inline a
+          # minimal one that just invokes the jar from its own directory.
+          printf '#!/bin/bash\njava -jar "$(dirname "$0")/apktool.jar" "$@"\n' > apktool
           # clone izzy's repo with the scan tools
           git clone https://gitlab.com/IzzyOnDroid/repo.git
           # create a directory for Apktool and move the apktool* files there
@@ -67,9 +71,9 @@ jobs:
           mv apktool* repo/lib/radar/tool
           chmod u+x repo/lib/radar/tool/apktool
           mv repo/lib/radar/tool/apktool_$apktoolVersion.jar repo/lib/radar/tool/apktool.jar
-          repo/bin/scanapk.php app/build/outputs/apk/oss/debug/roundsync_v*-oss-universal-debug.apk
+          repo/bin/scanapk.php app/build/outputs/apk/oss/debug/cloudbridge_v*-oss-universal-debug.apk
         env:
           apktoolVersion: "2.9.3"
       - name: 'Get Commit Hash'
         id: commit
-        uses: pr-mpt/actions-commit-hash@v1
+        uses: pr-mpt/actions-commit-hash@d06222114eac9daa8cfe0a748462a83e651aa136 # v1

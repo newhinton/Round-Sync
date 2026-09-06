@@ -17,14 +17,17 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.view.WindowCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -57,6 +60,7 @@ public class SharingActivity extends AppCompatActivity implements ShareRemotesFr
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
         ActivityHelper.applyTheme(this);
         setContentView(R.layout.activity_sharing);
         Toolbar toolbar = findViewById(R.id.toolbar);
@@ -133,6 +137,7 @@ public class SharingActivity extends AppCompatActivity implements ShareRemotesFr
         Uri uri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
         if (uri == null) {
             finish();
+            return;
         }
         isDataReady = false;
         new CopyFile(this, uri).execute();
@@ -142,6 +147,7 @@ public class SharingActivity extends AppCompatActivity implements ShareRemotesFr
         ArrayList<Uri> uris = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM);
         if (uris == null) {
             finish();
+            return;
         }
         isDataReady = false;
         new CopyFile(this, uris).execute();
@@ -235,13 +241,13 @@ public class SharingActivity extends AppCompatActivity implements ShareRemotesFr
                 File cacheDir = getExternalCacheDir();
                 File outFile = new File(cacheDir, fileName);
                 try (InputStream in = getContentResolver().openInputStream(uri);
-                     FileOutputStream out = new FileOutputStream(outFile)) {
+                     OutputStream out = new BufferedOutputStream(new FileOutputStream(outFile), 64 * 1024)) {
                     if (null == in) {
                         success = false;
                         continue;
                     }
                     uploadList.add(outFile.getAbsolutePath());
-                    byte[] buf = new byte[4096];
+                    byte[] buf = new byte[64 * 1024];
                     int len;
                     while ((len = in.read(buf)) > 0) {
                         out.write(buf, 0, len);

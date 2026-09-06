@@ -1,7 +1,12 @@
-Round Sync helps you to mange your files, everywhere you go, on your local device or on most cloud providers.
+CloudBridge is a cloud file manager for Android, powered by rclone. It helps you to manage your files, everywhere you go, on your local device or on most cloud providers.
 
 * <b>File Management:</b> You can list, view, download, upload, move, rename, delete files and folders
 * <b>Streaming:</b> Stream media files, serve files and directories over FTP, HTTP, WebDAV or DLNA
 * <b>Syncing:</b> You can create tasks to automatically schedule syncs of your files
-* <b>Material Design:</b> Supports automatic dark theme in the style of material you!
-* <b>Access everything:</b> Supports Storage Access Framework (SAF) for SD card and USB device access, regular storage devices and of course any cloud compatible with rclone.
+* <b>Encryption:</b> Keep your files private on any cloud provider with 256 bit crypt remotes
+* <b>Many cloud providers:</b> Access most cloud storage providers via rclone config import, including Internxt and Drime
+* <b>Material Design:</b> Supports automatic dark theme in the style of Material 3
+* <b>Access everything:</b> Supports Storage Access Framework (SAF) for SD card and USB device access, regular storage devices and of course any cloud compatible with rclone
+* <b>Always up to date:</b> CloudBridge is regularly updated to the newest rclone version, so new providers and fixes arrive quickly
+
+CloudBridge is free and open source software (GPLv3). Questions, feedback or feature ideas? You are welcome to write me at 136268370+thies2005@users.noreply.github.com, or open an issue or pull request on GitHub: https://github.com/thies2005/CloudBridge

@@ -1,7 +1,6 @@
 package ca.pkay.rcloneexplorer.workmanager
 
 import android.content.Context
-import android.util.Log
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
@@ -12,6 +11,9 @@ import java.util.Random
 
 class SyncManager(private var mContext: Context) {
 
+    companion object {
+        private val SYNC_WORK_TAG = "sync_work"
+    }
 
     fun queue(trigger: Trigger) {
         queue(trigger.triggerTarget)
@@ -29,6 +31,7 @@ class SyncManager(private var mContext: Context) {
 
         uploadWorkRequest.setInputData(data.build())
         uploadWorkRequest.addTag(taskID.toString())
+        uploadWorkRequest.addTag(SYNC_WORK_TAG)
         work(uploadWorkRequest.build())
     }
 
@@ -42,6 +45,7 @@ class SyncManager(private var mContext: Context) {
 
         uploadWorkRequest.setInputData(data.build())
         uploadWorkRequest.addTag(task.id.toString())
+        uploadWorkRequest.addTag(SYNC_WORK_TAG)
         work(uploadWorkRequest.build())
     }
 
@@ -52,15 +56,9 @@ class SyncManager(private var mContext: Context) {
 
     fun cancel() {
         WorkManager.getInstance(mContext)
-            .cancelAllWork()
+            .cancelAllWorkByTag(SYNC_WORK_TAG)
     }
     fun cancel(tag: String) {
-
-        //Intent syncIntent = new Intent(context, SyncService.class);
-        //syncIntent.setAction(TASK_CANCEL_ACTION);
-        //syncIntent.putExtra(EXTRA_TASK_ID, intent.getLongExtra(EXTRA_TASK_ID, -1));
-        //context.startService(syncIntent);
-        Log.e("TAG", "CANCEL"+tag)
         WorkManager
             .getInstance(mContext)
             .cancelAllWorkByTag(tag)

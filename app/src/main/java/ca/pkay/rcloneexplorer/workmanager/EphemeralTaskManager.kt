@@ -2,20 +2,21 @@ package ca.pkay.rcloneexplorer.workmanager
 
 import android.content.Context
 import android.os.Parcel
-import android.util.Log
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import ca.pkay.rcloneexplorer.Items.FileItem
 import ca.pkay.rcloneexplorer.Items.RemoteItem
-import de.felixnuesse.extract.notifications.implementations.DeleteWorkerNotification
-import de.felixnuesse.extract.notifications.implementations.DownloadWorkerNotification
-import de.felixnuesse.extract.notifications.implementations.MoveWorkerNotification
-import de.felixnuesse.extract.notifications.implementations.UploadWorkerNotification
+import de.schuelken.cloudbridge.notifications.implementations.DeleteWorkerNotification
+import de.schuelken.cloudbridge.notifications.implementations.DownloadWorkerNotification
+import de.schuelken.cloudbridge.notifications.implementations.MoveWorkerNotification
+import de.schuelken.cloudbridge.notifications.implementations.UploadWorkerNotification
 
 class EphemeralTaskManager(private var mContext: Context) {
 
     companion object {
+
+        private const val EPHEMERAL_WORK_TAG = "ephemeral_work"
 
         fun queueDownload(
             context: Context,
@@ -32,7 +33,7 @@ class EphemeralTaskManager(private var mContext: Context) {
             data.putString(EphemeralWorker.DOWNLOAD_TARGETPATH, selectedPath)
 
             addFileItemToData(EphemeralWorker.DOWNLOAD_SOURCE, downloadItem, data)
-            EphemeralTaskManager(context).work(data.build(), "")
+            EphemeralTaskManager(context).work(data.build(), EPHEMERAL_WORK_TAG)
         }
 
         fun queueUpload(
@@ -50,7 +51,7 @@ class EphemeralTaskManager(private var mContext: Context) {
             data.putString(EphemeralWorker.UPLOAD_TARGETPATH, targetpath)
             data.putString(EphemeralWorker.UPLOAD_FILE, file)
 
-            EphemeralTaskManager(context).work(data.build(), "")
+            EphemeralTaskManager(context).work(data.build(), EPHEMERAL_WORK_TAG)
         }
 
         fun queueMove(
@@ -69,7 +70,7 @@ class EphemeralTaskManager(private var mContext: Context) {
 
             addFileItemToData(EphemeralWorker.MOVE_FILE, file, data)
             data.putString(EphemeralWorker.MOVE_TARGETPATH, currentPath)
-            EphemeralTaskManager(context).work(data.build(), "")
+            EphemeralTaskManager(context).work(data.build(), EPHEMERAL_WORK_TAG)
         }
 
         fun queueDelete(
@@ -86,19 +87,27 @@ class EphemeralTaskManager(private var mContext: Context) {
             addRemoteItemToData(EphemeralWorker.REMOTE, remote, data)
 
             addFileItemToData(EphemeralWorker.DELETE_FILE, file, data)
-            EphemeralTaskManager(context).work(data.build(), "")
+            EphemeralTaskManager(context).work(data.build(), EPHEMERAL_WORK_TAG)
         }
 
         private fun addFileItemToData(key: String, fileItem: FileItem, data: Data.Builder){
             val parcel = Parcel.obtain()
-            fileItem.writeToParcel(parcel, 0)
-            data.putByteArray(key, parcel.marshall())
+            try {
+                fileItem.writeToParcel(parcel, 0)
+                data.putByteArray(key, parcel.marshall())
+            } finally {
+                parcel.recycle()
+            }
         }
 
         private fun addRemoteItemToData(key: String, remote: RemoteItem, data: Data.Builder){
             val parcel = Parcel.obtain()
-            remote.writeToParcel(parcel, 0)
-            data.putByteArray(key, parcel.marshall())
+            try {
+                remote.writeToParcel(parcel, 0)
+                data.putByteArray(key, parcel.marshall())
+            } finally {
+                parcel.recycle()
+            }
         }
     }
 
@@ -112,15 +121,9 @@ class EphemeralTaskManager(private var mContext: Context) {
 
     fun cancel() {
         WorkManager.getInstance(mContext)
-            .cancelAllWork()
+            .cancelAllWorkByTag(EPHEMERAL_WORK_TAG)
     }
     fun cancel(tag: String) {
-
-        //Intent syncIntent = new Intent(context, SyncService.class);
-        //syncIntent.setAction(TASK_CANCEL_ACTION);
-        //syncIntent.putExtra(EXTRA_TASK_ID, intent.getLongExtra(EXTRA_TASK_ID, -1));
-        //context.startService(syncIntent);
-        Log.e("TAG", "CANCEL"+tag)
         WorkManager
             .getInstance(mContext)
             .cancelAllWorkByTag(tag)
