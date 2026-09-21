@@ -3,10 +3,9 @@ package ca.pkay.rcloneexplorer.workmanager
 import android.content.Context
 import android.util.Log
 import androidx.work.Data
-import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
-import androidx.work.OneTimeWorkRequest
+import androidx.work.WorkRequest
 import ca.pkay.rcloneexplorer.Items.Task
 import ca.pkay.rcloneexplorer.Items.Trigger
 import java.util.Random
@@ -46,17 +45,9 @@ class SyncManager(private var mContext: Context) {
         work(uploadWorkRequest.build())
     }
 
-    private fun work(request: OneTimeWorkRequest) {
-        // Keep sync jobs in one process-wide chain. Proton refresh tokens are
-        // single-use, and overlapping rclone processes using the same config
-        // can race while rotating them. Serial execution is the safe default
-        // until the upstream refresh-token adoption fix is released.
+    private fun work(request: WorkRequest) {
         WorkManager.getInstance(mContext)
-            .enqueueUniqueWork(
-                "rclone-sync-serial",
-                ExistingWorkPolicy.APPEND_OR_REPLACE,
-                request
-            )
+            .enqueue(request)
     }
 
     fun cancel() {
