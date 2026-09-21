@@ -179,11 +179,13 @@ task checkoutRclone {
             standardOutput = goVersionOutput
         }
 
-        if (goVersionOutput.toString().contains(GO_REQ_VERSION)) {
+        if (goVersionOutput.toString().contains("go" + GO_REQ_VERSION)) {
             println "You are running a compatible Go version."
         } else {
-            logger.error("The required Go version is: ${GO_REQ_VERSION}")
-            logger.error("You are running: ${goVersionOutput}")
+            throw new GradleException(
+                "The required Go version is ${GO_REQ_VERSION}, but the active toolchain is: " +
+                goVersionOutput.toString().trim()
+            )
         }
 
         Paths.get(CACHE_PATH).toFile().mkdirs()
