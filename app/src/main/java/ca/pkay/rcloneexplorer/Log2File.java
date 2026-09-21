@@ -22,6 +22,10 @@ public class Log2File {
 
     public void log(String message) {
         File path = context.getExternalFilesDir("logs");
+        if (path == null) {
+            FLog.e(TAG, "log: external storage not available, cannot write log");
+            return;
+        }
         File logFile = new File(path, "log.txt");
 
         clearLogsIfTooBif(logFile);

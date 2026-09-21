@@ -90,6 +90,10 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
 
     override fun doWork(): Result {
 
+        if (sIsLoggingEnabled) {
+            log2File = Log2File(mContext)
+        }
+
         prepareNotifications()
         registerBroadcastReceivers()
 
@@ -181,6 +185,8 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
         SyncLog.info(mContext, mTitle, mContext.getString(R.string.operation_start_sync))
         if (sRcloneProcess != null) {
             val localProcessReference = sRcloneProcess!!
+            val infoLines = StringBuilder()
+            var lastStats = ""
             try {
                 val reader = BufferedReader(InputStreamReader(localProcessReference.errorStream))
                 val iterator = reader.lineSequence().iterator()
@@ -189,13 +195,24 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
                     try {
                         val logline = JSONObject(line)
                         //todo: migrate this to StatusObject, so that we can handle everything properly.
-                        if (logline.getString("level") == "error") {
-                            if (sIsLoggingEnabled) {
-                                log2File?.log(line)
+                        when (logline.getString("level")) {
+                            "error" -> {
+                                if (sIsLoggingEnabled) {
+                                    log2File?.log(line)
+                                }
+                                statusObject.parseLoglineToStatusObject(logline)
                             }
-                            statusObject.parseLoglineToStatusObject(logline)
-                        } else if (logline.getString("level") == "warning") {
-                            statusObject.parseLoglineToStatusObject(logline)
+                            "warning" -> {
+                                statusObject.parseLoglineToStatusObject(logline)
+                            }
+                            "info" -> {
+                                val msg = logline.optString("msg", "")
+                                if (msg.isNotEmpty()) infoLines.append(msg).append("\n")
+                            }
+                            "notice" -> {
+                                val msg = logline.optString("msg", "")
+                                if (msg.isNotEmpty()) lastStats = msg
+                            }
                         }
 
                         updateForegroundNotification(mNotificationManager.updateSyncNotification(
@@ -215,6 +232,17 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
             } catch (e: IOException) {
                 FLog.e(TAG, "onHandleIntent: error reading stdout", e)
             }
+            val detail = buildString {
+                if (infoLines.isNotEmpty()) append(infoLines.trimEnd())
+                if (lastStats.isNotEmpty()) {
+                    if (isNotEmpty()) append("\n\n")
+                    append(lastStats)
+                }
+            }
+            if (detail.isNotEmpty()) {
+                SyncLog.info(mContext, mTitle, detail)
+            }
+
             try {
                 val exitCode = localProcessReference.waitFor()
                 if (exitCode != 0 && failureReason == FAILURE_REASON.NO_FAILURE) {
