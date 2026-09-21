@@ -150,15 +150,32 @@
                         android:textAppearance="@style/TextAppearance.AppCompat.Display1"
                         android:textSize="24sp" />
 
-                    <EditText
-                        android:id="@+id/task_local_path_textfield"
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_margin="8dp"
-                        android:autofillHints=""
-                        android:hint="@string/task_edit_hint_local"
-                        android:inputType=""
-                        android:minHeight="48dp" />
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageButton
+                            android:id="@+id/task_local_path_picker_button"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:background="?selectableItemBackgroundBorderless"
+                            android:contentDescription="@string/task_edit_hint_local"
+                            android:src="@drawable/ic_folder_open" />
+
+                        <EditText
+                            android:id="@+id/task_local_path_textfield"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:autofillHints=""
+                            android:hint="@string/task_edit_hint_local"
+                            android:inputType="text"
+                            android:minHeight="48dp" />
+
+                    </LinearLayout>
 
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
@@ -193,15 +210,32 @@
                         android:contentDescription="@string/description_sync_direction"
                         android:minHeight="48dp" />
 
-                    <EditText
-                        android:id="@+id/task_remote_path_textfield"
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_margin="8dp"
-                        android:autofillHints=""
-                        android:hint="@string/task_edit_hint_remote"
-                        android:inputType=""
-                        android:minHeight="48dp" />
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageButton
+                            android:id="@+id/task_remote_path_picker_button"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:background="?selectableItemBackgroundBorderless"
+                            android:contentDescription="@string/task_edit_hint_remote"
+                            android:src="@drawable/ic_folder_open" />
+
+                        <EditText
+                            android:id="@+id/task_remote_path_textfield"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:autofillHints=""
+                            android:hint="@string/task_edit_hint_remote"
+                            android:inputType="text"
+                            android:minHeight="48dp" />
+
+                    </LinearLayout>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 

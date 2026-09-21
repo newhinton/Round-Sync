@@ -2,6 +2,7 @@ package ca.pkay.rcloneexplorer.Fragments;
 
 import static ca.pkay.rcloneexplorer.util.ActivityHelper.tryStartActivity;
 import static ca.pkay.rcloneexplorer.util.ActivityHelper.tryStartActivityForResult;
+import static ca.pkay.rcloneexplorer.util.ActivityHelper.tryStartForegroundService;
 import static ca.pkay.rcloneexplorer.util.ActivityHelper.tryStartService;
 
 import android.annotation.SuppressLint;
@@ -703,7 +704,7 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
             default:
                 return;
         }
-        tryStartService(context, intent);
+        tryStartForegroundService(context, intent);
     }
 
     private void emptyTrash() {
@@ -1306,7 +1307,7 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
                         }
                         // GH-87: Release old server
                         context.stopService(new Intent(context, StreamingService.class));
-                        tryStartService(context, intent);
+                        tryStartForegroundService(context, intent);
                     });
                     builder.setTitle(R.string.pick_a_protocol);
                     builder.show();
@@ -1929,7 +1930,7 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
             serveIntent.putExtra(StreamingService.SERVE_PORT, port);
             // GH-87: Release old stream
             context.stopService(new Intent(context, StreamingService.class));
-            tryStartService(context, serveIntent);
+            tryStartForegroundService(context, serveIntent);
 
             Uri uri = Uri.parse("http://127.0.0.1:" + port)
                     .buildUpon()

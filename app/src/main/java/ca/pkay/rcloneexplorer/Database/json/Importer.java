@@ -33,7 +33,10 @@ public class Importer {
     public static ArrayList<Trigger> createTriggerlist(String content) throws JSONException {
         ArrayList<Trigger> result = new ArrayList<>();
         JSONObject reader = new JSONObject(content);
-        JSONArray array = reader.getJSONArray("trigger");
+        JSONArray array = reader.optJSONArray("trigger");
+        if (array == null) {
+            return result;
+        }
         for (int i = 0; i < array.length(); i++) {
             JSONObject triggerObject = array.getJSONObject(i);
             result.add(Trigger.Companion.fromString(triggerObject.toString()));
@@ -44,7 +47,10 @@ public class Importer {
     public static ArrayList<Task> createTasklist(String content) throws JSONException {
         ArrayList<Task> result = new ArrayList<>();
         JSONObject reader = new JSONObject(content);
-        JSONArray array = reader.getJSONArray("tasks");
+        JSONArray array = reader.optJSONArray("tasks");
+        if (array == null) {
+            return result;
+        }
         for (int i = 0; i < array.length(); i++) {
             JSONObject taskObject = array.getJSONObject(i);
             result.add(Task.Companion.fromString(taskObject.toString()));
@@ -54,7 +60,10 @@ public class Importer {
     public static ArrayList<Filter> createFilterList(String content) throws JSONException {
         ArrayList<Filter> result = new ArrayList<>();
         JSONObject reader = new JSONObject(content);
-        JSONArray array = reader.getJSONArray("filters");
+        JSONArray array = reader.optJSONArray("filters");
+        if (array == null) {
+            return result;
+        }
         for (int i = 0; i < array.length(); i++) {
             JSONObject filterObject = array.getJSONObject(i);
             result.add(Filter.Companion.fromString(filterObject.toString()));

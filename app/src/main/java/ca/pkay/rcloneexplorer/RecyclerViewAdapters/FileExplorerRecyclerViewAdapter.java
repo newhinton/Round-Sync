@@ -107,6 +107,7 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
             boolean localLoad = item.getRemote().getType() == RemoteItem.SAFW;
             String mimeType = item.getMimeType();
             if ((mimeType.startsWith("image/") || mimeType.startsWith("video/")) && item.getSize() <= sizeLimit) {
+                holder.fileIcon.setImageTintList(null);
                 RequestOptions glideOption = new RequestOptions()
                         .centerCrop()
                         .diskCacheStrategy(DiskCacheStrategy.ALL)

@@ -170,9 +170,10 @@ public class RcloneRcd {
         String tmpDir = context.getCacheDir().getAbsolutePath();
         environmentValues.add("TMPDIR=" + tmpDir);
 
-        // ignore chtimes errors
-        // ref: https://github.com/rclone/rclone/issues/2446
-        environmentValues.add("RCLONE_LOCAL_NO_SET_MODTIME=true");
+        // Do not force RCLONE_LOCAL_NO_SET_MODTIME. In current rclone this
+        // disables modification-time comparison for the local backend and can
+        // silently miss same-size file edits. Let rclone probe precision and
+        // handle SetModTime failures itself.
         return environmentValues.toArray(new String[0]);
     }
 

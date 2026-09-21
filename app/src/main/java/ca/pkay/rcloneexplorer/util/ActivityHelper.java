@@ -6,6 +6,7 @@ import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.TypedValue;
@@ -96,6 +97,18 @@ public class ActivityHelper {
             context.startService(intent);
         } catch (IllegalStateException e) {
             FLog.e(TAG, "Host context state is invalid, not starting service", e);
+        }
+    }
+
+    public static void tryStartForegroundService(@NonNull Context context, @NonNull Intent intent) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent);
+            } else {
+                context.startService(intent);
+            }
+        } catch (IllegalStateException e) {
+            FLog.e(TAG, "Host context state is invalid, not starting foreground service", e);
         }
     }
 
