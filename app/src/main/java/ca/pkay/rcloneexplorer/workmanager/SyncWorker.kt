@@ -168,7 +168,11 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
     private fun handleTask() {
         mTitle = mTask.title
         mNotificationManager.setCancelId(id)
-        val remoteItem = RemoteItem(mTask.remoteId, mTask.remoteType, "")
+        // Resolve the current remote configuration instead of trusting the legacy
+        // integer type stored in Task. New backends such as protondrive are not
+        // represented by the old numeric enum and would otherwise be misdetected.
+        val remoteItem = mRclone.getRemoteItemFromName(mTask.remoteId)
+            ?: RemoteItem(mTask.remoteId, mTask.remoteType, "")
 
         if (mTask.title == "") {
             mTitle = mTask.remotePath
