@@ -2,7 +2,10 @@ name: Android CI
 
 on:
   workflow_dispatch:
+  pull_request:
   push:
+    branches:
+      - master
     tags:
       - '*'
 
@@ -11,8 +14,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - name: Read Go version from project
-      run: echo "GO_VERSION=$(grep -E "^de\.felixnuesse\.extract\.goVersion=" gradle.properties | cut -d'=' -f2)"
+    - name: Read tool versions from project
+      run: |
+        GO_VERSION="$(grep -E '^de\.felixnuesse\.extract\.goVersion=' gradle.properties | cut -d'=' -f2)"
+        NDK_VERSION="$(grep -E '^de\.felixnuesse\.extract\.ndkVersion=' gradle.properties | cut -d'=' -f2)"
+        echo "GO_VERSION=$GO_VERSION" >> "$GITHUB_ENV"
+        echo "NDK_VERSION=$NDK_VERSION" >> "$GITHUB_ENV"
+        echo "Using Go $GO_VERSION and NDK $NDK_VERSION"
     - name: Set up JDK 17
       uses: actions/setup-java@v3
       with:
@@ -28,7 +36,6 @@ jobs:
       uses: android-actions/setup-android@v3
     - name: Install NDK from gradle.properties
       run: |
-        NDK_VERSION="$(grep -E "^de\.felixnuesse\.extract\.ndkVersion=" gradle.properties | cut -d'=' -f2)"
         sdkmanager "ndk;${NDK_VERSION}"
     - name: Build app
       run: ./gradlew assembleOssDebug
