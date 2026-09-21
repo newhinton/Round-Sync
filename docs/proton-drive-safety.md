@@ -29,3 +29,31 @@ Until upstream fixes land, errors such as these must stop the run and preserve l
 - other Proton API/backend inconsistencies.
 
 Do not automatically convert those errors into remote deletion or resync.
+
+
+## Runtime Proton safeguards
+
+Normal Proton Drive operations use one shared WorkManager queue for scheduled syncs and manual uploads/downloads/moves/deletes. A process-local fair lock is also held while a Proton worker owns the backend. This is intentionally conservative until the upstream refresh-token adoption changes are released.
+
+### Refresh-token/session conflicts
+
+The current Round Sync task model does not generate `--backup-dir`, `--compare-dest`, or `--copy-dest`, so it avoids the known single-command multi-Fs trigger. If Proton returns `Code=10013` / "Invalid refresh token", the app:
+- stops automatic retries;
+- preserves the cached session;
+- suppresses failure follow-up tasks;
+- tells the user to wait for other Proton/rclone activity and retry manually.
+
+### Interrupted uploads / orphaned drafts
+
+If one run contains the Proton conflict/not-found pattern (`Code=2500` plus `Code=2501`), the app classifies it as an orphaned/incomplete draft and:
+- stops retries;
+- never purges the parent directory;
+- never runs Proton cleanup automatically;
+- never converts the error into a forced resync;
+- preserves the local file and surfaces recovery guidance.
+
+### Network and rate limits
+
+Known transient network failures (timeouts, DNS/connectivity failures, 500/502 responses) can request at most two WorkManager retries.
+
+Proton rate-limit responses (`429` / `Code=2011`) are never automatically retried. Repeated authentication attempts can extend the rate limit, so the operation stops and keeps the stored credentials intact.

@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Parcel
 import android.util.Log
 import androidx.work.Data
+import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import ca.pkay.rcloneexplorer.Items.FileItem
@@ -107,7 +108,11 @@ class EphemeralTaskManager(private var mContext: Context) {
         val uploadWorkRequest = OneTimeWorkRequestBuilder<EphemeralWorker>()
         uploadWorkRequest.setInputData(inputData)
         uploadWorkRequest.addTag(tag)
-        WorkManager.getInstance(mContext).enqueue(uploadWorkRequest.build())
+        WorkManager.getInstance(mContext).enqueueUniqueWork(
+            "rclone-sync-serial",
+            ExistingWorkPolicy.APPEND_OR_REPLACE,
+            uploadWorkRequest.build()
+        )
     }
 
     fun cancel() {

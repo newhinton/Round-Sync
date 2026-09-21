@@ -23,6 +23,8 @@ import ca.pkay.rcloneexplorer.Rclone
 import ca.pkay.rcloneexplorer.notifications.prototypes.WorkerNotification
 import ca.pkay.rcloneexplorer.notifications.support.StatusObject
 import ca.pkay.rcloneexplorer.util.FLog
+import ca.pkay.rcloneexplorer.util.ProtonFailureKind
+import ca.pkay.rcloneexplorer.util.ProtonSafety
 import ca.pkay.rcloneexplorer.util.SyncLog
 import ca.pkay.rcloneexplorer.util.WifiConnectivitiyUtil
 import de.felixnuesse.extract.extensions.tag
@@ -80,6 +82,8 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
     private var failureReason = FAILURE_REASON.NO_FAILURE
     private var endNotificationAlreadyPosted = false
     private var silentRun = false
+    private var protonRetryRequested = false
+    private var protonFailureMessage = ""
     private val ongoingNotificationID = Random.nextInt()
 
 
@@ -113,9 +117,11 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
 
             mNotificationManager?.setCancelId(id)
             if(preconditionsMet()) {
-                // do not instantiate rclone when you dont want it to run.
-                // It will immediately run!
-                when(type){
+                val protonLockHeld = ProtonSafety.acquireIfProton(remoteItem)
+                try {
+                    // do not instantiate rclone when you dont want it to run.
+                    // It will immediately run!
+                    when(type){
                     Type.DOWNLOAD -> {
                         val target = inputData.getString(DOWNLOAD_TARGETPATH)
                         val fileItem = getFileitemFromParcel(DOWNLOAD_SOURCE)
@@ -169,8 +175,11 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
                             fileItem
                         )
                     }
+                    }
+                    handleSync(mTitle, ProtonSafety.isProton(remoteItem))
+                } finally {
+                    ProtonSafety.releaseIfHeld(protonLockHeld)
                 }
-                handleSync(mTitle)
             } else {
                 log("Preconditions are not met!")
                 postSync()
@@ -178,8 +187,13 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
             }
 
             postSync()
-            // Indicate whether the work finished successfully with the Result
-            return Result.success()
+            return if (failureReason == FAILURE_REASON.NO_FAILURE) {
+                Result.success()
+            } else if (protonRetryRequested) {
+                Result.retry()
+            } else {
+                Result.failure()
+            }
         }
         log("Critical: No valid ephemeral type passed!")
         return Result.failure()
@@ -208,21 +222,20 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
         }
     }
 
-    private fun handleSync(title: String) {
+    private fun handleSync(title: String, protonRemote: Boolean) {
         if (sRcloneProcess != null) {
             val localProcessReference = sRcloneProcess!!
+            val rawLog = StringBuilder()
             try {
                 val reader = BufferedReader(InputStreamReader(localProcessReference.errorStream))
                 val iterator = reader.lineSequence().iterator()
                 while(iterator.hasNext()) {
                     val line = iterator.next()
+                    rawLog.append(line).append('\n')
                     try {
                         val logline = JSONObject(line)
-                        //todo: migrate this to StatusObject, so that we can handle everything properly.
                         if (logline.getString("level") == "error") {
-                            if (sIsLoggingEnabled) {
-                                log2File?.log(line)
-                            }
+                            if (sIsLoggingEnabled) log2File?.log(line)
                             statusObject.parseLoglineToStatusObject(logline)
                         } else if (logline.getString("level") == "warning") {
                             statusObject.parseLoglineToStatusObject(logline)
@@ -237,7 +250,6 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
                         ))
                     } catch (e: JSONException) {
                         Log.e(tag(), "Error: the offending line: $line")
-                        //FLog.e(TAG, "onHandleIntent: error reading json", e)
                     }
                 }
             } catch (e: InterruptedIOException) {
@@ -245,12 +257,29 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
             } catch (e: IOException) {
                 FLog.e(tag(), "onHandleIntent: error reading stdout", e)
             }
+
             try {
-                localProcessReference.waitFor()
+                val exitCode = localProcessReference.waitFor()
+                if (exitCode != 0) {
+                    if (protonRemote) {
+                        val protonFailure = ProtonSafety.classify(rawLog.toString())
+                        if (protonFailure.kind != ProtonFailureKind.NONE) {
+                            protonFailureMessage = protonFailure.userMessage
+                            SyncLog.error(mContext, "Proton Drive", protonFailure.userMessage)
+                            protonRetryRequested = protonFailure.retryable &&
+                                runAttemptCount < protonFailure.maxAutomaticRetries
+                        }
+                    }
+                    failureReason = FAILURE_REASON.RCLONE_ERROR
+                    FLog.e(tag(), "Rclone exited with code $exitCode")
+                }
             } catch (e: InterruptedException) {
+                failureReason = FAILURE_REASON.CANCELLED
                 FLog.e(tag(), "onHandleIntent: error waiting for process", e)
+                Thread.currentThread().interrupt()
             }
         } else {
+            failureReason = FAILURE_REASON.RCLONE_ERROR
             log("Sync: No Rclone Process!")
         }
         mNotificationManager?.cancelSyncNotification(ongoingNotificationID)
@@ -290,7 +319,11 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
                 content = mContext.getString(R.string.operation_failed_no_connection, mTitle)
             }
             FAILURE_REASON.RCLONE_ERROR -> {
-                content = mContext.getString(R.string.operation_failed_unknown_rclone_error, mTitle)
+                content = if (protonFailureMessage.isNotEmpty()) {
+                    protonFailureMessage
+                } else {
+                    mContext.getString(R.string.operation_failed_unknown_rclone_error, mTitle)
+                }
             }
         }
         showFailNotification(notificationId, content)

@@ -25,6 +25,8 @@ import ca.pkay.rcloneexplorer.notifications.SyncServiceNotifications
 import ca.pkay.rcloneexplorer.notifications.SyncServiceNotifications.Companion.GROUP_ID
 import ca.pkay.rcloneexplorer.notifications.support.StatusObject
 import ca.pkay.rcloneexplorer.util.FLog
+import ca.pkay.rcloneexplorer.util.ProtonFailureKind
+import ca.pkay.rcloneexplorer.util.ProtonSafety
 import ca.pkay.rcloneexplorer.util.SyncLog
 import ca.pkay.rcloneexplorer.util.WifiConnectivitiyUtil
 import kotlinx.serialization.json.Json
@@ -79,6 +81,9 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
     private var failureReason = FAILURE_REASON.NO_FAILURE
     private var endNotificationAlreadyPosted = false
     private var silentRun = false
+    private var protonRetryRequested = false
+    private var suppressFailureFollowup = false
+    private var protonFailureMessage = ""
     private val ongoingNotificationID = Random().nextInt()
 
 
@@ -134,9 +139,13 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
             return Result.failure()
         }
 
-        // Reflect rclone/precondition failures in WorkManager as well as the UI.
+        // WorkManager's own retry backoff remains the source of truth. We only
+        // request retry for known transient Proton failures; session conflicts
+        // and orphaned drafts stop immediately.
         return if (failureReason == FAILURE_REASON.NO_FAILURE) {
             Result.success()
+        } else if (protonRetryRequested) {
+            Result.retry()
         } else {
             Result.failure()
         }
@@ -165,26 +174,34 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
             mTitle = mTask.remotePath
         }
         if(arePreconditionsMet()) {
-            val taskFilter = if(mTask.filterId != null ) mDatabase.getFilter(mTask.filterId!!) else null;
-            val taskFilterList = taskFilter?.getFilters() ?: ArrayList()
-            sRcloneProcess = mRclone.sync(
-                remoteItem,
-                mTask.localPath,
-                mTask.remotePath,
-                mTask.direction,
-                mTask.md5sum,
-                taskFilterList,
-                mTask.deleteExcluded
-            )
-            handleSync(mTitle)
-            sendUploadFinishedBroadcast(remoteItem.name, mTask.remotePath)
+            val protonLockHeld = ProtonSafety.acquireIfProton(remoteItem)
+            try {
+                val taskFilter = if(mTask.filterId != null ) mDatabase.getFilter(mTask.filterId!!) else null
+                val taskFilterList = taskFilter?.getFilters() ?: ArrayList()
+                sRcloneProcess = mRclone.sync(
+                    remoteItem,
+                    mTask.localPath,
+                    mTask.remotePath,
+                    mTask.direction,
+                    mTask.md5sum,
+                    taskFilterList,
+                    mTask.deleteExcluded
+                )
+                handleSync(mTitle, ProtonSafety.isProton(remoteItem))
+                if (failureReason == FAILURE_REASON.NO_FAILURE) {
+                    sendUploadFinishedBroadcast(remoteItem.name, mTask.remotePath)
+                }
+            } finally {
+                ProtonSafety.releaseIfHeld(protonLockHeld)
+            }
         }
     }
 
-    private fun handleSync(title: String) {
+    private fun handleSync(title: String, protonRemote: Boolean) {
         SyncLog.info(mContext, mTitle, mContext.getString(R.string.operation_start_sync))
         if (sRcloneProcess != null) {
             val localProcessReference = sRcloneProcess!!
+            val rawLog = StringBuilder()
             val infoLines = StringBuilder()
             var lastStats = ""
             try {
@@ -192,22 +209,18 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
                 val iterator = reader.lineSequence().iterator()
                 while(iterator.hasNext()) {
                     val line = iterator.next()
+                    rawLog.append(line).append('\n')
                     try {
                         val logline = JSONObject(line)
-                        //todo: migrate this to StatusObject, so that we can handle everything properly.
                         when (logline.getString("level")) {
                             "error" -> {
-                                if (sIsLoggingEnabled) {
-                                    log2File?.log(line)
-                                }
+                                if (sIsLoggingEnabled) log2File?.log(line)
                                 statusObject.parseLoglineToStatusObject(logline)
                             }
-                            "warning" -> {
-                                statusObject.parseLoglineToStatusObject(logline)
-                            }
+                            "warning" -> statusObject.parseLoglineToStatusObject(logline)
                             "info" -> {
                                 val msg = logline.optString("msg", "")
-                                if (msg.isNotEmpty()) infoLines.append(msg).append("\n")
+                                if (msg.isNotEmpty()) infoLines.append(msg).append('\n')
                             }
                             "notice" -> {
                                 val msg = logline.optString("msg", "")
@@ -224,7 +237,6 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
                         ))
                     } catch (e: JSONException) {
                         FLog.e(TAG, "SyncService-Error: the offending line: $line")
-                        //FLog.e(TAG, "onHandleIntent: error reading json", e)
                     }
                 }
             } catch (e: InterruptedIOException) {
@@ -232,6 +244,7 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
             } catch (e: IOException) {
                 FLog.e(TAG, "onHandleIntent: error reading stdout", e)
             }
+
             val detail = buildString {
                 if (infoLines.isNotEmpty()) append(infoLines.trimEnd())
                 if (lastStats.isNotEmpty()) {
@@ -239,14 +252,26 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
                     append(lastStats)
                 }
             }
-            if (detail.isNotEmpty()) {
-                SyncLog.info(mContext, mTitle, detail)
-            }
+            if (detail.isNotEmpty()) SyncLog.info(mContext, mTitle, detail)
 
             try {
                 val exitCode = localProcessReference.waitFor()
-                if (exitCode != 0 && failureReason == FAILURE_REASON.NO_FAILURE) {
-                    failureReason = FAILURE_REASON.RCLONE_ERROR
+                if (exitCode != 0) {
+                    if (protonRemote) {
+                        val protonFailure = ProtonSafety.classify(rawLog.toString())
+                        if (protonFailure.kind != ProtonFailureKind.NONE) {
+                            protonFailureMessage = protonFailure.userMessage
+                            SyncLog.error(mContext, "Proton Drive", protonFailure.userMessage)
+                            failureReason = FAILURE_REASON.RCLONE_ERROR
+                            protonRetryRequested = protonFailure.retryable &&
+                                runAttemptCount < protonFailure.maxAutomaticRetries
+                            suppressFailureFollowup = protonFailure.suppressFailureFollowup
+                        } else if (failureReason == FAILURE_REASON.NO_FAILURE) {
+                            failureReason = FAILURE_REASON.RCLONE_ERROR
+                        }
+                    } else if (failureReason == FAILURE_REASON.NO_FAILURE) {
+                        failureReason = FAILURE_REASON.RCLONE_ERROR
+                    }
                     FLog.e(TAG, "Rclone exited with code $exitCode")
                 }
             } catch (e: InterruptedException) {
@@ -296,10 +321,14 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
                 content = mContext.getString(R.string.operation_failed_no_connection, mTitle)
             }
             FAILURE_REASON.RCLONE_ERROR -> {
-                content = mContext.getString(R.string.operation_failed_unknown_rclone_error, mTitle)
+                content = if (protonFailureMessage.isNotEmpty()) {
+                    protonFailureMessage
+                } else {
+                    mContext.getString(R.string.operation_failed_unknown_rclone_error, mTitle)
+                }
             }
         }
-        if (::mTask.isInitialized) followupTask(mTask.onFailFollowup)
+        if (!suppressFailureFollowup && ::mTask.isInitialized) followupTask(mTask.onFailFollowup)
         showFailNotification(notificationId, content)
         endNotificationAlreadyPosted = true
         finishWork()
