@@ -129,8 +129,12 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
             return Result.failure()
         }
 
-        // Indicate whether the work finished successfully with the Result
-        return Result.success()
+        // Reflect rclone/precondition failures in WorkManager as well as the UI.
+        return if (failureReason == FAILURE_REASON.NO_FAILURE) {
+            Result.success()
+        } else {
+            Result.failure()
+        }
     }
 
     override fun onStopped() {
@@ -211,11 +215,18 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
                 FLog.e(TAG, "onHandleIntent: error reading stdout", e)
             }
             try {
-                localProcessReference.waitFor()
+                val exitCode = localProcessReference.waitFor()
+                if (exitCode != 0 && failureReason == FAILURE_REASON.NO_FAILURE) {
+                    failureReason = FAILURE_REASON.RCLONE_ERROR
+                    FLog.e(TAG, "Rclone exited with code $exitCode")
+                }
             } catch (e: InterruptedException) {
+                failureReason = FAILURE_REASON.CANCELLED
                 FLog.e(TAG, "onHandleIntent: error waiting for process", e)
+                Thread.currentThread().interrupt()
             }
         } else {
+            failureReason = FAILURE_REASON.RCLONE_ERROR
             log("Sync: No Rclone Process!")
         }
         mNotificationManager.cancelSyncNotification(ongoingNotificationID)

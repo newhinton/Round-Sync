@@ -145,6 +145,11 @@ public class Rclone {
         command.add("--config");
         command.add(rcloneConf);
 
+        // Proton Drive's backend metadata cache does not observe changes made
+        // by other Proton clients. Prefer fresh metadata for transfer/browse
+        // operations driven through this command builder.
+        command.add("--protondrive-enable-caching=false");
+
         if(loggingEnabled) {
             command.add("-vvv");
         }

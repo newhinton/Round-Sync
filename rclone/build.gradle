@@ -27,11 +27,13 @@ ext {
     NDK_TOOLCHAIN_VERSION = project.properties['de.felixnuesse.extract.ndkToolchainVersion']
     RCLONE_VERSION = project.properties['de.felixnuesse.extract.rCloneVersion']
     GO_REQ_VERSION = project.properties['de.felixnuesse.extract.goVersion']
-    RCLONE_MODULE = 'github.com/rclone/rclone'
-    RCLONE_CUSTOM_VERSION_SUFFIX = '-extract'
+    RCLONE_REPO_URL = project.properties['de.felixnuesse.extract.rCloneRepoUrl']
+    RCLONE_REF = project.properties['de.felixnuesse.extract.rCloneRef']
+    RCLONE_CUSTOM_VERSION_SUFFIX = '-beta.rareities'
 
     PROJECT_DIR = projectDir.absolutePath
     CACHE_PATH = Paths.get(PROJECT_DIR, 'cache').toString()
+    RCLONE_SOURCE_PATH = Paths.get(CACHE_PATH, 'rclone-src').toString()
     GOPATH = Paths.get(CACHE_PATH, 'gopath').toString()
     OUTPUT_BASE_PATH = Paths.get(PROJECT_DIR, '..', 'app', 'lib').toAbsolutePath().toString()
 }
@@ -150,7 +152,7 @@ def buildRclone(abi) {
                 environment 'CGO_ENABLED', '1'
                 environment 'CGO_LDFLAGS', '-fuse-ld=lld -Wl,--hash-style=both -s'
                 abiToEnv[abi].each {entry -> environment entry.key, entry.value}
-                workingDir CACHE_PATH
+                workingDir RCLONE_SOURCE_PATH
                 def ldflags = "-buildid= -X github.com/rclone/rclone/fs.Version=${RCLONE_VERSION}${RCLONE_CUSTOM_VERSION_SUFFIX}"
                 commandLine (
                     'go',
@@ -162,42 +164,54 @@ def buildRclone(abi) {
                     ldflags,
                     '-o',
                     getOutputPath(abi),
-                    RCLONE_MODULE
+                    '.'
                 )
             }
         }
     }
 }
 
-task createRcloneModule(type: Exec) {
-    // We create a dummy go module to be able to checkout our specific rclone
-    // version later on.
-    onlyIf { !Paths.get(CACHE_PATH, 'go.mod').toFile().exists() }
-    Paths.get(CACHE_PATH).toFile().mkdirs()
-    workingDir CACHE_PATH
-    environment 'GOPATH', GOPATH
-    commandLine 'go', 'mod', 'init', 'rclone'
-}
+task checkoutRclone {
+    doLast {
+        def goVersionOutput = new ByteArrayOutputStream()
+        exec {
+            commandLine 'go', 'version'
+            standardOutput = goVersionOutput
+        }
 
-task checkoutRclone(type: Exec, dependsOn: createRcloneModule) {
-    workingDir CACHE_PATH
-    environment 'GOPATH', GOPATH
+        if (goVersionOutput.toString().contains(GO_REQ_VERSION)) {
+            println "You are running a compatible Go version."
+        } else {
+            logger.error("The required Go version is: ${GO_REQ_VERSION}")
+            logger.error("You are running: ${goVersionOutput}")
+        }
 
-    def goVersionOutput = new ByteArrayOutputStream()
-    exec{
-        commandLine 'go', 'version'
-        standardOutput = goVersionOutput;
+        Paths.get(CACHE_PATH).toFile().mkdirs()
+        def sourceDir = file(RCLONE_SOURCE_PATH)
+        if (!new File(sourceDir, '.git').exists()) {
+            exec {
+                workingDir CACHE_PATH
+                commandLine 'git', 'clone', RCLONE_REPO_URL, 'rclone-src'
+            }
+        }
+
+        exec {
+            workingDir sourceDir
+            commandLine 'git', 'fetch', '--prune', 'origin'
+        }
+        exec {
+            workingDir sourceDir
+            commandLine 'git', 'checkout', '--force', RCLONE_REF
+        }
+
+        def commitOutput = new ByteArrayOutputStream()
+        exec {
+            workingDir sourceDir
+            commandLine 'git', 'rev-parse', 'HEAD'
+            standardOutput = commitOutput
+        }
+        println "Building custom rclone ${RCLONE_VERSION}${RCLONE_CUSTOM_VERSION_SUFFIX} at ${commitOutput.toString().trim()}"
     }
-
-    if (goVersionOutput.toString().contains(GO_REQ_VERSION)) {
-        println "You are running the required go version."
-    } else {
-        logger.error("The requred go version is: ${GO_REQ_VERSION}")
-        logger.error( "You are running: ${goVersionOutput}")
-    }
-    println "You are building rclone v${RCLONE_VERSION}"
-
-    commandLine 'go', 'get', '-v', '-d', "${RCLONE_MODULE}@v${RCLONE_VERSION}"
 }
 
 task buildArm(dependsOn: checkoutRclone) {
