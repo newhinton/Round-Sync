@@ -38,8 +38,8 @@ jobs:
       id: go
     - name: Install NDK from gradle.properties
       run: |
-        yes | sdkmanager --licenses >/dev/null || true
-        sdkmanager "ndk;${NDK_VERSION}"
+        yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+        "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;${NDK_VERSION}"
     - name: Build app
       run: ./gradlew assembleOssDebug
     - name: Upload APK (arm)
