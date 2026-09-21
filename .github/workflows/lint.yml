@@ -17,6 +17,8 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: gradle
+      - name: Unit tests
+        run: ./gradlew testOssDebugUnitTest -x :rclone:buildAll
       - name: Run Linter
         run: ./gradlew lint -x :rclone:buildAll
       - name: Upload Reports
