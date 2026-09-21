@@ -3,6 +3,10 @@ on:
   workflow_dispatch:
   push:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   dependency-change-verification:
     runs-on: ubuntu-latest
