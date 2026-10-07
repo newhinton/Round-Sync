@@ -3,6 +3,8 @@ package ca.pkay.rcloneexplorer.workmanager
 import android.content.Context
 import android.util.Log
 import androidx.work.Data
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequest
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkRequest
@@ -21,7 +23,27 @@ class SyncManager(private var mContext: Context) {
         queue(task.id)
     }
 
+    /**
+     * Queue a run of a stored task. A task only ever has one run pending or running:
+     * if it is already queued or running (manual start, trigger, boot catch-up or
+     * WorkManager resuming interrupted work), this request is dropped.
+     */
     fun queue(taskID: Long) {
+        WorkManager.getInstance(mContext)
+            .enqueueUniqueWork(uniqueName(taskID), ExistingWorkPolicy.KEEP, buildTaskRequest(taskID))
+    }
+
+    /**
+     * Queue a follow-up task from inside a running SyncWorker. If the follow-up task
+     * is already pending or running (including a task that follows up on itself),
+     * it runs once more after that run finishes instead of being dropped.
+     */
+    fun queueFollowup(taskID: Long) {
+        WorkManager.getInstance(mContext)
+            .enqueueUniqueWork(uniqueName(taskID), ExistingWorkPolicy.APPEND_OR_REPLACE, buildTaskRequest(taskID))
+    }
+
+    private fun buildTaskRequest(taskID: Long): OneTimeWorkRequest {
         val uploadWorkRequest = OneTimeWorkRequestBuilder<SyncWorker>()
 
         val data = Data.Builder()
@@ -29,7 +51,11 @@ class SyncManager(private var mContext: Context) {
 
         uploadWorkRequest.setInputData(data.build())
         uploadWorkRequest.addTag(taskID.toString())
-        work(uploadWorkRequest.build())
+        return uploadWorkRequest.build()
+    }
+
+    private fun uniqueName(taskID: Long): String {
+        return "task-$taskID"
     }
 
     fun queueEphemeral(task: Task) {

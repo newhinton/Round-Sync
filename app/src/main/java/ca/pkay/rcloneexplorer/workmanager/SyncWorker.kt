@@ -439,6 +439,6 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
             return
         }
         Thread.sleep(1000)
-        SyncManager(mContext).queue(followUpTaskID)
+        SyncManager(mContext).queueFollowup(followUpTaskID)
     }
 }
