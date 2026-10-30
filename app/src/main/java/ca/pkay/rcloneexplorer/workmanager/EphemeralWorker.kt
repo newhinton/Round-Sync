@@ -57,6 +57,7 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
         const val MOVE_TARGETPATH = "MOVE_TARGETPATH"
 
         const val DELETE_FILE = "DELETE_FILE"
+        const val DELETE_PATH = "DELETE_PATH"
     }
 
     internal enum class FAILURE_REASON {
@@ -88,6 +89,10 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
     override fun doWork(): Result {
 
         registerBroadcastReceivers()
+
+        // Directory that has to be re-listed once the ephemeral operation is done.
+        var refreshPath: String? = null
+        var refreshPath2: String? = null
 
         updateForegroundNotification(mNotificationManager?.updateNotification(
             mTitle,
@@ -136,6 +141,7 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
                             target,
                             file
                         )
+                        refreshPath = target
                     }
                     Type.MOVE -> {
                         val target = inputData.getString(MOVE_TARGETPATH)
@@ -151,6 +157,8 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
                             fileItem,
                             target
                         )
+                        refreshPath = target
+                        refreshPath2 = fileItem.path.substringBeforeLast('/').ifEmpty { null }
                     }
                     Type.DELETE -> {
                         val fileItem = getFileitemFromParcel(DELETE_FILE)
@@ -164,6 +172,7 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
                             remoteItem,
                             fileItem
                         )
+                        refreshPath = inputData.getString(DELETE_PATH)
                     }
                 }
                 handleSync(mTitle)
@@ -174,6 +183,9 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
             }
 
             postSync()
+            // Ephemeral operations used to leave the explorer stale: the fragment refreshes on
+            // this broadcast only (see FileExplorerFragment.registerReceivers()).
+            refreshPath?.let { sendUploadFinishedBroadcast(remoteItem.name, it, refreshPath2) }
             // Indicate whether the work finished successfully with the Result
             return Result.success()
         }
@@ -367,11 +379,12 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
         return true
     }
 
-    private fun sendUploadFinishedBroadcast(remote: String, path: String?) {
+    private fun sendUploadFinishedBroadcast(remote: String, path: String?, path2: String? = null) {
         val intent = Intent()
         intent.action = getString(R.string.background_service_broadcast)
         intent.putExtra(getString(R.string.background_service_broadcast_data_remote), remote)
         intent.putExtra(getString(R.string.background_service_broadcast_data_path), path)
+        intent.putExtra(getString(R.string.background_service_broadcast_data_path2), path2)
         LocalBroadcastManager.getInstance(mContext).sendBroadcast(intent)
     }
 

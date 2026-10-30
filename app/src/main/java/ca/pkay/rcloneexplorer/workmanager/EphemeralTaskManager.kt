@@ -86,6 +86,7 @@ class EphemeralTaskManager(private var mContext: Context) {
             addRemoteItemToData(EphemeralWorker.REMOTE, remote, data)
 
             addFileItemToData(EphemeralWorker.DELETE_FILE, file, data)
+            data.putString(EphemeralWorker.DELETE_PATH, currentPath)
             EphemeralTaskManager(context).work(data.build(), "")
         }
 
