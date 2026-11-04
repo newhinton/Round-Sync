@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.UUID;
 import java.util.List;
 
 import ca.pkay.rcloneexplorer.Dialogs.Dialogs;
@@ -51,6 +52,14 @@ public class SharingActivity extends AppCompatActivity implements ShareRemotesFr
     private Fragment fragment;
     private ArrayList<String> uploadList;
     private boolean isDataReady;
+    private boolean uploadQueued;
+    private CopyFile copyTask;
+
+    @Override
+    protected void onDestroy() {
+        if (isDataReady && !uploadQueued && copyTask != null) copyTask.clearStaging();
+        super.onDestroy();
+    }
 
     @Override
     protected void attachBaseContext(Context newBase) {
@@ -140,7 +149,8 @@ public class SharingActivity extends AppCompatActivity implements ShareRemotesFr
             return;
         }
         isDataReady = false;
-        new CopyFile(this, uri).execute();
+        copyTask = new CopyFile(this, uri);
+        copyTask.execute();
     }
 
     private void copyFiles(Intent intent) {
@@ -150,7 +160,8 @@ public class SharingActivity extends AppCompatActivity implements ShareRemotesFr
             return;
         }
         isDataReady = false;
-        new CopyFile(this, uris).execute();
+        copyTask = new CopyFile(this, uris);
+        copyTask.execute();
     }
 
 
@@ -195,8 +206,10 @@ public class SharingActivity extends AppCompatActivity implements ShareRemotesFr
             super.onPostExecute(aVoid);
             Dialogs.dismissSilently(loadingDialog);
 
+            if (isFinishing() || isDestroyed()) return;
+            uploadQueued = true;
             for (String uploadFile : uploadList) {
-                EphemeralTaskManager.Companion.queueUpload(this.context, remote, uploadFile, path);
+                EphemeralTaskManager.Companion.queueUpload(this.context, remote, uploadFile, path, true);
             }
             finish();
         }
@@ -208,6 +221,8 @@ public class SharingActivity extends AppCompatActivity implements ShareRemotesFr
         private static final String TAG = "SharingActvty/CopyFile";
         private Context context;
         private ArrayList<Uri> uris;
+        private final File staging = new File(new File(getCacheDir(), "share_staging"), UUID.randomUUID().toString());
+        private boolean duplicateName;
 
         CopyFile(Context context, Uri uri) {
             this.context = context;
@@ -223,6 +238,7 @@ public class SharingActivity extends AppCompatActivity implements ShareRemotesFr
         @Override
         protected Boolean doInBackground(Void... voids) {
             boolean success = true;
+            if (!staging.mkdirs()) return false;
             for (Uri uri : uris) {
                 String fileName;
                 if (null == uri || null == uri.getScheme() || null == uri.getPath()) {
@@ -253,21 +269,19 @@ public class SharingActivity extends AppCompatActivity implements ShareRemotesFr
                     success = false;
                     continue;
                 }
-                File cacheDir = new File(getCacheDir(), "share_staging");
-                if (!cacheDir.exists() && !cacheDir.mkdirs()) {
-                    success = false;
-                    continue;
-                }
-                File outFile = new File(cacheDir, fileName);
+                File outFile = new File(staging, fileName);
                 try {
-                    String canonicalCacheDir = cacheDir.getCanonicalPath() + File.separator;
-                    if (!outFile.getCanonicalPath().startsWith(canonicalCacheDir)) {
-                        FLog.e(TAG, "Copy error: rejected path traversal in display name");
+                    if (!outFile.getCanonicalPath().startsWith(staging.getCanonicalPath() + File.separator)) {
                         success = false;
                         continue;
                     }
+                    if (!outFile.createNewFile()) {
+                        duplicateName = true;
+                        success = false;
+                        break;
+                    }
                 } catch (IOException e) {
-                    FLog.e(TAG, "Copy error: canonical path check failed", e);
+                    FLog.e(TAG, "Copy error: could not create staged file", e);
                     success = false;
                     continue;
                 }
@@ -289,7 +303,15 @@ public class SharingActivity extends AppCompatActivity implements ShareRemotesFr
                     success = false;
                 }
             }
+            if (!success) clearStaging();
             return success;
+        }
+
+        private void clearStaging() {
+            File[] files = staging.listFiles();
+            if (files != null) for (File file : files) file.delete();
+            staging.delete();
+            uploadList.clear();
         }
 
         @NonNull
@@ -329,8 +351,14 @@ public class SharingActivity extends AppCompatActivity implements ShareRemotesFr
         @Override
         protected void onPostExecute(Boolean success) {
             super.onPostExecute(success);
+            if (isFinishing() || isDestroyed()) {
+                clearStaging();
+                isDataReady = true;
+                return;
+            }
             if (!success) {
-                Toasty.error(context, getString(R.string.error_retrieving_files), Toast.LENGTH_LONG, true).show();
+                Toasty.error(context, getString(duplicateName ? R.string.share_duplicate_file_name
+                        : R.string.error_retrieving_files), Toast.LENGTH_LONG, true).show();
                 finish();
             }
             isDataReady = true;

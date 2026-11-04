@@ -341,6 +341,10 @@ public class Rclone {
 
             String outputStr = output.toString();
             results = new JSONArray(outputStr);
+            if (remote.isRemoteType(RemoteItem.INTERNXT)) {
+                ca.pkay.rcloneexplorer.notifications.AppErrorNotificationManager
+                        .clearSessionExpiredNotification(context, remote.getName());
+            }
 
         } catch (InterruptedException e) {
             logErrorOutput(process);
@@ -851,10 +855,7 @@ public class Rclone {
             defaultParameter.add((filter.filterType == FilterEntry.FILTER_INCLUDE ? "+ " : "- ") + filter.filter);
         }
 
-        ArrayList<String> directionParameter = new ArrayList<>();
-        Collections.addAll(directionParameter, op, "--", srcSection, dstSection);
-        directionParameter.addAll(defaultParameter);
-        command = createCommandWithOptions(directionParameter);
+        command = createCommandWithOptions(savedTransferArguments(op, defaultParameter, srcSection, dstSection));
 
         String[] env = getRcloneEnv();
         try {
@@ -870,7 +871,6 @@ public class Rclone {
         String remoteSection = buildRemoteSection(remoteItem, remotePath, context);
 
         ArrayList<String> defaultParameter = new ArrayList<>(Arrays.asList("--transfers", getTransfers(transfersOverride), "--stats=1s", "--stats-log-level", "NOTICE", "--use-json-log"));
-        ArrayList<String> directionParameter = new ArrayList<>();
 
         if(useMD5Sum){
             defaultParameter.add("--checksum");
@@ -887,21 +887,13 @@ public class Rclone {
         localPath = encodePath(localPath);
 
         if (syncDirection == SyncDirectionObject.SYNC_LOCAL_TO_REMOTE) {
-            Collections.addAll(directionParameter, "sync", "--", localPath, remoteSection);
-            directionParameter.addAll(defaultParameter);
-            command = createCommandWithOptions(directionParameter);
+            command = createCommandWithOptions(savedTransferArguments("sync", defaultParameter, localPath, remoteSection));
         } else if (syncDirection == SyncDirectionObject.SYNC_REMOTE_TO_LOCAL) {
-            Collections.addAll(directionParameter, "sync", "--", remoteSection, localPath);
-            directionParameter.addAll(defaultParameter);
-            command = createCommandWithOptions(directionParameter);
+            command = createCommandWithOptions(savedTransferArguments("sync", defaultParameter, remoteSection, localPath));
         } else if (syncDirection == SyncDirectionObject.COPY_LOCAL_TO_REMOTE) {
-            Collections.addAll(directionParameter, "copy", "--", localPath, remoteSection);
-            directionParameter.addAll(defaultParameter);
-            command = createCommandWithOptions(directionParameter);
+            command = createCommandWithOptions(savedTransferArguments("copy", defaultParameter, localPath, remoteSection));
         }else if (syncDirection == SyncDirectionObject.COPY_REMOTE_TO_LOCAL) {
-            Collections.addAll(directionParameter, "copy", "--", remoteSection, localPath);
-            directionParameter.addAll(defaultParameter);
-            command = createCommandWithOptions(directionParameter);
+            command = createCommandWithOptions(savedTransferArguments("copy", defaultParameter, remoteSection, localPath));
         }else {
             return null;
         }
@@ -913,6 +905,15 @@ public class Rclone {
             FLog.e(TAG, "sync: error starting rclone", e);
             return null;
         }
+    }
+
+    static ArrayList<String> savedTransferArguments(String operation, List<String> options, String source, String destination) {
+        ArrayList<String> arguments = new ArrayList<>(options.size() + 4);
+        arguments.add(operation);
+        arguments.addAll(options);
+        // Keep path operands after the separator so leading dashes cannot become flags.
+        Collections.addAll(arguments, "--", source, destination);
+        return arguments;
     }
 
     public Process downloadFile(RemoteItem remote, FileItem downloadItem, String downloadPath) {
@@ -1428,33 +1429,45 @@ public class Rclone {
         if (remoteName == null || remoteName.startsWith("-")) {
             return new DirectoryProbeResult(1, "Rejected invalid remote name");
         }
-        String[] command = createCommand("lsd", "--max-depth", String.valueOf(maxDepth), "--", remoteName + ":");
-        Process process;
-
+        String[] command = createCommand("--contimeout", "15s", "--timeout", "30s", "--retries", "1",
+                "lsd", "--max-depth", String.valueOf(maxDepth), "--", remoteName + ":");
+        Process process = null;
         try {
-            process = getRuntimeProcess(command);
-
-            // Capture stderr so callers can classify the error type
-            StringBuilder stderrBuilder = new StringBuilder();
-            try (BufferedReader errReader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+            process = getRuntimeProcess(command, getRcloneEnv());
+            // lsd may list more entries than the stdout pipe can buffer.
+            final Process probe = process;
+            new Thread(() -> {
+                try (InputStream input = probe.getInputStream()) {
+                    byte[] buffer = new byte[4096];
+                    while (input.read(buffer) != -1) {
+                        // The health check only needs the exit code and diagnostics.
+                    }
+                } catch (IOException ignored) {
+                    // Process termination can close the pipe.
+                }
+            }, "rclone-probe-stdout").start();
+            StringBuilder stderr = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
                 String line;
-                while ((line = errReader.readLine()) != null) {
-                    stderrBuilder.append(line).append("\n");
+                while ((line = reader.readLine()) != null) {
+                    stderr.append(line).append('\n');
+                    if (stderr.length() > 16384) {
+                        stderr.delete(0, stderr.length() - 16384);
+                    }
                 }
             }
-
-            process.waitFor();
-            return new DirectoryProbeResult(process.exitValue(), stderrBuilder.toString());
-        } catch (IOException | InterruptedException e) {
-            FLog.e(TAG, "listDirectories: error for remote " + remoteName, e);
-            return new DirectoryProbeResult(-1, e.getMessage() != null ? e.getMessage() : "process error");
+            return new DirectoryProbeResult(process.waitFor(), stderr.toString());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return new DirectoryProbeResult(-1, "");
+        } catch (IOException e) {
+            FLog.e(TAG, "Unable to start or read Internxt probe", e);
+            return new DirectoryProbeResult(-1, "");
+        } finally {
+            if (process != null) process.destroy();
         }
     }
 
-    /**
-     * Result of a directory probe (lsd) operation, including both the exit code
-     * and any stderr output for error classification.
-     */
     public static class DirectoryProbeResult {
         private final int exitCode;
         private final String stderr;
@@ -1468,30 +1481,30 @@ public class Rclone {
             return exitCode;
         }
 
-        public String getStderr() {
-            return stderr;
-        }
-
         public boolean isSuccess() {
             return exitCode == 0;
         }
 
-        /**
-         * Returns true if the error is a transient network issue (DNS failure,
-         * connection refused, timeout) rather than an authentication problem.
-         */
-        public boolean isNetworkError() {
-            if (exitCode == 0) return false;
-            String lower = stderr.toLowerCase(Locale.ROOT);
-            return lower.contains("dial tcp")
-                || lower.contains("connection refused")
-                || lower.contains("no such host")
-                || lower.contains("i/o timeout")
-                || lower.contains("network is unreachable")
-                || lower.contains("tls handshake timeout")
-                || lower.contains("dns")
-                || lower.contains("lookup")
-                || lower.contains("no address associated");
+        public boolean requiresInternxtReauthentication() {
+            if (exitCode <= 0) return false;
+            for (String line : stderr.toLowerCase(Locale.ROOT).split("\n")) {
+                if (line.contains("account requires 2fa but no totp_secret configured")
+                        || line.contains("password appears to be stored as plaintext")
+                        || line.contains("failed to get token - please run: rclone config reconnect")) {
+                    return true;
+                }
+                int reLogin = line.indexOf("re-login fallback failed:");
+                if (reLogin >= 0) {
+                    // NewFs appends the original refresh failure after the re-login error.
+                    // Its 401 does not prove the attempted re-login was itself rejected.
+                    int originalError = line.indexOf("): ", reLogin);
+                    String error = originalError < 0 ? line.substring(reLogin)
+                            : line.substring(reLogin, originalError);
+                    if (error.contains("status 401") || error.contains("status 403")) return true;
+                }
+            }
+            // A generic retry limit can also be reached during a provider outage.
+            return false;
         }
     }
 
@@ -1871,8 +1884,9 @@ public class Rclone {
      */
     public static String buildRemoteSection(RemoteItem remoteItem, String remotePath, Context context) {
         String remoteName = remoteItem.getName();
-        String localRemotePath = (remoteItem.isRemoteType(RemoteItem.LOCAL))
-                ? getLocalRemotePathPrefix(remoteItem, context) + "/" : "";
+        boolean plainLocal = remoteItem.isRemoteType(RemoteItem.LOCAL)
+                && !remoteItem.isAlias() && !remoteItem.isCrypt() && !remoteItem.isCache();
+        String localRemotePath = plainLocal ? getLocalRemotePathPrefix(remoteItem, context) + "/" : "";
         if (("//" + remoteName).equals(remotePath)) {
             return remoteName + ":" + localRemotePath;
         }

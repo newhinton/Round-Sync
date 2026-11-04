@@ -58,6 +58,7 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
         const val DOWNLOAD_SOURCE = "DOWNLOAD_SOURCE"
 
         const val UPLOAD_FILE = "UPLOAD_FILE"
+        const val DELETE_STAGED_UPLOAD = "DELETE_STAGED_UPLOAD"
         const val UPLOAD_TARGETPATH = "UPLOAD_TARGETPATH"
 
         const val MOVE_FILE = "MOVE_FILE"
@@ -99,6 +100,23 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
     private var mTitle: String = mNotificationManager?.initialTitle ?: ""
 
     override fun doWork(): Result {
+        try {
+            return runOperation()
+        } finally {
+            if (inputData.getBoolean(DELETE_STAGED_UPLOAD, false)) {
+                inputData.getString(UPLOAD_FILE)?.let {
+                    val staged = File(it)
+                    val parent = staged.parentFile
+                    if (parent?.parentFile == File(mContext.cacheDir, "share_staging")) {
+                        staged.delete()
+                        parent.delete()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun runOperation(): Result {
 
         registerBroadcastReceivers()
 
@@ -220,9 +238,12 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
                 return Result.failure()
             }
 
+            if (type == Type.UPLOAD && failureReason == FAILURE_REASON.NO_FAILURE && !isStopped) {
+                sendUploadFinishedBroadcast(remoteItem.name, inputData.getString(UPLOAD_TARGETPATH))
+            }
             postSync()
-            // Indicate whether the work finished successfully with the Result
-            return Result.success()
+            return if (failureReason == FAILURE_REASON.NO_FAILURE && !isStopped) Result.success()
+                else Result.failure()
         }
         log("Critical: No valid ephemeral type passed!")
         return Result.failure()
@@ -256,6 +277,7 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
 
     private fun handleSync(title: String) {
         if (sPendingProcesses.isEmpty()) {
+            failureReason = FAILURE_REASON.RCLONE_ERROR
             log("Sync: No Rclone Process!")
             mNotificationManager?.cancelSyncNotification(ongoingNotificationID)
             return
@@ -266,6 +288,7 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
             statusObject.accumulateDeletions()
             sRcloneProcess = sPendingProcesses.removeFirst().invoke()
             if (sRcloneProcess == null) {
+                failureReason = FAILURE_REASON.RCLONE_ERROR
                 log("Sync: Rclone process could not be started")
                 continue
             }
@@ -323,8 +346,12 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
             FLog.e(tag(), "onHandleIntent: error reading stdout", e)
         }
         try {
-            localProcessReference.waitFor()
+            if (localProcessReference.waitFor() != 0 && failureReason == FAILURE_REASON.NO_FAILURE) {
+                failureReason = FAILURE_REASON.RCLONE_ERROR
+            }
         } catch (e: InterruptedException) {
+            if (failureReason == FAILURE_REASON.NO_FAILURE) failureReason = FAILURE_REASON.RCLONE_ERROR
+            Thread.currentThread().interrupt()
             FLog.e(tag(), "onHandleIntent: error waiting for process", e)
         }
     }

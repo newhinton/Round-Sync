@@ -17,6 +17,7 @@ import io.github.x0b.safdav.saf.ProviderPaths;
 import io.github.x0b.safdav.xml.XmlResponseSerialization;
 
 import java.io.InputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 public class SafDAVServer extends NanoHTTPD {
@@ -24,7 +25,6 @@ public class SafDAVServer extends NanoHTTPD {
     private static final String TAG = "SafDAVServer";
     private static final String hostname = "localhost";
     private final ItemAccess itemAccess;
-    private final XmlResponseSerialization respSerializer;
     private ProviderPaths paths;
     private String requiredAuthHeader;
 
@@ -38,7 +38,6 @@ public class SafDAVServer extends NanoHTTPD {
         super(hostname, port);
         itemAccess = new DocumentsContractAccess(context);
         this.paths = new ProviderPaths(context);
-        respSerializer = new XmlResponseSerialization();
     }
 
     /**
@@ -53,7 +52,6 @@ public class SafDAVServer extends NanoHTTPD {
         super(hostname, port);
         itemAccess = new DocumentsContractAccess(context);
         this.paths = new ProviderPaths(context);
-        respSerializer = new XmlResponseSerialization();
         this.requiredAuthHeader = "Basic " + Base64.encodeToString(
                 (username + ':' + password).getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP) ;
     }
@@ -138,8 +136,8 @@ public class SafDAVServer extends NanoHTTPD {
     }
 
     private Response okXml(String message, String signature) {
-        Log.d(TAG, signature + ": 200 Ok");
-        return newFixedLengthResponse(Response.Status.OK, "text/xml", message);
+        Log.d(TAG, signature + ": 207 Multi-Status");
+        return newFixedLengthResponse(Response.Status.MULTI_STATUS, "text/xml", message);
     }
 
     private Response created(String signature) {
@@ -200,7 +198,29 @@ public class SafDAVServer extends NanoHTTPD {
      * @param session
      * @return
      */
+    private Response closeBadRequest() {
+        Response response = badRequest("onPropFind");
+        response.closeConnection(true);
+        return response;
+    }
+
     protected Response onPropFind(IHTTPSession session) {
+        // Consume optional XML properties before the connection is reused.
+        try {
+            String contentLength = session.getHeaders().get("content-length");
+            int length = contentLength == null ? 0 : Integer.parseInt(contentLength);
+            if (length < 0 || length > 65536 || session.getHeaders().containsKey("transfer-encoding")) {
+                return closeBadRequest();
+            }
+            byte[] buffer = new byte[4096];
+            while (length > 0) {
+                int read = session.getInputStream().read(buffer, 0, Math.min(length, buffer.length));
+                if (read < 0) return closeBadRequest();
+                length -= read;
+            }
+        } catch (IOException | NumberFormatException e) {
+            return closeBadRequest();
+        }
         String hDepth = session.getHeaders().get("depth");
         int depth;
         try {
@@ -227,12 +247,8 @@ public class SafDAVServer extends NanoHTTPD {
                 return internalError("onPropFind");
             }
         }
-        String requestUri = session.getUri();
-        if (!requestUri.contains(SafConstants.SAF_REMOTE_URL)) {
-            requestUri = SafConstants.SAF_REMOTE_URL + requestUri.substring(1);
-        }
-
-        String responseXml = respSerializer.propFindSerialize(directory, requestUri);
+        String requestUri = SafConstants.SAF_REMOTE_URL + Uri.encode(path.substring(1), "/");
+        String responseXml = new XmlResponseSerialization().propFindSerialize(directory, requestUri, depth);
         return okXml(responseXml, "onPropFind");
     }
 

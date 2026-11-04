@@ -8,12 +8,12 @@ import android.app.PendingIntent.FLAG_IMMUTABLE
 import android.app.PendingIntent.FLAG_UPDATE_CURRENT
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import ca.pkay.rcloneexplorer.Activities.MainActivity
-import ca.pkay.rcloneexplorer.AppShortcutsHelper
+import ca.pkay.rcloneexplorer.Activities.InternxtReauthEntryActivity
 import ca.pkay.rcloneexplorer.R
 import ca.pkay.rcloneexplorer.util.PermissionManager
 import ca.pkay.rcloneexplorer.util.SyncLog
@@ -26,7 +26,12 @@ class AppErrorNotificationManager(var mContext: Context) {
         private const val APP_ERROR_ID = 51913
         private const val SESSION_EXPIRED_ID = 51914
 
-        private const val AUTH_EXCEEDED_MAX_RETRIES = "auth exceeded max retries"
+        @JvmStatic
+        fun clearSessionExpiredNotification(context: Context, remoteName: String) {
+            val manager = NotificationManagerCompat.from(context)
+            manager.cancel(remoteName, SESSION_EXPIRED_ID)
+            manager.cancel(SESSION_EXPIRED_ID + remoteName.hashCode())
+        }
     }
 
     init {
@@ -79,20 +84,13 @@ class AppErrorNotificationManager(var mContext: Context) {
 
     @SuppressLint("MissingPermission")
     fun showSessionExpiredNotification(remoteName: String) {
-        // Deep-link directly into the Internxt re-auth flow: tapping the
-        // notification opens MainActivity with the REAUTH action and the remote
-        // name, which triggers InternxtReauth instead of just landing on the
-        // remotes list. Vary the request code per remote (via hashCode) and use
-        // FLAG_UPDATE_CURRENT so distinct remotes get distinct, fresh intents.
-        val requestCode = SESSION_EXPIRED_ID + remoteName.hashCode()
         val contentIntent = PendingIntent.getActivity(
             mContext,
-            requestCode,
-            Intent(mContext, MainActivity::class.java).apply {
-                action = MainActivity.MAIN_ACTIVITY_START_REAUTH
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                putExtra(AppShortcutsHelper.APP_SHORTCUT_REMOTE_NAME, remoteName)
-                putExtra(MainActivity.EXTRA_INTERNAL_ACTION_TOKEN, MainActivity.INTERNAL_ACTION_TOKEN)
+            0,
+            Intent(mContext, InternxtReauthEntryActivity::class.java).apply {
+                // PendingIntent identity includes data, so each remote gets its own action.
+                data = Uri.Builder().scheme("cloudbridge-internxt").authority("reauth")
+                    .appendPath(remoteName).build()
             },
             FLAG_IMMUTABLE or FLAG_UPDATE_CURRENT
         )
@@ -108,21 +106,17 @@ class AppErrorNotificationManager(var mContext: Context) {
             .setContentText(notificationText)
             .setStyle(NotificationCompat.BigTextStyle().bigText(notificationText))
             .setContentIntent(contentIntent)
+            .addAction(R.drawable.ic_twotone_error_24, mContext.getString(R.string.reauthenticate), contentIntent)
             .setAutoCancel(true)
             .setOnlyAlertOnce(true)
 
         val notificationManager = NotificationManagerCompat.from(mContext)
 
         if(PermissionManager(mContext).grantedNotifications()) {
-            notificationManager.notify(requestCode, b.build())
+            notificationManager.cancel(SESSION_EXPIRED_ID + remoteName.hashCode())
+            notificationManager.notify(remoteName, SESSION_EXPIRED_ID, b.build())
         } else {
             Log.e("AppErrorNotificationManager", "We dont have Notification Permission!")
-        }
-    }
-
-    fun checkAndNotifyAuthError(errorMessage: String?, remoteName: String?) {
-        if (errorMessage != null && errorMessage.contains(AUTH_EXCEEDED_MAX_RETRIES) && remoteName != null) {
-            showSessionExpiredNotification(remoteName)
         }
     }
 }

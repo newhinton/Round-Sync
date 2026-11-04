@@ -14,7 +14,6 @@ import androidx.work.ForegroundInfo
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import ca.pkay.rcloneexplorer.Database.DatabaseHandler
-import ca.pkay.rcloneexplorer.Items.RemoteItem
 import ca.pkay.rcloneexplorer.Items.SyncDirectionObject
 import ca.pkay.rcloneexplorer.Items.Task
 import ca.pkay.rcloneexplorer.Log2File
@@ -53,6 +52,22 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
 
         // Todo: Allow SyncWorker to run in silent mode, or remove this!
         const val EXTRA_TASK_SILENT = "notification"
+
+        internal fun processFailureReason(
+            exitCode: Int?,
+            currentReason: FAILURE_REASON
+        ): FAILURE_REASON {
+            return when {
+                currentReason != FAILURE_REASON.NO_FAILURE -> currentReason
+                exitCode == null -> FAILURE_REASON.RCLONE_ERROR
+                exitCode == 0 -> FAILURE_REASON.NO_FAILURE
+                else -> FAILURE_REASON.RCLONE_ERROR
+            }
+        }
+
+        internal fun workResult(reason: FAILURE_REASON): Result {
+            return if (reason == FAILURE_REASON.NO_FAILURE) Result.success() else Result.failure()
+        }
     }
 
 
@@ -85,7 +100,7 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
 
 
     // Task
-    private lateinit var mTask: Task
+    private var mTask: Task = Task(-1)
     private var mTitle: String = mContext.getString(R.string.sync_service_notification_startingsync)
 
 
@@ -127,12 +142,12 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
             handleTask()
             postSync()
         } else {
+            failureReason = FAILURE_REASON.NO_TASK
             postSync()
-            return Result.failure()
         }
 
-        // Indicate whether the work finished successfully with the Result
-        return Result.success()
+        // WorkManager must observe the same outcome that was reported to the user.
+        return workResult(failureReason)
     }
 
     override fun onStopped() {
@@ -155,7 +170,6 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
     private fun handleTask() {
         mTitle = mTask.title
         mNotificationManager.setCancelId(id)
-        val remoteItem = RemoteItem(mTask.remoteId, mTask.remoteType, "")
 
         if (mTask.title == "") {
             mTitle = mTask.remotePath
@@ -166,6 +180,13 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
             return
         }
         if(arePreconditionsMet()) {
+            // The saved type does not retain alias/crypt/cache metadata.
+            val remoteItem = mRclone.getRemoteItemFromName(mTask.remoteId)
+            if (remoteItem == null) {
+                failureReason = FAILURE_REASON.RCLONE_ERROR
+                log("Sync: source or destination remote is no longer configured")
+                return
+            }
             val transferLocks = TransferLocks.acquire(mContext, "sync")
             try {
                 val taskFilter = if(mTask.filterId != null ) mDatabase.getFilter(mTask.filterId!!) else null;
@@ -173,7 +194,12 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
                 val isCloudToCloud = mTask.direction == SyncDirectionObject.SYNC_REMOTE_TO_REMOTE
                         || mTask.direction == SyncDirectionObject.COPY_REMOTE_TO_REMOTE
                 sRcloneProcess = if (isCloudToCloud) {
-                    val remoteItem2 = RemoteItem(mTask.remoteId2, mTask.remoteType2, "")
+                    val remoteItem2 = mRclone.getRemoteItemFromName(mTask.remoteId2)
+                    if (remoteItem2 == null) {
+                        failureReason = FAILURE_REASON.RCLONE_ERROR
+                        log("Sync: destination remote is no longer configured")
+                        return
+                    }
                     mRclone.sync(
                         remoteItem,
                         mTask.remotePath,
@@ -202,7 +228,16 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
                     log("Sync: Rclone process could not be started for direction ${mTask.direction}")
                     return
                 }
-                handleSync(mTitle)
+                val processExitCode = handleSync(mTitle)
+                failureReason = processFailureReason(processExitCode, failureReason)
+                if (failureReason != FAILURE_REASON.NO_FAILURE) {
+                    if (processExitCode == null) {
+                        log("Sync: rclone process did not return an exit code")
+                    } else {
+                        log("Sync: rclone process failed with exit code $processExitCode")
+                    }
+                    return
+                }
                 if (isCloudToCloud) {
                     // Refresh any open FileExplorer on the destination remote so copied content appears.
                     sendUploadFinishedBroadcast(mTask.remoteId2, mTask.remotePath2)
@@ -224,8 +259,9 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
                direction == SyncDirectionObject.COPY_REMOTE_TO_REMOTE
     }
 
-    private fun handleSync(title: String) {
+    private fun handleSync(title: String): Int? {
         SyncLog.info(mContext, mTitle, mContext.getString(R.string.operation_start_sync))
+        var exitCode: Int? = null
         if (sRcloneProcess != null) {
             val localProcessReference = sRcloneProcess!!
             try {
@@ -267,14 +303,16 @@ class SyncWorker (private var mContext: Context, workerParams: WorkerParameters)
                 FLog.e(TAG, "onHandleIntent: error reading stdout", e)
             }
             try {
-                localProcessReference.waitFor()
+                exitCode = localProcessReference.waitFor()
             } catch (e: InterruptedException) {
+                Thread.currentThread().interrupt()
                 FLog.e(TAG, "onHandleIntent: error waiting for process", e)
             }
         } else {
             log("Sync: No Rclone Process!")
         }
         mNotificationManager.cancelSyncNotification(ongoingNotificationID)
+        return exitCode
     }
 
     private fun postSync() {

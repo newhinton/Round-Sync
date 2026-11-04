@@ -38,11 +38,13 @@ class EphemeralTaskManager(private var mContext: Context) {
             EphemeralTaskManager(context).work(data.build(), EPHEMERAL_WORK_TAG)
         }
 
+        @JvmOverloads
         fun queueUpload(
             context: Context,
             remote: RemoteItem,
             file: String,
-            targetpath: String) {
+            targetpath: String,
+            deleteStagedUpload: Boolean = false) {
 
             UploadWorkerNotification(context).generateChannels()
 
@@ -52,6 +54,7 @@ class EphemeralTaskManager(private var mContext: Context) {
 
             data.putString(EphemeralWorker.UPLOAD_TARGETPATH, targetpath)
             data.putString(EphemeralWorker.UPLOAD_FILE, file)
+            data.putBoolean(EphemeralWorker.DELETE_STAGED_UPLOAD, deleteStagedUpload)
 
             EphemeralTaskManager(context).work(data.build(), EPHEMERAL_WORK_TAG)
         }

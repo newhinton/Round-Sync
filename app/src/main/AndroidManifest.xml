@@ -42,6 +42,9 @@
             android:exported="false" />
 
         <activity android:name=".Activities.OnboardingActivity" />
+        <activity android:name=".Activities.InternxtReauthEntryActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.NoDisplay" />
         <activity
             android:name=".Activities.MainActivity"
             android:exported="true"

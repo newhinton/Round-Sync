@@ -344,8 +344,9 @@
     <string name="tasks">Tasks</string>
     <string name="edit">Edit</string>
     <string name="reauthenticate">Re-authenticate</string>
-    <string name="session_expired_notification_title">CloudBridge: Session expired</string>
-    <string name="session_expired_notification_text">Session for %1$s expired. Tap to manually re-authenticate.</string>
+    <string name="share_duplicate_file_name">Two shared files have the same name. Rename one and share them again.</string>
+    <string name="session_expired_notification_title">CloudBridge: Sign-in required</string>
+    <string name="session_expired_notification_text">Sign in to %1$s to restore access.</string>
     <string name="start_task">Start Task</string>
     <string name="copy_taskid">Copy TaskID</string>
     <string name="task_copied_id_to_clipboard">Copied ID "%s" to clipboard!</string>

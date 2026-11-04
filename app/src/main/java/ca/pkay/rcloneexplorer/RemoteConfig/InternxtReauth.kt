@@ -10,6 +10,7 @@ import android.widget.Toast
 import ca.pkay.rcloneexplorer.R
 import ca.pkay.rcloneexplorer.Rclone
 import ca.pkay.rcloneexplorer.util.FLog
+import ca.pkay.rcloneexplorer.notifications.AppErrorNotificationManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
@@ -269,6 +270,7 @@ class InternxtReauth(
     override fun onPostExecute(success: Boolean) {
         progressDialog?.dismiss()
         if (success) {
+            AppErrorNotificationManager.clearSessionExpiredNotification(context, remoteName)
             Toasty.success(context, context.getString(R.string.internxt_reauth_success), Toast.LENGTH_SHORT, true).show()
         } else if (errorMessage != context.getString(R.string.cancelled)) {
             Toasty.error(

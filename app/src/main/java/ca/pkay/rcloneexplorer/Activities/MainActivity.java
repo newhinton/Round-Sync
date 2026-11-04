@@ -235,6 +235,7 @@ public class MainActivity extends AppCompatActivity
         boolean hasInternalToken = INTERNAL_ACTION_TOKEN.equals(intent.getStringExtra(EXTRA_INTERNAL_ACTION_TOKEN));
         if (MAIN_ACTIVITY_START_LOG.equals(action) && hasInternalToken) {
             startLogFragment();
+            navigationView.setCheckedItem(R.id.nav_logs);
         } else if (MAIN_ACTIVITY_START_IMPORT.equals(action) && hasInternalToken) {
             //todo: Migrate import and export out of the main activity
             startConfigImportFlow();
@@ -264,7 +265,7 @@ public class MainActivity extends AppCompatActivity
             Toasty.error(this, getString(R.string.remote_not_found), Toast.LENGTH_SHORT, true).show();
             return;
         }
-        if ("internxt".equalsIgnoreCase(remoteItem.getTypeReadable())) {
+        if (remoteItem.isRemoteType(RemoteItem.INTERNXT)) {
             // Run on the UI thread: InternxtReauth is an AsyncTask whose dialogs
             // and ProgressDialog require an Activity context.
             new InternxtReauth(this, rclone, remoteItem.getName()).executeOnExecutor(AsyncTask.SERIAL_EXECUTOR);
@@ -282,10 +283,6 @@ public class MainActivity extends AppCompatActivity
     protected void onResume() {
         super.onResume();
         updatePermissionFragmentVisibility();
-        if(MAIN_ACTIVITY_START_LOG.equals(getIntent().getAction())){
-            startLogFragment();
-            navigationView.setCheckedItem(R.id.nav_logs);
-        }
     }
 
     @Override
@@ -368,11 +365,10 @@ public class MainActivity extends AppCompatActivity
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // Clean external cache and internal preview / share_staging caches on exit
+        // Clean external cache and internal preview caches on exit
         File[] cacheDirs = new File[]{
                 getExternalCacheDir(),
-                new File(getCacheDir(), "preview"),
-                new File(getCacheDir(), "share_staging")
+                new File(getCacheDir(), "preview")
         };
         for (File dir : cacheDirs) {
             if (dir != null && dir.isDirectory()) {
