@@ -131,12 +131,13 @@
   <h2 id="play-store">8. Google Play pipeline</h2>
   <p>Releasing on Play works alongside GitHub releases, not instead of them:</p>
   <ol>
-    <li><strong>Artifact:</strong> Play requires an <em>Android App Bundle</em> (<code>.aab</code>), produced by CI on every push and attached to the beta release.</li>
-    <li><strong>Signing:</strong> the AAB is signed with the project's upload key. On first upload, Google enrolls the app in <em>Play App Signing</em>: Google holds the final signing key and re-signs everything it distributes. Keep the upload keystore and its passwords safe — every future update must be signed with it.</li>
+    <li><strong>Artifact:</strong> upload the <em>Android App Bundle</em> (<code>.aab</code>) from the selected verified stable GitHub release.</li>
+    <li><strong>Signing:</strong> Play's <em>app signing key</em> must match the existing GitHub APK certificate for compatible updates across stores. The <em>upload key</em> authenticates AAB uploads and may be different. Confirm the app signing certificate in Play Console; do not assume matching upload certificates establish compatibility.</li>
     <li><strong>Upload:</strong> the AAB from the GitHub release is uploaded in Play Console to a testing track first (internal testing reviews in minutes), then promoted to production.</li>
-    <li><strong>versionCode:</strong> every upload must have a higher code than the last. The CI scheme (commit count × 10) guarantees this automatically.</li>
+    <li><strong>versionCode:</strong> development uses commit count × 20; stable uses commit count × 20 + 10. ABI APKs add 6–9, while Play and universal use the base code. Switching from an ABI APK may require the next release to avoid a downgrade.</li>
     <li><strong>Policies that matter for CloudBridge:</strong> the <code>MANAGE_EXTERNAL_STORAGE</code> permission requires a declaration form (allowed for file managers, since broad file access is the core feature), the Data safety form can state that no data is collected (see the <a href="privacy.html">privacy policy</a>), and in-app self-updating is not allowed — which is why the update checker is notification-only.</li>
   </ol>
+  <p>See the <a href="https://github.com/thies2005/CloudBridge/blob/master/docs/PUBLISHING.md">publishing guide</a> for Play uploads, F-Droid's developer-signed rebuild process and Obtainium configuration. Official F-Droid inclusion is still in preparation.</p>
 
   <h2 id="local-development">9. Local development</h2>
   <pre><code>git clone https://github.com/thies2005/CloudBridge

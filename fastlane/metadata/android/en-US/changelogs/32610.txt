@@ -1,0 +1,1 @@
+Improved task reports, follow-up tasks, configuration imports and backups. Fixed system-bar overlap on secondary screens. Refreshed store artwork, screenshots and German metadata. Added Obtainium setup links and developer-signed F-Droid build preparation; official F-Droid inclusion is pending review.

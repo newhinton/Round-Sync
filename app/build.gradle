@@ -3,18 +3,20 @@ apply plugin: 'kotlin-android'
 apply plugin: 'kotlinx-serialization'
 
 android {
+    // F-Droid rebuilds without our private key, then verifies the published APK.
+    def unsignedRelease = project.findProperty('unsignedRelease')?.toString()?.toBoolean() ?: false
     // Release signing: credentials come from a git-ignored keystore.properties
     // (local builds) or CB_* env vars (CI). Falls back to the debug key when
     // neither is present so fresh checkouts still build an installable APK.
     def keystoreProperties = new Properties()
     def keystorePropertiesFile = rootProject.file("keystore.properties")
-    if (keystorePropertiesFile.exists()) {
+    if (!unsignedRelease && keystorePropertiesFile.exists()) {
         keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
     }
-    def releaseStorePath = keystoreProperties['storeFile'] ?: System.getenv('CB_STORE_FILE')
+    def releaseStorePath = unsignedRelease ? null : (keystoreProperties['storeFile'] ?: System.getenv('CB_STORE_FILE'))
     def releaseKeyConfigured = releaseStorePath != null && file(releaseStorePath).exists() && file(releaseStorePath).length() > 0
     def isReleaseRequested = gradle.startParameter.taskNames.any { it.toLowerCase().contains('release') || it.toLowerCase() == 'build' }
-    if (System.getenv('CI') == 'true' && isReleaseRequested && !releaseKeyConfigured) {
+    if (System.getenv('CI') == 'true' && isReleaseRequested && !unsignedRelease && !releaseKeyConfigured) {
         throw new GradleException("CI release build requires a valid release keystore (CB_STORE_FILE).")
     }
     signingConfigs {
@@ -39,8 +41,8 @@ android {
         // Allocation is commit_count * 20 for development and
         // commit_count * 20 + 10 for stable; ABI outputs add 6-9.
         // The stable workflow checks this default against the tagged commit count.
-        versionCode System.getenv('CB_VERSION_CODE') ? System.getenv('CB_VERSION_CODE').toInteger() : 32530
-        versionName System.getenv('CB_VERSION_NAME') ? System.getenv('CB_VERSION_NAME') : '1.0.2'
+        versionCode System.getenv('CB_VERSION_CODE') ? System.getenv('CB_VERSION_CODE').toInteger() : 32610
+        versionName System.getenv('CB_VERSION_NAME') ? System.getenv('CB_VERSION_NAME') : '1.0.3'
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField "java.lang.String", "CLI", System.getenv('RCX_BUILD_CLI') ? System.getenv('RCX_BUILD_CLI') : "\"c03129b6-b09f-9cb4-8fcd-7f143b8f94ef\""
         buildConfigField "java.lang.String", "VCP_AUTHORITY", "\"" + applicationId + ".vcp\"";
@@ -79,7 +81,7 @@ android {
                     appIcon: "@mipmap/ic_launcher",
                     appIconRound: "@mipmap/ic_launcher_round"
             ]
-            signingConfig releaseKeyConfigured ? signingConfigs.release : signingConfigs.debug
+            signingConfig unsignedRelease ? null : (releaseKeyConfigured ? signingConfigs.release : signingConfigs.debug)
         }
     }
 

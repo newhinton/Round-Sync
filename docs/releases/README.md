@@ -11,6 +11,10 @@
 The in-app updater checks stable releases only. Both channels use the same
 release signing certificate.
 
+For Play, official F-Droid submission with the developer's signing certificate,
+and Obtainium, follow the [publishing guide](../PUBLISHING.md). F-Droid inclusion
+and reproducibility must be verified before advertising an official listing.
+
 ## Publishing
 
 For a stable release, bump the patch version and default version code together

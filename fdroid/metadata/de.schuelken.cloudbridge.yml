@@ -1,0 +1,61 @@
+# DRAFT: copy to fdroiddata/metadata/ for the v1.0.3 submission.
+# Replace commit with the full SHA of the published immutable v1.0.3 tag.
+# Keep disabled until the F-Droid server scan, build and verification pass.
+Categories:
+  - File Manager
+  - File Transfer
+License: GPL-3.0-only
+AuthorName: thies2005
+WebSite: https://thies2005.github.io/CloudBridge/
+SourceCode: https://github.com/thies2005/CloudBridge
+IssueTracker: https://github.com/thies2005/CloudBridge/issues
+Changelog: https://github.com/thies2005/CloudBridge/releases
+
+AutoName: CloudBridge
+RepoType: git
+Repo: https://github.com/thies2005/CloudBridge.git
+Binaries: https://github.com/thies2005/CloudBridge/releases/download/v%v/cloudbridge_v%v-oss-universal-release.apk
+
+Builds:
+  - versionName: 1.0.3
+    versionCode: 32610
+    disable: Draft; validate the F-Droid server scan, build and reproducibility before inclusion
+    commit: v1.0.3
+    subdir: app
+    gradle:
+      - oss
+    output: build/outputs/apk/oss/release/*-oss-universal-release-unsigned.apk
+    ndk: 29.0.14206865
+    prebuild:
+      - cd .. && bash scripts/prepare-fdroid.sh
+    gradleprops:
+      - unsignedRelease=true
+      - rcloneOffline=true
+
+AllowedAPKSigningKeys:
+  - a352eceb86e3d2fdd6a68ff68ab0637e978b843c8d885fa79e87e16b0cd06993
+
+MaintainerNotes: |
+  Draft only; see docs/PUBLISHING.md upstream. Provision Go 1.26.0 outside the
+  source tree and JDK 17 before preparation; confirm exact Android build-tools
+  and JDK patch versions against the selected upstream build. The current
+  build does not pin the Android build-tools or JDK patch version.
+  Preparation fetches the rclone fork at the SHA in gradle.properties and Go
+  modules before scanning/building. The source scanner must review this cache,
+  including module archives and dependency fixtures; no blanket scanignore is
+  provided. Coordinate dependency/toolchain provisioning with F-Droid maintainers.
+  Gradle clean preserves prefetched source/modules only in rcloneOffline mode.
+  Keep normal ABI splits enabled and select the universal output to match the
+  upstream APK. Do not pass noAbiSplits for the APK build.
+  The offline verifier requires rclone's .git metadata. Rebuilding from an
+  F-Droid source tarball requires the tagged application checkout and fetching
+  the pinned rclone checkout again during network-enabled preparation; the
+  archive alone is not sufficient.
+  Binaries and AllowedAPKSigningKeys intentionally require upstream signatures.
+  Never remove either to work around failed reproducibility or use a new key.
+  Updates remain manual while the initial recipe/toolchain is being validated.
+
+AutoUpdateMode: None
+UpdateCheckMode: None
+CurrentVersion: 1.0.3
+CurrentVersionCode: 32610

@@ -30,6 +30,7 @@ ext {
     NDK_TOOLCHAIN_VERSION = project.properties['de.schuelken.cloudbridge.ndkToolchainVersion']
     RCLONE_VERSION = project.properties['de.schuelken.cloudbridge.rCloneVersion']
     GO_REQ_VERSION = project.properties['de.schuelken.cloudbridge.goVersion']
+    RCLONE_OFFLINE = project.findProperty('rcloneOffline')?.toString()?.toBoolean() ?: false
 
     RCLONE_REPO_URL = project.findProperty('de.schuelken.cloudbridge.rCloneRepoUrl') ?: 'https://github.com/rclone/rclone.git'
     RCLONE_REF = project.findProperty('de.schuelken.cloudbridge.rCloneRef') ?: "v${RCLONE_VERSION}"
@@ -170,11 +171,17 @@ def buildRclone(abi) {
 
             exec {
                 commonEnv.each { k, v -> environment k, v }
+                if (RCLONE_OFFLINE) {
+                    environment 'GOPROXY', 'off'
+                    environment 'GOSUMDB', 'off'
+                    environment 'GOTOOLCHAIN', 'local'
+                }
                 workingDir Paths.get(CACHE_PATH, 'rclone-src').toString()
                 def ldflags = "-s -w -X github.com/rclone/rclone/fs.Version=${getSourceVersion()}"
                 commandLine (
                     'go',
                     'build',
+                    '-buildvcs=false',
                     '-tags',
                     'noselfupdate',
                     '-trimpath',
@@ -190,7 +197,7 @@ def buildRclone(abi) {
 }
 
 task createRcloneModule {
-    onlyIf { !Paths.get(CACHE_PATH, 'go.mod').toFile().exists() }
+    onlyIf { !RCLONE_OFFLINE && !Paths.get(CACHE_PATH, 'go.mod').toFile().exists() }
     doLast {
         Paths.get(CACHE_PATH).toFile().mkdirs()
         exec {
@@ -205,6 +212,9 @@ task checkoutRclone(dependsOn: createRcloneModule) {
     doLast {
         def goVersionOutput = new ByteArrayOutputStream()
         exec {
+            if (RCLONE_OFFLINE) {
+                environment 'GOTOOLCHAIN', 'local'
+            }
             commandLine 'go', 'version'
             standardOutput = goVersionOutput
         }
@@ -229,6 +239,35 @@ task checkoutRclone(dependsOn: createRcloneModule) {
 
         def srcDir = Paths.get(CACHE_PATH, 'rclone-src').toFile()
 
+        if (!(RCLONE_REF ==~ /^[0-9a-f]{40}$/)) {
+            throw new GradleException("de.schuelken.cloudbridge.rCloneRef must be a full 40-character commit SHA, got: ${RCLONE_REF}")
+        }
+        if (RCLONE_OFFLINE) {
+            if (!new File(srcDir, '.git').exists()) {
+                throw new GradleException('Offline rclone source is missing. Run scripts/prepare-fdroid.sh with network access first.')
+            }
+            def revision = new ByteArrayOutputStream()
+            exec {
+                workingDir srcDir
+                commandLine 'git', 'rev-parse', 'HEAD'
+                standardOutput = revision
+            }
+            if (revision.toString().trim() != RCLONE_REF) {
+                throw new GradleException("Offline rclone checkout must match ${RCLONE_REF}.")
+            }
+            def changes = new ByteArrayOutputStream()
+            exec {
+                workingDir srcDir
+                commandLine 'git', 'status', '--porcelain', '--untracked-files=all'
+                standardOutput = changes
+            }
+            if (!changes.toString().trim().isEmpty()) {
+                throw new GradleException('Offline rclone source must be clean, including untracked files.')
+            }
+            println "Using offline rclone source at verified commit: ${RCLONE_REF}"
+            return
+        }
+
         if (!srcDir.exists()) {
             println "Cloning rclone from ${RCLONE_REPO_URL} (ref: ${RCLONE_REF}) ..."
             exec {
@@ -242,9 +281,6 @@ task checkoutRclone(dependsOn: createRcloneModule) {
         exec {
             workingDir srcDir.absolutePath
             commandLine 'git', 'fetch', 'origin', '--tags'
-        }
-        if (!(RCLONE_REF ==~ /^[0-9a-f]{40}$/)) {
-            throw new GradleException("de.schuelken.cloudbridge.rCloneRef must be a full 40-character commit SHA, got: ${RCLONE_REF}")
         }
         exec {
             workingDir srcDir.absolutePath
@@ -289,11 +325,15 @@ task buildAll {
 
 task clean {
     doLast {
-        exec {
-            environment 'GOPATH', GOPATH
-            commandLine 'go', 'clean', '-cache', '-testcache', '-modcache', '-fuzzcache'
+        // F-Droid invokes Gradle clean after preparation. Keep downloaded source
+        // and modules so the subsequent offline rebuild can use them.
+        if (!RCLONE_OFFLINE) {
+            exec {
+                environment 'GOPATH', GOPATH
+                commandLine 'go', 'clean', '-cache', '-testcache', '-modcache', '-fuzzcache'
+            }
+            delete CACHE_PATH
         }
-        delete CACHE_PATH
         delete fileTree(OUTPUT_BASE_PATH).matching {
             include '**/librclone.so'
         }

@@ -1,0 +1,1 @@
+Improved sync and copy tasks, bulk deletion, transfer cancellation, Internxt sign-in recovery, shared uploads and Android file access. Strengthened credential and file-sharing protections. Updated rclone to 1.75.2 with CloudBridge's Internxt improvements.
