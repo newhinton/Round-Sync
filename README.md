@@ -1,9 +1,12 @@
 # CloudBridge - Rclone for Android
-[![license: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://github.com/thies2005/CloudBridge/blob/master/LICENSE) [![Latest Downloads](https://img.shields.io/github/downloads/thies2005/CloudBridge/latest/total)](https://github.com/thies2005/CloudBridge/releases) [![GitHub release](https://img.shields.io/github/v/release/thies2005/CloudBridge?include_prereleases)](https://github.com/thies2005/CloudBridge/releases/latest)
+[![license: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://github.com/thies2005/CloudBridge/blob/master/LICENSE) [![Latest Downloads](https://img.shields.io/github/downloads/thies2005/CloudBridge/latest/total)](https://github.com/thies2005/CloudBridge/releases) [![GitHub release](https://img.shields.io/github/v/release/thies2005/CloudBridge)](https://github.com/thies2005/CloudBridge/releases/latest)
 [![Documentation](https://img.shields.io/badge/Documentation-GitHub_Pages-4aad4e)](https://thies2005.github.io/CloudBridge/)
 [![Android Lint](https://github.com/thies2005/CloudBridge/actions/workflows/lint.yml/badge.svg)](https://github.com/thies2005/CloudBridge/actions/workflows/lint.yml)
 A cloud file manager, powered by rclone.
 Visit [https://thies2005.github.io/CloudBridge/](https://thies2005.github.io/CloudBridge/) for more information!
+
+Download the [latest stable release](https://github.com/thies2005/CloudBridge/releases/latest) for everyday use.
+The [automatic development build](https://github.com/thies2005/CloudBridge/releases/tag/development) tracks `master` and may contain unfinished changes.
 
 
 ## Screenshots

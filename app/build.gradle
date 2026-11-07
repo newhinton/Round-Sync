@@ -35,10 +35,12 @@ android {
         minSdkVersion 23
         compileSdk 36
         targetSdkVersion 36
-        // CI bumps these per beta via CB_VERSION_CODE / CB_VERSION_NAME env vars.
-        // versionCode must end in 0 (last digit reserved for ABI offsets).
-        versionCode System.getenv('CB_VERSION_CODE') ? System.getenv('CB_VERSION_CODE').toInteger() : 20
-        versionName System.getenv('CB_VERSION_NAME') ? System.getenv('CB_VERSION_NAME') : '1.0.1'
+        // CI overrides these for rolling development and stable builds.
+        // Allocation is commit_count * 20 for development and
+        // commit_count * 20 + 10 for stable; ABI outputs add 6-9.
+        // v1.0.2 is the commit after 1624, so its base code is 1625 * 20 + 10.
+        versionCode System.getenv('CB_VERSION_CODE') ? System.getenv('CB_VERSION_CODE').toInteger() : 32510
+        versionName System.getenv('CB_VERSION_NAME') ? System.getenv('CB_VERSION_NAME') : '1.0.2'
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField "java.lang.String", "CLI", System.getenv('RCX_BUILD_CLI') ? System.getenv('RCX_BUILD_CLI') : "\"c03129b6-b09f-9cb4-8fcd-7f143b8f94ef\""
         buildConfigField "java.lang.String", "VCP_AUTHORITY", "\"" + applicationId + ".vcp\"";
@@ -227,6 +229,8 @@ dependencies {
     implementation 'com.github.AppIntro:AppIntro:6.3.1'
     // TEST
     testImplementation 'junit:junit:4.13.2'
+    // Android's JSONObject is a stub in local JVM tests.
+    testImplementation 'org.json:json:20240303'
     androidTestImplementation 'androidx.test:runner:1.5.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 
