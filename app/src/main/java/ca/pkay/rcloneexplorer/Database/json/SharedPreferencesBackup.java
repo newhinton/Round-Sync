@@ -73,7 +73,27 @@ public class SharedPreferencesBackup {
         return main.toString();
     }
 
+    /** Check everything that can fail during parsing before replacing a ZIP's configuration. */
+    public static void validateJson(String json) throws JSONException {
+        JSONObject object = new JSONObject(json);
+        for (String key : new String[]{"showThumbnails", "isWifiOnly", "safEnabled", "refreshLaEnabled",
+                "vcpEnabled", "vcpDeclareLocal", "isWrapFilenames", "appUpdates", "useLogs"}) {
+            object.getBoolean(key);
+        }
+        Object theme = object.get("isDarkTheme");
+        if (theme instanceof String) {
+            try {
+                Integer.parseInt((String) theme);
+            } catch (NumberFormatException e) {
+                throw new JSONException("Invalid theme");
+            }
+        } else if (!(theme instanceof Boolean)) {
+            throw new JSONException("Invalid theme");
+        }
+    }
+
     public static void importJson(String json, Context context) throws JSONException {
+        validateJson(json);
         JSONObject jsonObject = new JSONObject(json);
 
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);

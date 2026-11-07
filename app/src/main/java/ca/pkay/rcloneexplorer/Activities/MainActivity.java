@@ -744,8 +744,6 @@ public class MainActivity extends AppCompatActivity
         }
 
         //todo: Check shared preferences if they will be overridden by the onPostExecute
-        //todo: This assumes that zip-files are uncorrupted. That means that if the rclone.conf is valid,
-        //todo: but the jsons are not, we import half a configuration package.
 
         @Override
         protected Boolean doInBackground(Uri... uris) {
@@ -754,30 +752,64 @@ public class MainActivity extends AppCompatActivity
             String mime = resolver.getType(uris[0]);
 
             if("application/zip".equals(mime)) {
+                final String databaseJson;
+                final String preferencesJson;
+                try {
+                    databaseJson = rclone.readDatabaseJson(uris[0]);
+                    preferencesJson = rclone.readSharedPrefs(uris[0]);
+                    Importer.validateJson(databaseJson);
+                    SharedPreferencesBackup.validateJson(preferencesJson);
+                } catch (Exception e) {
+                    statusCode = FAILURE_ZIP_INVALID_JSON;
+                    return false;
+                }
+                File config = new File(context.getFilesDir(), "rclone.conf");
+                File previousConfig = null;
+                boolean hadConfig = config.exists();
+                try {
+                    if (hadConfig) {
+                        previousConfig = File.createTempFile("rclone-restore-", ".conf", context.getFilesDir());
+                        try (java.io.InputStream in = new java.io.FileInputStream(config);
+                             java.io.OutputStream out = new java.io.FileOutputStream(previousConfig)) {
+                            byte[] buffer = new byte[8192];
+                            int count;
+                            while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
+                        }
+                    }
+                } catch (IOException e) {
+                    if (previousConfig != null) previousConfig.delete();
+                    statusCode = FAILURE_ZIP_MISSING_CONF;
+                    return false;
+                }
                 try {
                     boolean validRclone = rclone.copyConfigFileFromZip(uris[0]);
                     if(!validRclone) {
+                        if (previousConfig != null) previousConfig.delete();
                         statusCode = FAILURE_ZIP_INVALID_CONF;
                         return false;
                     }
                     statusCode = SUCCESS_IMPORT;
                 } catch (Exception e) {
+                    if (previousConfig != null) previousConfig.delete();
                     statusCode = FAILURE_ZIP_MISSING_CONF;
                     return false;
                 }
 
                 try {
-                    String json = rclone.readDatabaseJson(uris[0]);
-                    Importer.importJson(json, context);
-                    json = rclone.readSharedPrefs(uris[0]);
-                    SharedPreferencesBackup.importJson(json, context);
-                } catch (JSONException e) {
+                    Importer.importJson(databaseJson, context);
+                    SharedPreferencesBackup.importJson(preferencesJson, context);
+                } catch (Exception e) {
+                    if (hadConfig) {
+                        if (!previousConfig.renameTo(config)) {
+                            android.util.Log.e("MainActivity", "Failed to restore rclone config after import failure");
+                        }
+                    } else if (!config.delete()) {
+                        android.util.Log.e("MainActivity", "Failed to remove rclone config after import failure");
+                    }
                     statusCode = FAILURE_ZIP_INVALID_JSON;
                     return false;
-                } catch (Exception e) {
-                    statusCode = FAILURE_ZIP_NO_JSON;
-                    return false;
                 }
+                if (previousConfig != null) previousConfig.delete();
                 return true;
             }
 

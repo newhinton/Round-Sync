@@ -343,7 +343,7 @@ class DynamicRemoteConfigFragment(private val mProviderTitle: String, private va
         )
 
         input.setAdapter(adapter)
-        input.isEnabled = false
+        if (option.exclusive) input.keyListener = null
 
         textinput.addView(input)
 

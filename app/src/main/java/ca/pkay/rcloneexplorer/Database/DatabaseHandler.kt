@@ -452,6 +452,23 @@ class DatabaseHandler(context: Context?) :
         return filter
     }
 
+    fun replaceAll(triggers: List<Trigger>, filters: List<Filter>, tasks: List<Task>) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            db.delete(Trigger.TABLE_NAME, null, null)
+            db.delete(Task.TABLE_NAME, null, null)
+            db.delete(Filter.TABLE_NAME, null, null)
+            triggers.forEach { db.insertOrThrow(Trigger.TABLE_NAME, null, getTriggerContentValuesWithID(it)) }
+            filters.forEach { db.insertOrThrow(Filter.TABLE_NAME, null, getFilterContentValuesWithID(it)) }
+            tasks.forEach { db.insertOrThrow(Task.TABLE_NAME, null, getTaskContentValuesWithID(it)) }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+            db.close()
+        }
+    }
+
     fun deleteEveryting() {
         for (trigger in allTrigger) {
             deleteTrigger(trigger.id)

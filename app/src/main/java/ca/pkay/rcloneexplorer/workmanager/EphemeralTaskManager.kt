@@ -75,6 +75,7 @@ class EphemeralTaskManager(private var mContext: Context) {
 
             addFileItemToData(EphemeralWorker.MOVE_FILE, file, data)
             data.putString(EphemeralWorker.MOVE_TARGETPATH, currentPath)
+            data.putString(EphemeralWorker.MOVE_SOURCEPATH, readablePath)
             EphemeralTaskManager(context).work(data.build(), EPHEMERAL_WORK_TAG)
         }
 
@@ -85,7 +86,8 @@ class EphemeralTaskManager(private var mContext: Context) {
         fun queueDelete(
             context: Context,
             remote: RemoteItem,
-            files: List<FileItem>
+            files: List<FileItem>,
+            currentPath: String
         ) {
 
             DeleteWorkerNotification(context).generateChannels()
@@ -108,6 +110,7 @@ class EphemeralTaskManager(private var mContext: Context) {
             addRemoteItemToData(EphemeralWorker.REMOTE, remote, data)
 
             data.putString(EphemeralWorker.DELETE_MANIFEST, manifest.absolutePath)
+            data.putString(EphemeralWorker.DELETE_PATH, currentPath)
             EphemeralTaskManager(context).work(data.build(), EPHEMERAL_WORK_TAG)
         }
 

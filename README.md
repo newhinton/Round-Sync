@@ -54,9 +54,6 @@ Grab the [latest version](https://github.com/thies2005/CloudBridge/releases/late
 
 If you don't know which version to pick use ```cloudbridge_v<version>-oss-universal-release.apk```. Most devices run ARM 64 Bit, and 64 Bit devices often can also run the respective 32 bit version at lower performance. The app runs on any phone, tablet or TV with Android 6 or newer, as long as you have a touchscreen or mouse.
 
-[<img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png"
-    alt="Get it on Google Play"
-    height="80">](https://play.google.com/store/apps/details?id=de.schuelken.cloudbridge)
 
 ## Usage
 [See the documentation](https://thies2005.github.io/CloudBridge/).
@@ -125,7 +122,7 @@ This app is released under the terms of the [GPLv3 license](https://github.com/t
 ## About this app
 CloudBridge is a fork of [**Round-Sync**](https://github.com/newhinton/Round-Sync) by **Felix Nüsse**<sup>[newhinton](https://github.com/newhinton)</sup>, which is a fork of [**RCX**](https://github.com/x0b/rcx) by **x0b**<sup>[x0b](https://github.com/x0b)</sup>, which is itself a fork of [**rcloneExplorer**](https://github.com/patrykcoding/rcloneExplorer) by **Patryk Kaczmarkiewicz**<sup>[patrykcoding](https://github.com/patrykcoding)</sup>.
 
-CloudBridge was created to provide active maintenance, regular rclone updates, easy accessibility via releases on GitHub and Google Play, and extra features such as robust Internxt support.
+CloudBridge was created to provide active maintenance, regular rclone updates, easy accessibility via releases on GitHub, and extra features such as robust Internxt support.
 
 If you want to convey a modified version (fork), we ask you to use a different name, app icon and package id as well as proper attribution to avoid user confusion.
 

@@ -63,6 +63,8 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
 
         const val MOVE_FILE = "MOVE_FILE"
         const val MOVE_TARGETPATH = "MOVE_TARGETPATH"
+        const val MOVE_SOURCEPATH = "MOVE_SOURCEPATH"
+        const val DELETE_PATH = "DELETE_PATH"
 
         const val DELETE_MANIFEST = "DELETE_MANIFEST"
     }
@@ -238,8 +240,12 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
                 return Result.failure()
             }
 
-            if (type == Type.UPLOAD && failureReason == FAILURE_REASON.NO_FAILURE && !isStopped) {
-                sendUploadFinishedBroadcast(remoteItem.name, inputData.getString(UPLOAD_TARGETPATH))
+            // Operations can partially change a directory even if rclone later fails or is stopped.
+            when (type) {
+                Type.UPLOAD -> sendUploadFinishedBroadcast(remoteItem.name, inputData.getString(UPLOAD_TARGETPATH))
+                Type.MOVE -> sendUploadFinishedBroadcast(remoteItem.name, inputData.getString(MOVE_TARGETPATH), inputData.getString(MOVE_SOURCEPATH))
+                Type.DELETE -> sendUploadFinishedBroadcast(remoteItem.name, inputData.getString(DELETE_PATH))
+                else -> Unit
             }
             postSync()
             return if (failureReason == FAILURE_REASON.NO_FAILURE && !isStopped) Result.success()
@@ -473,11 +479,12 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
         return true
     }
 
-    private fun sendUploadFinishedBroadcast(remote: String, path: String?) {
+    private fun sendUploadFinishedBroadcast(remote: String, path: String?, path2: String? = null) {
         val intent = Intent()
         intent.action = getString(R.string.background_service_broadcast)
         intent.putExtra(getString(R.string.background_service_broadcast_data_remote), remote)
         intent.putExtra(getString(R.string.background_service_broadcast_data_path), path)
+        intent.putExtra(getString(R.string.background_service_broadcast_data_path2), path2)
         LocalBroadcastManager.getInstance(mContext).sendBroadcast(intent)
     }
 
