@@ -393,7 +393,7 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback{
         }
 
         remoteDropdown.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parentView: AdapterView<*>?, selectedItemView: View, position: Int, id: Long) {
+            override fun onItemSelected(parentView: AdapterView<*>?, selectedItemView: View?, position: Int, id: Long) {
                 remotePath.setText("")
                 val remotename = remoteDropdown.selectedItem.toString()
                 if(existingTask?.remoteId.equals(remotename)) {
@@ -430,7 +430,7 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback{
         }
 
         remoteDropdown2.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parentView: AdapterView<*>?, selectedItemView: View, position: Int, id: Long) {
+            override fun onItemSelected(parentView: AdapterView<*>?, selectedItemView: View?, position: Int, id: Long) {
                 remotePath2.setText("")
                 val remotename = remoteDropdown2.selectedItem.toString()
                 if (existingTask?.remoteId2.equals(remotename)) {
@@ -471,7 +471,7 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback{
         onFailDropdown.setSelection(found)
 
         onFailDropdown.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parentView: AdapterView<*>?, selectedItemView: View, position: Int, id: Long) {
+            override fun onItemSelected(parentView: AdapterView<*>?, selectedItemView: View?, position: Int, id: Long) {
                 val pair = parentView?.selectedItem as TaskNameIdPair
                 existingTask?.onFailFollowup = pair.id
             }
@@ -494,7 +494,7 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback{
 
 
         onSuccessDropdown.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parentView: AdapterView<*>?, selectedItemView: View, position: Int, id: Long) {
+            override fun onItemSelected(parentView: AdapterView<*>?, selectedItemView: View?, position: Int, id: Long) {
                 val pair = parentView?.selectedItem as TaskNameIdPair
                 existingTask?.onSuccessFollowup = pair.id
             }
@@ -532,7 +532,7 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback{
             }
 
             filterDropdown.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-                override fun onItemSelected(parentView: AdapterView<*>?, selectedItemView: View, position: Int, id: Long) {
+                override fun onItemSelected(parentView: AdapterView<*>?, selectedItemView: View?, position: Int, id: Long) {
                     selectedFilter = if (position > 0 && position < titles.size) filterItems[position - 1] else null
                 }
                 override fun onNothingSelected(parentView: AdapterView<*>?) {}
@@ -586,7 +586,7 @@ class TaskActivity : AppCompatActivity(), FolderSelectorCallback{
         syncDirection.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(
                 parentView: AdapterView<*>?,
-                selectedItemView: View,
+                selectedItemView: View?,
                 position: Int,
                 id: Long
             ) {
