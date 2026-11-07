@@ -30,3 +30,6 @@ Manual workflow runs default to validation without publication. Select
 `publish` only on `master` or a matching stable version tag to publish. All
 release runs share a concurrency group; publishing runs are never interrupted
 mid-upload by a newer run.
+
+Select `inspect_signing` for a diagnostic-only run that prints the configured
+public certificate fingerprint without building or publishing anything.

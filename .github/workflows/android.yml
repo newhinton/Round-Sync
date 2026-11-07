@@ -11,6 +11,11 @@ on:
         required: false
         default: false
         type: boolean
+      inspect_signing:
+        description: 'Inspect the public signing certificate only (no build or publication)'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -22,7 +27,42 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  inspect-signing:
+    if: github.event_name == 'workflow_dispatch' && inputs.inspect_signing
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Inspect public release certificate
+        env:
+          CB_KEYSTORE_BASE64: ${{ secrets.CB_KEYSTORE_BASE64 }}
+          CB_STORE_PASSWORD: ${{ secrets.CB_STORE_PASSWORD }}
+          CB_KEY_ALIAS: ${{ secrets.CB_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          keystore="$RUNNER_TEMP/release-signing.keystore"
+          trap 'rm -f "$keystore"' EXIT
+          printf '%s' "$CB_KEYSTORE_BASE64" | base64 -d > "$keystore"
+          echo "Configured CI certificate SHA-256:"
+          keytool -exportcert -keystore "$keystore" -storepass:env CB_STORE_PASSWORD -alias "$CB_KEY_ALIAS" | sha256sum
+          echo "Checking the same SDK verifier against the last published APK:"
+          curl --fail --location --silent --show-error \
+            https://github.com/thies2005/CloudBridge/releases/download/v1.0.2/cloudbridge_v1.0.2-oss-arm64-v8a-release.apk \
+            --output "$RUNNER_TEMP/known-release.apk" || \
+          curl --fail --location --silent --show-error \
+            https://github.com/thies2005/CloudBridge/releases/download/v1.0.1-beta.c4928762/cloudbridge_v1.0.1-beta.c4928762-oss-arm64-v8a-release.apk \
+            --output "$RUNNER_TEMP/known-release.apk"
+          signer=$(command -v apksigner || true)
+          if [[ -z "$signer" ]]; then
+            signer=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n1)
+          fi
+          echo "APK verifier: $signer"
+          certificate=$("$signer" verify --print-certs "$RUNNER_TEMP/known-release.apk" | sed -n 's/^.*certificate SHA-256 digest: //p' | tr -d '\r' | sort -u)
+          echo "Published APK certificate SHA-256: $certificate"
+          [[ "$certificate" == a352eceb86e3d2fdd6a68ff68ab0637e978b843c8d885fa79e87e16b0cd06993 ]]
+
   build-and-release:
+    if: '!inputs.inspect_signing'
     name: Build & Release
     runs-on: ubuntu-latest
 
@@ -239,8 +279,10 @@ jobs:
           EXPECTED_SIGNER=a352eceb86e3d2fdd6a68ff68ab0637e978b843c8d885fa79e87e16b0cd06993
           AAPT="$(dirname "$APKSIGNER")/aapt"
           for artifact in "$STAGING_DIR"/*.apk; do
-            certificate=$("$APKSIGNER" verify --print-certs "$artifact" 2>/dev/null | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
-            [[ "$certificate" == "$EXPECTED_SIGNER" ]] || { echo "Unexpected APK signing certificate" >&2; exit 1; }
+            certificate_details=$("$APKSIGNER" verify --print-certs "$artifact")
+            # SDK 37 uses "V2 Signer:"; older tools use "Signer #1".
+            certificate=$(printf '%s\n' "$certificate_details" | sed -n 's/^.*certificate SHA-256 digest: //p' | tr -d '\r' | sort -u)
+            [[ "$certificate" == "$EXPECTED_SIGNER" ]] || { echo "Unexpected APK certificate: $certificate (expected $EXPECTED_SIGNER)" >&2; exit 1; }
             case "$artifact" in
               *-armeabi-v7a-release.apk) offset=6 ;;
               *-arm64-v8a-release.apk) offset=7 ;;
