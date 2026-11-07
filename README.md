@@ -1,78 +1,141 @@
-# CloudBridge - Rclone for Android
-[![license: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://github.com/thies2005/CloudBridge/blob/master/LICENSE) [![Latest Downloads](https://img.shields.io/github/downloads/thies2005/CloudBridge/latest/total)](https://github.com/thies2005/CloudBridge/releases) [![GitHub release](https://img.shields.io/github/v/release/thies2005/CloudBridge)](https://github.com/thies2005/CloudBridge/releases/latest)
-[![Documentation](https://img.shields.io/badge/Documentation-GitHub_Pages-4aad4e)](https://thies2005.github.io/CloudBridge/)
-[![Android Lint](https://github.com/thies2005/CloudBridge/actions/workflows/lint.yml/badge.svg)](https://github.com/thies2005/CloudBridge/actions/workflows/lint.yml)
-A cloud file manager, powered by rclone.
-Visit [https://thies2005.github.io/CloudBridge/](https://thies2005.github.io/CloudBridge/) for more information!
+<p align="center">
+  <img src="fastlane/metadata/android/en-US/images/icon.png" width="96" height="96" alt="CloudBridge cloud and linked-chain logo">
+</p>
 
-Download the [latest stable release](https://github.com/thies2005/CloudBridge/releases/latest) for everyday use.
-The [automatic development build](https://github.com/thies2005/CloudBridge/releases/tag/development) tracks `master` and may contain unfinished changes.
+<h1 align="center">CloudBridge</h1>
 
+<p align="center"><strong>Your files. Your connections.</strong><br>A cloud file manager for Android, powered by rclone.</p>
 
-## Screenshots
+<p align="center">
+  <a href="https://github.com/thies2005/CloudBridge/releases/latest"><strong>Download stable</strong></a> ·
+  <a href="https://github.com/thies2005/CloudBridge/releases/tag/development">Latest beta</a> ·
+  <a href="https://thies2005.github.io/CloudBridge/">Documentation</a> ·
+  <a href="https://github.com/thies2005/CloudBridge/issues">Report an issue</a>
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPLv3-blue" alt="License: GPLv3"></a>
+  <a href="https://github.com/thies2005/CloudBridge/releases/latest"><img src="https://img.shields.io/github/v/release/thies2005/CloudBridge" alt="Latest stable release"></a>
+  <a href="https://github.com/thies2005/CloudBridge/actions/workflows/lint.yml"><img src="https://github.com/thies2005/CloudBridge/actions/workflows/lint.yml/badge.svg" alt="Android lint and unit tests"></a>
+</p>
+
+![CloudBridge: Your files. Your connections. Powered by rclone for Android.](fastlane/metadata/android/en-US/images/featureGraphic.jpg)
+
+CloudBridge brings your cloud storage and local files together on your Android phone or tablet. Browse folders, transfer documents, stream media, and schedule recurring tasks from one app. Connect providers such as Internxt and Drime, or import an existing rclone configuration.
+
+**Android 6.0+ · Open source · Material 3 · Light and dark themes**
+
+## What you can do
+
+| | Features |
+|---|---|
+| **Manage files** | Browse, view, upload, download, move, rename, and delete files and folders. |
+| **Connect your storage** | Use rclone-compatible providers. Setup is available in the app for supported providers; others require a configuration import. |
+| **Plan transfers** | Create copy or sync tasks and run them through scheduled triggers. |
+| **Use encryption** | Configure rclone Crypt remotes to encrypt files before uploading them. |
+| **Stream and serve** | Stream media or serve files and directories over HTTP, WebDAV, FTP, or DLNA. |
+| **Work with Android** | Share files from other apps and use the Storage Access Framework for SD cards and USB storage. |
+
+Provider capabilities depend on the selected service and configuration. CloudBridge connects to your storage; it does not provide cloud storage itself.
+
+## A look inside
+
 <table>
-  <tr style="border:none">
-    <td style="border:none">
-      <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.jpg" width="360vh" />
-    </td>
-    <td style="border:none">
-      <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.jpg" width="360vh" />
-    </td>
-    <td style="border:none">
-      <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.jpg" width="360vh" />
-    </td>
+  <tr>
+    <td align="center" width="33%"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" width="220" alt="CloudBridge connections to Google Drive, internal storage, and Internxt"><br><strong>Your storage</strong></td>
+    <td align="center" width="33%"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" width="220" alt="Folders inside an Internxt cloud storage connection"><br><strong>Your files</strong></td>
+    <td align="center" width="33%"><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" width="220" alt="Scheduled photo and Google Drive transfer triggers"><br><strong>Your schedule</strong></td>
   </tr>
 </table>
 
+<details>
+<summary>More screenshots: providers and settings</summary>
 
-## Features
-|                                                            Cloud Access                                                             |                                    256 Bit Encryption<sup>[1](https://rclone.org/crypt/#file-encryption)</sup>                                     |                                                         Integrated Experience                                                         |
-|:-----------------------------------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------------------------------------------------------------------:|:-------------------------------------------------------------------------------------------------------------------------------------:|
-| <img src="https://github.com/thies2005/CloudBridge/blob/master/docs/cloud-computing.png?raw=true" alt="Cloud Access" width="144" />  | <img src="https://github.com/thies2005/CloudBridge/blob/master/docs/locked-padlock.png?raw=true" alt="256 Bit End-to-End Encryption" width="108" /> | <img src="https://github.com/thies2005/CloudBridge/blob/master/docs/smartphone.png?raw=true" alt="Integrated Experience" width="132"/> |
-|                                             Use your cloud storage like a local folder.                                             |                                         Keep your files private on any cloud provider with crypt remotes.                                          |                                  Don't give up features or comfort just because it runs on a phone.                                   |
+<p>
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" width="220" alt="Selection of rclone storage types, including Azure, Backblaze B2, and Box">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.png" width="220" alt="CloudBridge settings for language, file access, appearance, and configuration backups">
+</p>
 
-- **File Management** (list, view, download, upload, move, rename, delete files and folders)
-- **Streaming** (Stream media files, serve files and directories over FTP, HTTP, WebDAV or DLNA)
-- **Integration** (Access local storage devices and share files with the application to store them on a remote)
-- **Many cloud storage providers** (all via rclone config import, some without ui-setup)
-- **Material 3 Design** (Dark theme)
-- **All architectures** (runs on ARM, ARM64, x86 and x64 devices, Android 6+)
-- **Storage Access Framework (SAF)** ([see docs](https://thies2005.github.io/CloudBridge/internals.html#storage-access-framework)) for SD card and USB device access.
-- **Intentservice** to start tasks via third party apps!
-- **Task Management** to allow regular runs of your important tasks!
+</details>
 
+## Get started
 
-## Installation
+1. Install a signed APK from the [latest stable release](https://github.com/thies2005/CloudBridge/releases/latest).
+2. Add a storage connection in CloudBridge, or import your existing rclone configuration. Use your own account for the chosen provider.
+3. Open a connection to browse folders and transfer files. You can also share a file from another Android app to CloudBridge.
+4. For recurring transfers, create a task and add a scheduled trigger.
 
-Grab the [latest version](https://github.com/thies2005/CloudBridge/releases/latest) of the signed APK and install it on your phone.
-| CPU architecture | Where to find | APK identifier |
-|:---|:--|:---:|
-|ARM 32 Bit | older devices | ```armeabi-v7a``` |
-|**ARM 64 Bit** | **most devices** | ```arm64-v8a``` |
-|Intel/AMD 32 Bit | some TV boxes and tablets | ```x86``` |
-|Intel/AMD 64 Bit | some emulators | ```x86_64``` |
+Copy tasks transfer new or changed files. Sync tasks can also delete destination files to match the source; choose the direction and operation that fit your workflow.
 
-If you don't know which version to pick use ```cloudbridge_v<version>-oss-universal-release.apk```. Most devices run ARM 64 Bit, and 64 Bit devices often can also run the respective 32 bit version at lower performance. The app runs on any phone, tablet or TV with Android 6 or newer, as long as you have a touchscreen or mouse.
+### Choose your download
 
+| APK variant | Suitable devices |
+|---|---|
+| **`arm64-v8a`** | Most modern Android phones and tablets |
+| `armeabi-v7a` | Older 32-bit ARM devices |
+| `x86_64` | 64-bit Intel/AMD devices and emulators |
+| `x86` | 32-bit Intel/AMD devices and emulators |
+| **`universal`** | All supported architectures; a larger download |
 
-## Usage
-[See the documentation](https://thies2005.github.io/CloudBridge/).
+If you are unsure, choose `cloudbridge_v<version>-oss-universal-release.apk`. Download the APK to install on a device; Android App Bundles (`.aab`) are intended for distribution through Google Play.
 
+The [automatic development build](https://github.com/thies2005/CloudBridge/releases/tag/development) follows `master` and may contain unfinished changes. Use the stable release for everyday use.
 
-## Intents
-This app includes the ability to launch an intent! Create a task to sync to a remote, and copy it's id (via the treedot-menu)
-The intent needs the following:
+## Documentation and support
 
-| Intent          |                   Content                   |                 |
-|:----------------|:-------------------------------------------:|----------------:|
-| packageName     |           de.schuelken.cloudbridge            |                 |
-| className       | ca.pkay.rcloneexplorer.Services.SyncService |                 |
-| Action          |                 START_TASK                  |                 |
-| Integer Extra   |                    task                     |        idOfTask |
-| Boolean Extra   |                notification                 |   true or false |
+- [User and project documentation](https://thies2005.github.io/CloudBridge/)
+- [How CloudBridge works](https://thies2005.github.io/CloudBridge/internals.html)
+- [Privacy policy](https://thies2005.github.io/CloudBridge/privacy.html)
+- [Bug reports and feature requests](https://github.com/thies2005/CloudBridge/issues)
 
+Contributions and pull requests are welcome. When reporting a problem, include your app version, Android version, provider, and steps to reproduce it. Remove credentials and tokens from any logs you share.
 
-## Libraries
+## Build and contribute
+
+CloudBridge contains the Android app, an rclone build module, and the SAF/WebDAV bridge library.
+
+| Requirement | Version or location |
+|---|---|
+| Java | JDK 17 |
+| Go | At least the version pinned in [gradle.properties](gradle.properties), currently 1.26.0 |
+| Android SDK and NDK | Install the SDK and the NDK version pinned in [gradle.properties](gradle.properties) |
+| SDK location | Set `sdk.dir` in `local.properties` or configure `ANDROID_HOME` |
+
+```sh
+# Build the open-source edition
+./gradlew assembleOssDebug
+./gradlew assembleOssRelease
+
+# Run unit tests and lint
+./gradlew testOssDebugUnitTest
+./gradlew lint -x :rclone:buildAll
+```
+
+App builds trigger rclone cross-compilation. The first build downloads and caches the configured rclone source. Debug APKs are written to `app/build/outputs/apk/oss/debug/`; debug installs use the `.debug` application ID suffix.
+
+For rclone upgrades, update `de.schuelken.cloudbridge.rCloneRef` in [gradle.properties](gradle.properties) and rebuild. Keep fetched sources under `rclone/cache/` untouched. See [AGENTS.md](AGENTS.md) for repository conventions and required checks.
+
+### Start a task from another app
+
+Create a task in CloudBridge and copy its ID from the task's three-dot menu. Automation apps can start it with this intent:
+
+| Field | Value |
+|---|---|
+| Package | `de.schuelken.cloudbridge` |
+| Class | `ca.pkay.rcloneexplorer.Services.SyncService` |
+| Action | `START_TASK` |
+| Integer extra | `task`: the task ID |
+| Boolean extra | `notification`: `true` or `false` |
+
+## Built on open source
+
+CloudBridge is a fork of [Round-Sync](https://github.com/newhinton/Round-Sync) by **Felix Nüsse (newhinton)**, which is a fork of [RCX](https://github.com/x0b/rcx) by **x0b**, originally derived from [rcloneExplorer](https://github.com/patrykcoding/rcloneExplorer) by **Patryk Kaczmarkiewicz**. It is powered by [rclone](https://github.com/rclone/rclone), created by **Nick Craig-Wood and contributors**.
+
+This fork adds maintenance, rclone updates, and provider integration work, including Internxt automatic token renewal and Drime support. Thank you to the upstream authors and contributors who made it possible.
+
+<details>
+<summary>Libraries and acknowledgements</summary>
+
 - [rclone](https://github.com/rclone/rclone) - Calling this a library is an understatement. Without rclone, there would not be CloudBridge. See https://rclone.org/donate/ to support rclone.
 - [Jetpack AndroidX](https://developer.android.com/license) - AppCompat, RecyclerView, ConstraintLayout, WorkManager, DataStore, Lifecycle, SplashScreen and more.
 - [Material Components](https://github.com/material-components/material-components-android) - Material 3 widgets and theming.
@@ -91,44 +154,10 @@ The intent needs the following:
 - [android-retrofuture / android-retrostreams](https://github.com/streamsupport/streamsupport) - Java 8+ streams and CompletableFuture backports.
 - Icons from [Flaticon](https://www.flaticon.com) courtesy of [Smashicons](https://www.flaticon.com/authors/smashicons) and [Freepik](https://www.flaticon.com/authors/freepik)
 
-
-## Contact & Contributions
-Whether you have a question, found a bug, or have an idea for a new feature — you are welcome to write me at [136268370+thies2005@users.noreply.github.com](mailto:136268370+thies2005@users.noreply.github.com). Pull requests and feature requests are always welcome!
-
-## Developing
-
-You should first make sure you have:
-
-- Go 1.25+ installed and in your PATH
-- Java installed and in your PATH
-- Android SDK command-line tools installed OR the NDK version specified in `gradle.properties`
-  installed
-
-You can then build the app normally from Android Studio or from CLI by running:
-
-```sh
-# Debug build
-./gradlew assembleOssDebug
-
-# or release build
-./gradlew assembleOssRelease
-```
-
+</details>
 
 ## License
-This app is released under the terms of the [GPLv3 license](https://github.com/thies2005/CloudBridge/blob/master/LICENSE). By submitting a pull request, you agree that your contributions are licensed under the GPLv3 as well.
 
+CloudBridge is released under the [GNU General Public License v3](LICENSE). Contributions are provided under the same license.
 
-## About this app
-CloudBridge is a fork of [**Round-Sync**](https://github.com/newhinton/Round-Sync) by **Felix Nüsse**<sup>[newhinton](https://github.com/newhinton)</sup>, which is a fork of [**RCX**](https://github.com/x0b/rcx) by **x0b**<sup>[x0b](https://github.com/x0b)</sup>, which is itself a fork of [**rcloneExplorer**](https://github.com/patrykcoding/rcloneExplorer) by **Patryk Kaczmarkiewicz**<sup>[patrykcoding](https://github.com/patrykcoding)</sup>.
-
-CloudBridge was created to provide active maintenance, regular rclone updates, easy accessibility via releases on GitHub, and extra features such as robust Internxt support.
-
-If you want to convey a modified version (fork), we ask you to use a different name, app icon and package id as well as proper attribution to avoid user confusion.
-
-
-## New Features in this Fork
-This fork adds explicit support and fixes for the following providers:
-- **Internxt**: Decentralized cloud storage. Included is a robust integration with automatic token renewal and state persistence to ensure the remote connection does not expire.
-- **Drime**: Cloud storage provider.
-- **Always up to date**: CloudBridge is regularly updated to the newest rclone version, so new providers, features and fixes arrive quickly.
+If you distribute a modified fork, please use a distinct name, app icon, and package ID, and preserve the upstream attribution to avoid confusion.
