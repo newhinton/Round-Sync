@@ -158,7 +158,7 @@ This fork adds maintenance, rclone updates, and provider integration work, inclu
 - [RFC 3339 Date Parser](https://github.com/x0b/rfc3339parser) - Timestamp parsing.
 - [App Update Checker](https://github.com/Sharkaboi/AppUpdateChecker) - Checks GitHub for new app versions.
 - [android-retrofuture / android-retrostreams](https://github.com/streamsupport/streamsupport) - Java 8+ streams and CompletableFuture backports.
-- Icons from [Flaticon](https://www.flaticon.com) courtesy of [Smashicons](https://www.flaticon.com/authors/smashicons) and [Freepik](https://www.flaticon.com/authors/freepik)
+- [Artwork provenance and licenses](ASSETS.md), including current CloudBridge artwork and historical third-party credits.
 
 </details>
 

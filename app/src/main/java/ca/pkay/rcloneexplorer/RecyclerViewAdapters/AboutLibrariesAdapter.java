@@ -84,8 +84,7 @@ public class AboutLibrariesAdapter extends RecyclerView.Adapter<RecyclerView.Vie
 
     private void setFooter(RecyclerView.ViewHolder viewHolder) {
         FooterViewHolder holder = (FooterViewHolder) viewHolder;
-        holder.smashIcons.setOnClickListener(v -> listener.onLibraryClick("https://www.flaticon.com/authors/smashicons"));
-        holder.flatIcon.setOnClickListener(v -> listener.onLibraryClick("https://www.flaticon.com/"));
+        holder.artworkCredits.setOnClickListener(v -> listener.onLibraryClick("https://github.com/thies2005/CloudBridge/blob/master/ASSETS.md"));
     }
 
     @Override
@@ -110,13 +109,11 @@ public class AboutLibrariesAdapter extends RecyclerView.Adapter<RecyclerView.Vie
 
     class FooterViewHolder extends RecyclerView.ViewHolder {
 
-        final TextView smashIcons;
-        final TextView flatIcon;
+        final TextView artworkCredits;
 
         FooterViewHolder(View itemView) {
             super(itemView);
-            this.smashIcons = itemView.findViewById(R.id.smashicons);
-            this.flatIcon = itemView.findViewById(R.id.flaticon);
+            this.artworkCredits = itemView.findViewById(R.id.artwork_credits);
         }
     }
 }

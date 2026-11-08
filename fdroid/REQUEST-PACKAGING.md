@@ -1,8 +1,8 @@
 # CloudBridge 1.0.3 — F-Droid packaging request
 
-Open https://gitlab.com/fdroid/rfp/-/issues/new, sign in, select the app request
-template if offered, and use the following information in its matching fields.
-This file is a draft for the app author to submit; it does not create an issue.
+The initial request already exists at https://gitlab.com/fdroid/rfp/-/work_items/4754.
+Do not open a duplicate. This file records the original v1.0.3 submission details.
+For the prepared v1.0.4 fixes and another review, follow [REVIEW-FOLLOWUP.md](REVIEW-FOLLOWUP.md).
 
 **Suggested title:** CloudBridge — cloud file manager powered by rclone
 

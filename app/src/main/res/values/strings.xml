@@ -120,6 +120,7 @@
     <string name="title_activity_settings">Settings</string>
     <string name="pref_header_general">General</string>
     <string name="restart_required">App restart is required</string>
+    <string name="cloudbridge_artwork_credits">CloudBridge artwork and licenses</string>
     <string name="app_icon_made_by">App icon made by</string>
     <string name="smashicons" translatable="false">Smashicons</string>
     <string name="from">from</string>

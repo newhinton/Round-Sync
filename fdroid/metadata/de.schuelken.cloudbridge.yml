@@ -1,5 +1,5 @@
-# DRAFT: copy to fdroiddata/metadata/ for the v1.0.3 submission.
-# Replace commit with the full SHA of the published immutable v1.0.3 tag.
+# DRAFT: copy to fdroiddata/metadata/ for the v1.0.4 submission.
+# Replace commit with the full SHA of the published immutable v1.0.4 tag.
 # Keep disabled until the F-Droid server scan, build and verification pass.
 Categories:
   - File Manager
@@ -9,6 +9,7 @@ AuthorName: thies2005
 WebSite: https://thies2005.github.io/CloudBridge/
 SourceCode: https://github.com/thies2005/CloudBridge
 IssueTracker: https://github.com/thies2005/CloudBridge/issues
+Translation: https://github.com/thies2005/CloudBridge/blob/master/CONTRIBUTING.md#localize-cloudbridge
 Changelog: https://github.com/thies2005/CloudBridge/releases
 
 AutoName: CloudBridge
@@ -17,11 +18,15 @@ Repo: https://github.com/thies2005/CloudBridge.git
 Binaries: https://github.com/thies2005/CloudBridge/releases/download/v%v/cloudbridge_v%v-oss-universal-release.apk
 
 Builds:
-  - versionName: 1.0.3
-    versionCode: 32610
+  - versionName: 1.0.4
+    versionCode: 32630
     disable: Draft; validate the F-Droid server scan, build and reproducibility before inclusion
-    commit: v1.0.3
+    commit: v1.0.4
     subdir: app
+    rm:
+      - docs/cloud-computing.png
+      - docs/locked-padlock.png
+      - docs/smartphone.png
     gradle:
       - oss
     output: build/outputs/apk/oss/release/*-oss-universal-release-unsigned.apk
@@ -57,5 +62,5 @@ MaintainerNotes: |
 
 AutoUpdateMode: None
 UpdateCheckMode: None
-CurrentVersion: 1.0.3
-CurrentVersionCode: 32610
+CurrentVersion: 1.0.4
+CurrentVersionCode: 32630

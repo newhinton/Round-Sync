@@ -1,38 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/artwork_credits"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
     android:paddingTop="48dp"
     android:paddingBottom="48dp"
-    android:gravity="center_horizontal">
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/app_icon_made_by"/>
-
-    <TextView
-        android:id="@+id/smashicons"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:paddingStart="4dp"
-        android:paddingEnd="4dp"
-        android:textColor="?attr/colorSecondary"
-        android:text="@string/smashicons"/>
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/from"/>
-
-    <TextView
-        android:id="@+id/flaticon"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textColor="?attr/colorSecondary"
-        android:paddingStart="4dp"
-        android:paddingEnd="4dp"
-        android:text="@string/flaticon"/>
-</LinearLayout>
+    android:gravity="center"
+    android:textColor="?attr/colorSecondary"
+    android:text="@string/cloudbridge_artwork_credits" />

@@ -46,9 +46,9 @@ When filing a new bug report, answer all the questions in the template. This inc
    ```
    Translated string values into **bn-BD**
    ```sh
-   <string name="app_name">রাউন্ড সিঙ্ক</string>
+   <string name="app_name">CloudBridge</string>
    <string name="app_description">অ্যান্ড্রয়েডের জন্য আরক্লোন</string>
-   <string name="app_short_name">রাউন্ড সিঙ্ক</string>
+   <string name="app_short_name">CloudBridge</string>
    ```
 
 

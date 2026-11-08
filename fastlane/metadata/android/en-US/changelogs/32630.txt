@@ -1,0 +1,1 @@
+Updated and verified the Gradle wrapper. Added F-Droid translation guidance and artwork provenance. Corrected icon credits and remaining old branding. Excluded unused legacy illustrations from F-Droid source packaging. Official F-Droid review remains pending.
