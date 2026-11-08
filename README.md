@@ -21,6 +21,19 @@
 
 ![CloudBridge: Your files. Your connections. Powered by rclone for Android.](fastlane/metadata/android/en-US/images/featureGraphic.jpg)
 
+> [!NOTE]
+> **Google Play testing and F-Droid**
+>
+> CloudBridge is currently being published on Google Play. To install and test it:
+>
+> 1. Join the [CloudBridge testing group](https://groups.google.com/g/thies2005).
+> 2. Open the [CloudBridge test page](https://play.google.com/apps/test/de.schuelken.cloudbridge/16180) and follow the instructions to join the test and install the app from Google Play.
+> 3. Try the app and [report bugs or feedback](https://github.com/thies2005/CloudBridge/issues).
+>
+> Use the same Google account for the group, the test page, and the Play Store on your Android device. Joining the group alone does not install the app.
+>
+> Work on publishing CloudBridge on F-Droid is also underway.
+
 CloudBridge brings your cloud storage and local files together on your Android phone or tablet. Browse folders, transfer documents, stream media, and schedule recurring tasks from one app. Connect providers such as Internxt and Drime, or import an existing rclone configuration.
 
 **Android 6.0+ · Open source · Material 3 · Light and dark themes**
