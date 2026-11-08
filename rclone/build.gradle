@@ -183,7 +183,7 @@ def buildRclone(abi) {
                     'build',
                     '-buildvcs=false',
                     '-tags',
-                    'noselfupdate',
+                    'noselfupdate,nogui',
                     '-trimpath',
                     '-ldflags',
                     ldflags,

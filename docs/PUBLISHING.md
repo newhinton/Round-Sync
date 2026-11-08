@@ -39,10 +39,11 @@ secrets remain `CB_KEYSTORE_BASE64`, `CB_STORE_PASSWORD`, `CB_KEY_ALIAS` and
 
 ## 2. Publish the next stable GitHub release
 
-`v1.0.3` is the release prepared for Obtainium and F-Droid submission. Its
-universal APK and Play AAB use version code **32610**. The earlier `v1.0.2`
-predates these build changes. Do not move existing tags or replace published
-APKs. For later releases:
+`v1.0.5` is the release prepared for Obtainium and F-Droid submission. Its
+universal APK and Play AAB use version code **32650**. The Android build omits
+rclone's unused embedded web GUI using the `nogui` build tag. The rclone fork
+retains its normal GUI in default builds. Do not move existing tags or replace
+published APKs. For later releases:
 
 1. Finish the release changes. Update `versionName` and `versionCode` together
    in `app/build.gradle`, and add `docs/releases/<version>.md`.
@@ -101,8 +102,8 @@ code. You do not upload an APK to Play for this AAB-based workflow.
 
 The draft recipe is
 [`fdroid/metadata/de.schuelken.cloudbridge.yml`](../fdroid/metadata/de.schuelken.cloudbridge.yml).
-It is intentionally disabled and targets `v1.0.3`, version code **32610**.
-After publication, replace its `commit: v1.0.3` with the tag's **full immutable
+It is intentionally disabled and targets `v1.0.5`, version code **32650**.
+After publication, replace its `commit: v1.0.5` with the tag's **full immutable
 source commit SHA** in your fdroiddata submission. Keep the version and code
 unchanged for that release. A tag cannot embed its own future commit SHA in
 the source it identifies.

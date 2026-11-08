@@ -1,5 +1,5 @@
-# DRAFT: copy to fdroiddata/metadata/ for the v1.0.4 submission.
-# Replace commit with the full SHA of the published immutable v1.0.4 tag.
+# DRAFT: copy to fdroiddata/metadata/ for the v1.0.5 submission.
+# Replace commit with the full SHA of the published immutable v1.0.5 tag.
 # Keep disabled until the F-Droid server scan, build and verification pass.
 Categories:
   - File Manager
@@ -18,10 +18,10 @@ Repo: https://github.com/thies2005/CloudBridge.git
 Binaries: https://github.com/thies2005/CloudBridge/releases/download/v%v/cloudbridge_v%v-oss-universal-release.apk
 
 Builds:
-  - versionName: 1.0.4
-    versionCode: 32630
+  - versionName: 1.0.5
+    versionCode: 32650
     disable: Draft; validate the F-Droid server scan, build and reproducibility before inclusion
-    commit: v1.0.4
+    commit: v1.0.5
     subdir: app
     rm:
       - docs/cloud-computing.png
@@ -32,7 +32,7 @@ Builds:
     output: build/outputs/apk/oss/release/*-oss-universal-release-unsigned.apk
     ndk: 29.0.14206865
     prebuild:
-      - cd .. && bash scripts/prepare-fdroid.sh
+      - (cd .. && GOFLAGS=-modcacherw bash scripts/prepare-fdroid.sh)
     gradleprops:
       - unsignedRelease=true
       - rcloneOffline=true
@@ -62,5 +62,5 @@ MaintainerNotes: |
 
 AutoUpdateMode: None
 UpdateCheckMode: None
-CurrentVersion: 1.0.4
-CurrentVersionCode: 32630
+CurrentVersion: 1.0.5
+CurrentVersionCode: 32650

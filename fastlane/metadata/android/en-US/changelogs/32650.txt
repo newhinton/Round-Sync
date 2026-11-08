@@ -1,0 +1,1 @@
+Omitted rclone's unused browser-based GUI and bundled web assets from the Android native binary to simplify F-Droid packaging. Android file management, cloud providers and scheduled transfers remain available. Uses the existing signing key. Official F-Droid inclusion is still pending review and verification.
