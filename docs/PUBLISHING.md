@@ -100,13 +100,18 @@ code. You do not upload an APK to Play for this AAB-based workflow.
 
 ## 4. Submit the developer-signed build to official F-Droid
 
+The current submission is [MR !56366](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/56366).
+See [F-Droid progress and follow-up steps](FDROID.md) for the tested recipe,
+validation results and remaining review steps. Use the existing merge request
+for the v1.0.6 follow-up.
+
 The draft recipe is
 [`fdroid/metadata/de.schuelken.cloudbridge.yml`](../fdroid/metadata/de.schuelken.cloudbridge.yml).
-It is intentionally disabled and targets `v1.0.5`, version code **32650**.
-After publication, replace its `commit: v1.0.5` with the tag's **full immutable
-source commit SHA** in your fdroiddata submission. Keep the version and code
-unchanged for that release. A tag cannot embed its own future commit SHA in
-the source it identifies.
+It is intentionally disabled and targets the unpublished `v1.0.6` candidate.
+Its proposed code is **32710**, based on a single commit on top of the current
+base. Recalculate against the final release commit as described in the
+[release guide](releases/README.md). After publication, pin the tag's **full
+immutable source commit SHA** and actual version code in fdroiddata.
 
 `Binaries` points to the signed stable universal APK, and
 `AllowedAPKSigningKeys` pins the existing certificate. With this combination,
@@ -119,8 +124,9 @@ these fields or switch to an F-Droid signing key to bypass it.
    a branch for CloudBridge.
 2. Copy the draft to `metadata/de.schuelken.cloudbridge.yml` in that checkout.
    Replace the build and `CurrentVersion` values with the prepared stable
-   release. Ensure the selected commit includes `scripts/prepare-fdroid.sh` and
-   the offline/unsigned Gradle options. Keep the certificate pin unchanged.
+   release. Ensure the selected commit includes both preparation scripts and
+   the offline/unsigned Gradle options. Remove the old fdroiddata helper patch.
+   Keep the certificate pin unchanged.
 3. Provision the release's toolchain in the F-Droid environment: **JDK 17**,
    exact **Go 1.26.0**, SDK platform 36 and **NDK 29.0.14206865** for the current
    configuration. Read `gradle.properties` at the selected tag for future
@@ -130,15 +136,18 @@ these fields or switch to an F-Droid signing key to bypass it.
    must establish them before calling the recipe reproducible.
 4. Run the preparation script with network access. It checks the exact Go
    version, fetches the pinned public rclone source and downloads its Go
-   modules. The draft calls it from `prebuild`. The subsequent native rebuild
+   modules. The draft calls it from `prebuild` with `--prune-fixtures`, which
+   requires Python 3.9+ and a disposable checkout with a fresh Go module cache.
+   The subsequent native rebuild
    uses local dependencies with Go's proxy, checksum lookup and automatic
    toolchain download disabled. Gradle dependencies must also be provisioned
    before attempting a completely network-disabled Gradle build.
-5. Review F-Droid's source and dependency scan, including the prefetched Go
-   module ZIPs and dependency test fixtures. Toolchain availability and any
-   scanner findings need resolution with the packagers. No blanket
-   `scanignore` is supplied and this preparation is not a dependency/license
-   audit. Do not include downloaded compiler binaries in the source cache.
+5. Review F-Droid's source and dependency scan. The helper compares production
+   inputs for all four ABIs before and after removing listed unused fixtures
+   and redundant module ZIPs. Extracted source and ZIP hashes remain; the
+   recipe retains narrow scan exceptions from the previous passing build.
+   Preparation does not establish dependency/license compliance. Keep
+   downloaded compiler binaries outside the source cache.
 6. Once the environment and new release values are correct, remove the draft
    build's `disable` entry **in your fdroiddata fork**, then run:
 
@@ -161,13 +170,12 @@ these fields or switch to an F-Droid signing key to bypass it.
    the independent F-Droid server rebuild and publication verification remain
    the acceptance gate. Keep ordinary APK splits enabled and select the
    universal output; `-PnoAbiSplits` is only for the AAB build.
-8. Commit the tested metadata to your fork and open a merge request to
-   `fdroid/fdroiddata`, titled `New App: CloudBridge`. Explain the fork's
+8. Commit the tested metadata to your fork's existing CloudBridge branch to
+   update [MR !56366](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/56366).
+   Explain the fork's
    Internxt/Drime support and maintenance improvements, link the source and
    release, and state that **developer-signed reproducible distribution is
    required from the first release**. Respond to build and policy review.
-   Alternatively open a [packaging request](https://gitlab.com/fdroid/rfp/-/issues)
-   with the same information and link this draft.
 9. Wait for acceptance, successful server verification and repository
    publication. Only then add an F-Droid installation badge. Further releases
    initially need new tested build entries in fdroiddata; auto-update is
@@ -177,7 +185,7 @@ these fields or switch to an F-Droid signing key to bypass it.
 For a local unsigned verification build after preparation:
 
 ```sh
-bash scripts/prepare-fdroid.sh
+bash scripts/prepare-fdroid.sh --prune-fixtures
 ./gradlew :app:assembleOssRelease -PunsignedRelease=true -PrcloneOffline=true --no-daemon
 ```
 

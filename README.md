@@ -32,7 +32,7 @@
 >
 > Use the same Google account for the group, the test page, and the Play Store on your Android device. Joining the group alone does not install the app.
 >
-> Work on publishing CloudBridge on F-Droid is also underway.
+> F-Droid submission: [in review](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/56366); not listed yet. [Progress and publishing steps](docs/FDROID.md).
 
 CloudBridge brings your cloud storage and local files together on your Android phone or tablet. Browse folders, transfer documents, stream media, and schedule recurring tasks from one app. Connect providers such as Internxt and Drime, or import an existing rclone configuration.
 
@@ -98,7 +98,7 @@ The [automatic development build](https://github.com/thies2005/CloudBridge/relea
 
 [Add CloudBridge to Obtainium](https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522de.schuelken.cloudbridge%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252Fthies2005%252FCloudBridge%2522%252C%2522author%2522%253A%2522thies2005%2522%252C%2522name%2522%253A%2522CloudBridge%2522%252C%2522preferredApkIndex%2522%253A0%252C%2522additionalSettings%2522%253A%2522%257B%255C%2522includePrereleases%255C%2522%253Afalse%252C%255C%2522fallbackToOlderReleases%255C%2522%253Afalse%252C%255C%2522sortMethodChoice%255C%2522%253A%255C%2522date%255C%2522%252C%255C%2522verifyLatestTag%255C%2522%253Afalse%252C%255C%2522apkFilterRegEx%255C%2522%253A%255C%2522%255Ecloudbridge_v%255B0-9%255D%252B%255C%255C%255C%255C.%255B0-9%255D%252B%255C%255C%255C%255C.%255B0-9%255D%252B-oss-universal-release%255C%255C%255C%255C.apk%2524%255C%2522%252C%255C%2522invertAPKFilter%255C%2522%253Afalse%252C%255C%2522autoApkFilterByArch%255C%2522%253Afalse%252C%255C%2522trackOnly%255C%2522%253Afalse%252C%255C%2522versionDetection%255C%2522%253Atrue%257D%2522%257D) to track signed stable universal APKs from GitHub. Review the import settings, then add the app. Development prereleases are excluded. See the [publishing and signing guide](docs/PUBLISHING.md) for Play, F-Droid and manual Obtainium setup.
 
-Official F-Droid submission is being prepared.
+F-Droid inclusion is [in review](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/56366). See [progress and publishing steps](docs/FDROID.md).
 
 ## Documentation and support
 

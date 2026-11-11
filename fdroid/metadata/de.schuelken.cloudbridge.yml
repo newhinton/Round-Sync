@@ -1,6 +1,5 @@
-# DRAFT: copy to fdroiddata/metadata/ for the v1.0.5 submission.
-# Replace commit with the full SHA of the published immutable v1.0.5 tag.
-# Keep disabled until the F-Droid server scan, build and verification pass.
+# Unpublished follow-up to fdroiddata !56366. Use the full release SHA and
+# verify version metadata, source scan and APK comparison before submission.
 Categories:
   - File Manager
   - File Transfer
@@ -9,58 +8,90 @@ AuthorName: thies2005
 WebSite: https://thies2005.github.io/CloudBridge/
 SourceCode: https://github.com/thies2005/CloudBridge
 IssueTracker: https://github.com/thies2005/CloudBridge/issues
-Translation: https://github.com/thies2005/CloudBridge/blob/master/CONTRIBUTING.md#localize-cloudbridge
+Translation:
+  https://github.com/thies2005/CloudBridge/blob/master/CONTRIBUTING.md#localize-cloudbridge
 Changelog: https://github.com/thies2005/CloudBridge/releases
 
 AutoName: CloudBridge
+
 RepoType: git
 Repo: https://github.com/thies2005/CloudBridge.git
-Binaries: https://github.com/thies2005/CloudBridge/releases/download/v%v/cloudbridge_v%v-oss-universal-release.apk
+Binaries:
+  https://github.com/thies2005/CloudBridge/releases/download/v%v/cloudbridge_v%v-oss-universal-release.apk
 
 Builds:
-  - versionName: 1.0.5
-    versionCode: 32650
-    disable: Draft; validate the F-Droid server scan, build and reproducibility before inclusion
-    commit: v1.0.5
+  - versionName: 1.0.6
+    versionCode: 32710
+    disable: Local candidate; publish and verify the immutable release before enabling
+    commit: v1.0.6
     subdir: app
-    rm:
-      - docs/cloud-computing.png
-      - docs/locked-padlock.png
-      - docs/smartphone.png
+    sudo:
+      - echo 'deb https://deb.debian.org/debian bookworm main' > /etc/apt/sources.list.d/cloudbridge-jdk17.list
+      - apt-get update
+      - apt-get install -y openjdk-17-jdk-headless curl ca-certificates
+      - update-alternatives --set java /usr/lib/jvm/java-17-openjdk-amd64/bin/java
+      - curl --fail --location https://go.dev/dl/go1.26.0.linux-amd64.tar.gz -o /tmp/cloudbridge-go1.26.0.tar.gz
+      - echo 'aac1b08a0fb0c4e0a7c1555beb7b59180b05dfc5a3d62e40e9de90cd42f88235  /tmp/cloudbridge-go1.26.0.tar.gz'
+        | sha256sum -c
+      - mkdir -p /opt/cloudbridge-go
+      - tar -C /opt/cloudbridge-go --strip-components=1 -xzf /tmp/cloudbridge-go1.26.0.tar.gz
+      - ln -sf /opt/cloudbridge-go/bin/go /usr/local/bin/go
+      - rm /tmp/cloudbridge-go1.26.0.tar.gz
+      - "curl --fail --location --silent --show-error --retry 3 --retry-all-errors
+        --retry-delay 2 --max-time 180 -H 'Accept: application/octet-stream' \"https://api.github.com/repos/gradle/gradle-distributions/releases/assets/232373824?fdroid=$(date
+        +%s)\" -o /tmp/cloudbridge-gradle-8.13-bin.zip"
+      - echo '20f1b1176237254a6fc204d8434196fa11a4cfb387567519c61556e8710aed78  /tmp/cloudbridge-gradle-8.13-bin.zip'
+        | sha256sum -c
+      - install -d -m755 -o vagrant -g vagrant /home/vagrant/.gradle/wrapper/dists/gradle-8.13-bin/5xuhj0ry160q40clulazy9h7d
+        /home/vagrant/.cache/gradlew-fdroid
+      - install -m644 -o vagrant -g vagrant /tmp/cloudbridge-gradle-8.13-bin.zip
+        /home/vagrant/.gradle/wrapper/dists/gradle-8.13-bin/5xuhj0ry160q40clulazy9h7d/gradle-8.13-bin.zip
+      - install -m644 -o vagrant -g vagrant /tmp/cloudbridge-gradle-8.13-bin.zip /home/vagrant/.cache/gradlew-fdroid/gradle-8.13-bin.zip
+      - rm /tmp/cloudbridge-gradle-8.13-bin.zip
+      - sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
     gradle:
       - oss
     output: build/outputs/apk/oss/release/*-oss-universal-release-unsigned.apk
-    ndk: 29.0.14206865
     prebuild:
-      - (cd .. && GOFLAGS=-modcacherw bash scripts/prepare-fdroid.sh)
+      - echo 'org.gradle.java.home=/usr/lib/jvm/java-17-openjdk-amd64' >> ../gradle.properties
+      - (cd .. && bash scripts/prepare-fdroid.sh --prune-fixtures)
+    scanignore:
+      - rclone/cache/rclone-src/cmd/selfupdate/testdata
+      - rclone/cache/rclone-src/cmd/serve/http/testdata
+      - rclone/cache/rclone-src/cmd/lsf/testfiles
+      - rclone/cache/rclone-src/cmd/gui/dist.zip
+      - rclone/cache/gopath/pkg/mod/golang.org/x/net@v0.60.0/publicsuffix/data/nodes
+      - rclone/cache/gopath/pkg/mod/golang.org/x/net@v0.60.0/publicsuffix/data/children
+    ndk: 29.0.14206865
     gradleprops:
       - unsignedRelease=true
       - rcloneOffline=true
 
-AllowedAPKSigningKeys:
-  - a352eceb86e3d2fdd6a68ff68ab0637e978b843c8d885fa79e87e16b0cd06993
+AllowedAPKSigningKeys: a352eceb86e3d2fdd6a68ff68ab0637e978b843c8d885fa79e87e16b0cd06993
 
 MaintainerNotes: |
-  Draft only; see docs/PUBLISHING.md upstream. Provision Go 1.26.0 outside the
-  source tree and JDK 17 before preparation; confirm exact Android build-tools
-  and JDK patch versions against the selected upstream build. The current
-  build does not pin the Android build-tools or JDK patch version.
-  Preparation fetches the rclone fork at the SHA in gradle.properties and Go
-  modules before scanning/building. The source scanner must review this cache,
-  including module archives and dependency fixtures; no blanket scanignore is
-  provided. Coordinate dependency/toolchain provisioning with F-Droid maintainers.
-  Gradle clean preserves prefetched source/modules only in rcloneOffline mode.
-  Keep normal ABI splits enabled and select the universal output to match the
-  upstream APK. Do not pass noAbiSplits for the APK build.
-  The offline verifier requires rclone's .git metadata. Rebuilding from an
-  F-Droid source tarball requires the tagged application checkout and fetching
-  the pinned rclone checkout again during network-enabled preparation; the
-  archive alone is not sufficient.
-  Binaries and AllowedAPKSigningKeys intentionally require upstream signatures.
-  Never remove either to work around failed reproducibility or use a new key.
-  Updates remain manual while the initial recipe/toolchain is being validated.
+  Match the upstream OSS universal APK with normal ABI splits enabled. The Go
+  1.26.0 archive SHA-256 comes from https://go.dev/dl/?mode=json&include=all.
+  The official Gradle 8.13 asset API is used to avoid repeated HTTP 504s on
+  GitHub's browser-download redirect. The immutable distribution SHA-256 is
+  verified before populating vagrant's wrapper and gradlew-fdroid caches;
+  both original launchers independently verify the exact same distribution.
+  The compiler is provisioned outside the application source tree. JDK 17 is
+  selected explicitly because the current CI image defaults to JDK 21.
+  The app and pinned rclone checkout must retain Git metadata: the app embeds
+  its source revision and the offline native build verifies rclone's clean SHA.
+  Keep Binaries and AllowedAPKSigningKeys: developer-signed distribution only.
+  Version 1.0.6 uses the pinned nogui-enabled rclone fork and native build tag.
+  The helper requires cmd/gui to be absent from every production ABI graph
+  under noselfupdate,nogui, then protects all actual Go sources and embeds
+  before removing the explicitly listed dependency fixtures/language bindings.
+  Rclone's tracked test fixtures are narrowly ignored to retain source SHA
+  cleanliness. The GUI archive exception is valid only when the production
+  graph assertion confirms it is uncompiled. The two x/net publicsuffix files
+  are non-executable generated suffix lookup tables required by production.
+  Updates are manual until initial packaging has been reviewed and accepted.
 
 AutoUpdateMode: None
 UpdateCheckMode: None
-CurrentVersion: 1.0.5
-CurrentVersionCode: 32650
+CurrentVersion: 1.0.6
+CurrentVersionCode: 32710

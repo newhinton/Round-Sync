@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 # Run in the network-enabled preparation phase, before the offline rebuild.
 set -euo pipefail
+prune_fixtures=false
+case "${1-}" in
+    --prune-fixtures) prune_fixtures=true; shift ;;
+esac
+if (( $# )); then
+    echo 'Usage: bash scripts/prepare-fdroid.sh [--prune-fixtures]' >&2
+    exit 2
+fi
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$repo_dir"
 
@@ -21,6 +29,14 @@ fi
     cd "$source_dir"
     # Keep the compiler outside this cache: downloaded toolchain binaries would
     # otherwise enter F-Droid's source scan and source archive.
-    GOPATH="$repo_dir/rclone/cache/gopath" GOTOOLCHAIN=local go mod download
+    export GOPATH="$repo_dir/rclone/cache/gopath" GOTOOLCHAIN=local
+    if "$prune_fixtures"; then
+        # Keep this disposable module cache writable for the scanner preparation.
+        export GOFLAGS=-modcacherw GOMODCACHE="$GOPATH/pkg/mod"
+    fi
+    go mod download
 )
+if "$prune_fixtures"; then
+    python3 scripts/fdroid_prepare.py
+fi
 echo 'Source and Go modules prepared. Next: an unsigned rebuild with -PrcloneOffline=true.'
