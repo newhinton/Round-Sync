@@ -1,0 +1,33 @@
+Deine Dateien, deine Cloud, deine Kontrolle: CloudBridge verbindet Android mit deinen Cloud-Speichern. Verwalte Dateien, übertrage Ordner und plane regelmäßige Synchronisierungen – mit der Leistungsfähigkeit von rclone.
+
+DATEIEN VERWALTEN
+Durchsuche deine Cloud-Speicher und verwalte Dateien und Ordner direkt auf deinem Smartphone oder Tablet. Lade Dateien hoch oder herunter, verschiebe sie, benenne sie um oder lösche sie.
+
+CLOUD-SPEICHER VERBINDEN
+Nutze zahlreiche von rclone unterstützte Speicherdienste, darunter Internxt und Drime. Vorhandene rclone-Konfigurationen lassen sich importieren. Je nach Anbieter erfolgt die Einrichtung direkt in der App oder über den Konfigurationsimport.
+
+ÜBERTRAGUNGEN AUTOMATISIEREN
+Erstelle Aufgaben für wiederkehrende Dateiübertragungen und Synchronisierungen. Mit Zeitplänen kannst du wichtige Ordner regelmäßig übertragen lassen.
+
+DATEIEN VERSCHLÜSSELN
+Mit eingerichteten rclone-Crypt-Verbindungen kannst du Dateien vor dem Hochladen verschlüsseln. So lässt sich Verschlüsselung auch mit Cloud-Speichern nutzen, die diese Funktion selbst nicht anbieten.
+
+MEDIEN STREAMEN UND DATEIEN BEREITSTELLEN
+Streame Mediendateien aus deinem Cloud-Speicher. Dateien und Ordner lassen sich außerdem über HTTP, WebDAV, FTP oder DLNA bereitstellen.
+
+MIT ANDROID VERBUNDEN
+Teile Dateien aus anderen Apps mit CloudBridge, um sie in deinen Cloud-Speicher zu übertragen. Greife über die Android-Dateiauswahl auch auf SD-Karten und USB-Speicher zu.
+
+MODERNE OBERFLÄCHE
+CloudBridge bietet eine Oberfläche im Material-3-Stil mit Unterstützung für ein dunkles Design.
+
+OPEN SOURCE
+CloudBridge basiert auf rclone und ist freie Software unter der GPLv3-Lizenz. Das Projekt führt die Arbeit von Round-Sync, RCX und rcloneExplorer fort.
+
+Hinweis: CloudBridge stellt keinen eigenen Cloud-Speicher bereit. Für die Nutzung externer Speicherdienste benötigst du einen entsprechenden Zugang. Verfügbare Funktionen hängen vom jeweiligen Anbieter und der Konfiguration ab.
+
+Informationen und Dokumentation:
+https://thies2005.github.io/CloudBridge/
+
+Quellcode, Fehlerberichte und Funktionswünsche:
+https://github.com/thies2005/CloudBridge

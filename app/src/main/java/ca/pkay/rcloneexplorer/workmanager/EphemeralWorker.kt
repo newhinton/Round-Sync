@@ -24,20 +24,27 @@ import ca.pkay.rcloneexplorer.notifications.prototypes.WorkerNotification
 import ca.pkay.rcloneexplorer.notifications.support.StatusObject
 import ca.pkay.rcloneexplorer.util.FLog
 import ca.pkay.rcloneexplorer.util.SyncLog
+import ca.pkay.rcloneexplorer.util.TransferLocks
 import ca.pkay.rcloneexplorer.util.WifiConnectivitiyUtil
-import de.felixnuesse.extract.extensions.tag
-import de.felixnuesse.extract.notifications.implementations.DownloadWorkerNotification
+import de.schuelken.cloudbridge.extensions.tag
+import de.schuelken.cloudbridge.notifications.implementations.DownloadWorkerNotification
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.BufferedReader
+import java.io.File
 import java.io.IOException
 import java.io.InputStreamReader
 import java.io.InterruptedIOException
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 import kotlin.random.Random
 import android.util.Log
-import de.felixnuesse.extract.notifications.implementations.DeleteWorkerNotification
-import de.felixnuesse.extract.notifications.implementations.MoveWorkerNotification
-import de.felixnuesse.extract.notifications.implementations.UploadWorkerNotification
+import android.webkit.MimeTypeMap
+import de.schuelken.cloudbridge.notifications.implementations.DeleteWorkerNotification
+import de.schuelken.cloudbridge.notifications.implementations.MoveWorkerNotification
+import de.schuelken.cloudbridge.notifications.implementations.UploadWorkerNotification
 
 
 class EphemeralWorker (private var mContext: Context, workerParams: WorkerParameters): Worker(mContext, workerParams) {
@@ -51,12 +58,15 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
         const val DOWNLOAD_SOURCE = "DOWNLOAD_SOURCE"
 
         const val UPLOAD_FILE = "UPLOAD_FILE"
+        const val DELETE_STAGED_UPLOAD = "DELETE_STAGED_UPLOAD"
         const val UPLOAD_TARGETPATH = "UPLOAD_TARGETPATH"
 
         const val MOVE_FILE = "MOVE_FILE"
         const val MOVE_TARGETPATH = "MOVE_TARGETPATH"
+        const val MOVE_SOURCEPATH = "MOVE_SOURCEPATH"
+        const val DELETE_PATH = "DELETE_PATH"
 
-        const val DELETE_FILE = "DELETE_FILE"
+        const val DELETE_MANIFEST = "DELETE_MANIFEST"
     }
 
     internal enum class FAILURE_REASON {
@@ -68,7 +78,7 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
     private val mPreferences = PreferenceManager.getDefaultSharedPreferences(mContext)
 
 
-    private var log2File: Log2File? = null
+    private var log2File: Log2File? = Log2File(mContext)
 
 
     // States
@@ -76,6 +86,12 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
     private var sConnectivityChanged = false
 
     private var sRcloneProcess: Process? = null
+
+    // A batch delete runs several rclone processes one after another; spawn thunks keep later
+    // processes from starting (and piling up on the remote) until the previous one is done.
+    private val sPendingProcesses = ArrayDeque<() -> Process?>()
+    private val sCleanupFiles = ArrayList<File>()
+    private var sDeleteEntries: List<DeleteEntry> = emptyList()
     private val statusObject = StatusObject(mContext)
     private var failureReason = FAILURE_REASON.NO_FAILURE
     private var endNotificationAlreadyPosted = false
@@ -86,16 +102,25 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
     private var mTitle: String = mNotificationManager?.initialTitle ?: ""
 
     override fun doWork(): Result {
+        try {
+            return runOperation()
+        } finally {
+            if (inputData.getBoolean(DELETE_STAGED_UPLOAD, false)) {
+                inputData.getString(UPLOAD_FILE)?.let {
+                    val staged = File(it)
+                    val parent = staged.parentFile
+                    if (parent?.parentFile == File(mContext.cacheDir, "share_staging")) {
+                        staged.delete()
+                        parent.delete()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun runOperation(): Result {
 
         registerBroadcastReceivers()
-
-        updateForegroundNotification(mNotificationManager?.updateNotification(
-            mTitle,
-            mTitle,
-            ArrayList(),
-            0,
-            ongoingNotificationID
-        ))
 
         if (inputData.keyValueMap.containsKey(EPHEMERAL_TYPE)){
             val type = Type.valueOf(inputData.getString(EPHEMERAL_TYPE) ?: "")
@@ -107,11 +132,25 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
                 return Result.failure()
             }
 
+            // The title and the first foreground promotion need the notification manager, which
+            // is still null earlier. Promoting here keeps short-lived jobs (deletes!) in the
+            // foreground instead of losing their slot to the background job time limit.
+            mTitle = mNotificationManager?.initialTitle ?: ""
+            updateForegroundNotification(mNotificationManager?.updateNotification(
+                mTitle,
+                mTitle,
+                ArrayList(),
+                0,
+                ongoingNotificationID
+            ))
+
             mNotificationManager?.setCancelId(id)
             if(preconditionsMet()) {
                 // do not instantiate rclone when you dont want it to run.
                 // It will immediately run!
-                when(type){
+                val transferLocks = TransferLocks.acquire(mContext, "ephemeral")
+                try {
+                    when(type){
                     Type.DOWNLOAD -> {
                         val target = inputData.getString(DOWNLOAD_TARGETPATH)
                         val fileItem = getFileitemFromParcel(DOWNLOAD_SOURCE)
@@ -121,21 +160,21 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
                             return Result.failure()
                         }
 
-                        sRcloneProcess = Rclone(mContext).downloadFile(
+                        sPendingProcesses.add { Rclone(mContext).downloadFile(
                             remoteItem,
                             fileItem,
                             target
-                        )
+                        ) }
                     }
                     Type.UPLOAD -> {
                         val target = inputData.getString(UPLOAD_TARGETPATH)
                         val file = inputData.getString(UPLOAD_FILE)
 
-                        sRcloneProcess = Rclone(mContext).uploadFile(
+                        sPendingProcesses.add { Rclone(mContext).uploadFile(
                             remoteItem,
                             target,
                             file
-                        )
+                        ) }
                     }
                     Type.MOVE -> {
                         val target = inputData.getString(MOVE_TARGETPATH)
@@ -146,36 +185,71 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
                             return Result.failure()
                         }
 
-                        sRcloneProcess = Rclone(mContext).moveTo(
+                        sPendingProcesses.add { Rclone(mContext).moveTo(
                             remoteItem,
                             fileItem,
                             target
-                        )
+                        ) }
                     }
                     Type.DELETE -> {
-                        val fileItem = getFileitemFromParcel(DELETE_FILE)
-
-                        if(fileItem == null){
-                            log("$DELETE_FILE: No valid target was passed!")
+                        val manifestFile = File(inputData.getString(DELETE_MANIFEST) ?: "")
+                        if (!manifestFile.exists()) {
+                            log("$DELETE_MANIFEST: the delete manifest is missing!")
                             return Result.failure()
                         }
+                        val entries = DeleteManifest.decode(manifestFile.readText())
+                        // Keep the manifest until the batch finishes: if the process dies
+                        // mid-batch, WorkManager re-runs the worker and needs it again.
+                        sCleanupFiles.add(manifestFile)
+                        if (entries.isEmpty()) {
+                            log("$DELETE_MANIFEST: no deletable items were passed!")
+                            return Result.failure()
+                        }
+                        sDeleteEntries = entries
 
-                        sRcloneProcess = Rclone(mContext).deleteItems(
-                            remoteItem,
-                            fileItem
-                        )
+                        // Plain files go into one `rclone delete --files-from` run; directories
+                        // and names unusable in a line-based list get individual processes.
+                        val partition = DeleteManifest.partition(entries)
+                        val rclone = Rclone(mContext)
+                        if (partition.batchableFiles.isNotEmpty()) {
+                            val filesFrom = File(mContext.cacheDir, "delete-files-from-$id.txt")
+                            filesFrom.writeText(DeleteManifest.filesFromLines(partition.batchableFiles).joinToString("\n"))
+                            sCleanupFiles.add(filesFrom)
+                            sPendingProcesses.add { rclone.deleteFilesFrom(remoteItem, filesFrom) }
+                        }
+                        for (dir in partition.dirs) {
+                            sPendingProcesses.add { rclone.purgeItem(remoteItem, dir.path) }
+                        }
+                        for (file in partition.fallbackFiles) {
+                            sPendingProcesses.add { rclone.deleteItems(remoteItem, file.path) }
+                        }
+                        if (sPendingProcesses.isEmpty()) {
+                            failureReason = FAILURE_REASON.RCLONE_ERROR
+                            log("Delete: no rclone process could be started")
+                        }
                     }
                 }
                 handleSync(mTitle)
+                } finally {
+                    transferLocks?.release()
+                    sCleanupFiles.forEach { it.delete() }
+                }
             } else {
                 log("Preconditions are not met!")
                 postSync()
                 return Result.failure()
             }
 
+            // Operations can partially change a directory even if rclone later fails or is stopped.
+            when (type) {
+                Type.UPLOAD -> sendUploadFinishedBroadcast(remoteItem.name, inputData.getString(UPLOAD_TARGETPATH))
+                Type.MOVE -> sendUploadFinishedBroadcast(remoteItem.name, inputData.getString(MOVE_TARGETPATH), inputData.getString(MOVE_SOURCEPATH))
+                Type.DELETE -> sendUploadFinishedBroadcast(remoteItem.name, inputData.getString(DELETE_PATH))
+                else -> Unit
+            }
             postSync()
-            // Indicate whether the work finished successfully with the Result
-            return Result.success()
+            return if (failureReason == FAILURE_REASON.NO_FAILURE && !isStopped) Result.success()
+                else Result.failure()
         }
         log("Critical: No valid ephemeral type passed!")
         return Result.failure()
@@ -191,7 +265,10 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
 
     private fun finishWork() {
         sRcloneProcess?.destroy()
-        mContext.unregisterReceiver(connectivityChangeBroadcastReceiver)
+        try {
+            mContext.unregisterReceiver(connectivityChangeBroadcastReceiver)
+        } catch (_: IllegalArgumentException) {
+        }
         postSync()
     }
 
@@ -205,51 +282,84 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
     }
 
     private fun handleSync(title: String) {
-        if (sRcloneProcess != null) {
-            val localProcessReference = sRcloneProcess!!
-            try {
-                val reader = BufferedReader(InputStreamReader(localProcessReference.errorStream))
-                val iterator = reader.lineSequence().iterator()
-                while(iterator.hasNext()) {
-                    val line = iterator.next()
-                    try {
-                        val logline = JSONObject(line)
-                        //todo: migrate this to StatusObject, so that we can handle everything properly.
-                        if (logline.getString("level") == "error") {
-                            if (sIsLoggingEnabled) {
-                                log2File?.log(line)
-                            }
-                            statusObject.parseLoglineToStatusObject(logline)
-                        } else if (logline.getString("level") == "warning") {
-                            statusObject.parseLoglineToStatusObject(logline)
-                        }
-
-                        updateForegroundNotification(mNotificationManager?.updateNotification(
-                            title,
-                            statusObject.notificationContent,
-                            statusObject.notificationBigText,
-                            statusObject.notificationPercent,
-                            ongoingNotificationID
-                        ))
-                    } catch (e: JSONException) {
-                        Log.e(tag(), "Error: the offending line: $line")
-                        //FLog.e(TAG, "onHandleIntent: error reading json", e)
-                    }
-                }
-            } catch (e: InterruptedIOException) {
-                FLog.e(tag(), "onHandleIntent: I/O interrupted, stream closed", e)
-            } catch (e: IOException) {
-                FLog.e(tag(), "onHandleIntent: error reading stdout", e)
-            }
-            try {
-                localProcessReference.waitFor()
-            } catch (e: InterruptedException) {
-                FLog.e(tag(), "onHandleIntent: error waiting for process", e)
-            }
-        } else {
+        if (sPendingProcesses.isEmpty()) {
+            failureReason = FAILURE_REASON.RCLONE_ERROR
             log("Sync: No Rclone Process!")
+            mNotificationManager?.cancelSyncNotification(ongoingNotificationID)
+            return
+        }
+        while (!isStopped && sPendingProcesses.isNotEmpty()) {
+            // Fold the finished process's deletions into the running total; its stats are
+            // replaced as soon as the next process starts reporting.
+            statusObject.accumulateDeletions()
+            sRcloneProcess = sPendingProcesses.removeFirst().invoke()
+            if (sRcloneProcess == null) {
+                failureReason = FAILURE_REASON.RCLONE_ERROR
+                log("Sync: Rclone process could not be started")
+                continue
+            }
+            readProcess(sRcloneProcess!!, title)
         }
         mNotificationManager?.cancelSyncNotification(ongoingNotificationID)
+    }
+
+    private fun readProcess(localProcessReference: Process, title: String) {
+        try {
+            val reader = BufferedReader(InputStreamReader(localProcessReference.errorStream))
+            val iterator = reader.lineSequence().iterator()
+            // Throttle notification rebuilds: rclone emits a stats line roughly every second,
+            // but with -vvv there can be many more log lines. Rebuilding a Notification and
+            // calling setForegroundAsync() on every line wastes CPU that the transfer needs.
+            var lastNotifyMs = 0L
+            val minNotifyIntervalMs = 500L
+            while(iterator.hasNext()) {
+                val line = iterator.next()
+                try {
+                    val logline = JSONObject(line)
+                    //todo: migrate this to StatusObject, so that we can handle everything properly.
+                    if (logline.getString("level") == "error") {
+                        if (sIsLoggingEnabled) {
+                            log2File?.log(line)
+                        }
+                    }
+
+                    // Process all log lines so stats/progress advance the notification
+                    statusObject.parseLoglineToStatusObject(logline)
+
+                    // Only rebuild when there is content to show, and at most once per
+                    // minNotifyIntervalMs to avoid notification churn on busy logs.
+                    if (statusObject.notificationContent.isNotEmpty()) {
+                        val now = System.currentTimeMillis()
+                        if (now - lastNotifyMs >= minNotifyIntervalMs) {
+                            lastNotifyMs = now
+                            updateForegroundNotification(mNotificationManager?.updateNotification(
+                                title,
+                                statusObject.notificationContent,
+                                statusObject.notificationBigText,
+                                statusObject.notificationPercent,
+                                ongoingNotificationID
+                            ))
+                        }
+                    }
+                } catch (e: JSONException) {
+                    Log.e(tag(), "Error: the offending line: $line")
+                    //FLog.e(TAG, "onHandleIntent: error reading json", e)
+                }
+            }
+        } catch (e: InterruptedIOException) {
+            FLog.e(tag(), "onHandleIntent: I/O interrupted, stream closed", e)
+        } catch (e: IOException) {
+            FLog.e(tag(), "onHandleIntent: error reading stdout", e)
+        }
+        try {
+            if (localProcessReference.waitFor() != 0 && failureReason == FAILURE_REASON.NO_FAILURE) {
+                failureReason = FAILURE_REASON.RCLONE_ERROR
+            }
+        } catch (e: InterruptedException) {
+            if (failureReason == FAILURE_REASON.NO_FAILURE) failureReason = FAILURE_REASON.RCLONE_ERROR
+            Thread.currentThread().interrupt()
+            FLog.e(tag(), "onHandleIntent: error waiting for process", e)
+        }
     }
 
     private fun postSync() {
@@ -295,11 +405,13 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
     }
 
     private fun showCancelledNotification(notificationId: Int) {
-        val content = mContext.getString(R.string.operation_failed_cancelled)
-        SyncLog.info(mContext, mTitle, content)
+        SyncLog.info(mContext, mTitle, mContext.getString(R.string.operation_failed_cancelled))
+        // The title inside the notification is the type-specific serviceCancelled string
+        // ("Delete cancelled" etc.); the content names the operation instead of the misleading
+        // generic "Sync was cancelled" that was shown for every worker type.
         mNotificationManager?.showCancelledNotification(
             mTitle,
-            content,
+            mTitle,
             notificationId,
             0
         )
@@ -367,11 +479,12 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
         return true
     }
 
-    private fun sendUploadFinishedBroadcast(remote: String, path: String?) {
+    private fun sendUploadFinishedBroadcast(remote: String, path: String?, path2: String? = null) {
         val intent = Intent()
         intent.action = getString(R.string.background_service_broadcast)
         intent.putExtra(getString(R.string.background_service_broadcast_data_remote), remote)
         intent.putExtra(getString(R.string.background_service_broadcast_data_path), path)
+        intent.putExtra(getString(R.string.background_service_broadcast_data_path2), path2)
         LocalBroadcastManager.getInstance(mContext).sendBroadcast(intent)
     }
 
@@ -382,6 +495,10 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             notification?.let {
                 setForegroundAsync(ForegroundInfo(ongoingNotificationID, it, FOREGROUND_SERVICE_TYPE_DATA_SYNC))
+            }
+        } else {
+            notification?.let {
+                setForegroundAsync(ForegroundInfo(ongoingNotificationID, it))
             }
         }
     }
@@ -425,9 +542,13 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
         }
 
         val parcel = Parcel.obtain()
-        parcel.unmarshall(sourceParcelByteArray, 0, sourceParcelByteArray.size)
-        parcel.setDataPosition(0)
-        return FileItem.CREATOR.createFromParcel(parcel)
+        try {
+            parcel.unmarshall(sourceParcelByteArray, 0, sourceParcelByteArray.size)
+            parcel.setDataPosition(0)
+            return FileItem.CREATOR.createFromParcel(parcel)
+        } finally {
+            parcel.recycle()
+        }
     }
 
     private fun getRemoteitemFromParcel(key: String): RemoteItem? {
@@ -439,9 +560,13 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
         }
 
         val parcel = Parcel.obtain()
-        parcel.unmarshall(sourceParcelByteArray, 0, sourceParcelByteArray.size)
-        parcel.setDataPosition(0)
-        return RemoteItem.CREATOR.createFromParcel(parcel)
+        try {
+            parcel.unmarshall(sourceParcelByteArray, 0, sourceParcelByteArray.size)
+            parcel.setDataPosition(0)
+            return RemoteItem.CREATOR.createFromParcel(parcel)
+        } finally {
+            parcel.recycle()
+        }
     }
 
     private fun getCurrentFile(): FileItem {
@@ -453,14 +578,25 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
                 val pathAndName = inputData.getString(UPLOAD_FILE) ?: ""
                 val name = pathAndName.substring(pathAndName.lastIndexOf("/")+1, pathAndName.length)
                 val path = pathAndName.substring(0, pathAndName.lastIndexOf("/")+1)
-                // TODO: Make this work properly! All the params are guessed!
+                val localFile = File(pathAndName)
+                val size = localFile.length()
+                val rfc3339 = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
+                rfc3339.timeZone = TimeZone.getTimeZone("UTC")
+                val modTime = rfc3339.format(Date(localFile.lastModified()))
+                val dotIndex = name.lastIndexOf('.')
+                val mimeType = if (dotIndex >= 0 && dotIndex < name.length - 1) {
+                    val extension = name.substring(dotIndex + 1).lowercase()
+                    MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension) ?: "application/octet-stream"
+                } else {
+                    "application/octet-stream"
+                }
                 FileItem(
                         RemoteItem("", ""),
                         path,
                         name,
-                        0L,
-                        "modTime",
-                        "mimeType",
+                        size,
+                        modTime,
+                        mimeType,
                         false,
                         false)
             }
@@ -468,7 +604,17 @@ class EphemeralWorker (private var mContext: Context, workerParams: WorkerParame
                 getFileitemFromParcel(MOVE_FILE)
             }
             Type.DELETE -> {
-                getFileitemFromParcel(DELETE_FILE)
+                val first = sDeleteEntries.firstOrNull()
+                    ?: throw NullPointerException("No delete entry was passed. We cannot continue!")
+                FileItem(
+                        RemoteItem("", ""),
+                        first.path,
+                        first.name,
+                        0,
+                        "",
+                        "",
+                        first.isDir,
+                        false)
             }
         }
     }

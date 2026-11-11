@@ -31,6 +31,8 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.GravityCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.splashscreen.SplashScreen;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
@@ -58,6 +60,7 @@ import java.util.UUID;
 import ca.pkay.rcloneexplorer.AppShortcutsHelper;
 import ca.pkay.rcloneexplorer.BuildConfig;
 import ca.pkay.rcloneexplorer.Database.json.Importer;
+import ca.pkay.rcloneexplorer.workmanager.SessionGuardianScheduler;
 import ca.pkay.rcloneexplorer.Database.json.SharedPreferencesBackup;
 import ca.pkay.rcloneexplorer.Dialogs.Dialogs;
 import ca.pkay.rcloneexplorer.Dialogs.InputDialog;
@@ -71,6 +74,7 @@ import ca.pkay.rcloneexplorer.Fragments.TriggerFragment;
 import ca.pkay.rcloneexplorer.Items.RemoteItem;
 import ca.pkay.rcloneexplorer.R;
 import ca.pkay.rcloneexplorer.Rclone;
+import ca.pkay.rcloneexplorer.RemoteConfig.InternxtReauth;
 import ca.pkay.rcloneexplorer.RemoteConfig.RemoteConfigHelper;
 import ca.pkay.rcloneexplorer.RuntimeConfiguration;
 import ca.pkay.rcloneexplorer.Services.StreamingService;
@@ -79,7 +83,7 @@ import ca.pkay.rcloneexplorer.util.ActivityHelper;
 import ca.pkay.rcloneexplorer.util.FLog;
 import ca.pkay.rcloneexplorer.util.PermissionManager;
 import ca.pkay.rcloneexplorer.util.SharedPreferencesUtil;
-import de.felixnuesse.extract.updates.UpdateChecker;
+import de.schuelken.cloudbridge.updates.UpdateChecker;
 import es.dmoral.toasty.Toasty;
 import java9.util.stream.Stream;
 
@@ -93,6 +97,9 @@ public class MainActivity extends AppCompatActivity
     public static final String MAIN_ACTIVITY_START_LOG = "MAIN_ACTIVITY_START_LOG";
     public static final String MAIN_ACTIVITY_START_IMPORT = "MAIN_ACTIVITY_START_IMPORT";
     public static final String MAIN_ACTIVITY_START_EXPORT = "MAIN_ACTIVITY_START_EXPORT";
+    public static final String MAIN_ACTIVITY_START_REAUTH = "MAIN_ACTIVITY_START_REAUTH";
+    public static final String EXTRA_INTERNAL_ACTION_TOKEN = "cb_internal_action_token";
+    public static final String INTERNAL_ACTION_TOKEN = UUID.randomUUID().toString();
     private static final int READ_REQUEST_CODE = 42; // code when opening rclone config file
     private static final int REQUEST_PERMISSION_CODE = 62; // code when requesting permissions
     private static final int REQUEST_PERMISSION_CODE_POST_NOTIFICATIONS = 63;
@@ -109,7 +116,9 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        SplashScreen.installSplashScreen(this);
         super.onCreate(savedInstanceState);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
 
         ActivityHelper.applyTheme(this);
 
@@ -119,6 +128,7 @@ public class MainActivity extends AppCompatActivity
         if(!allPermissionsGranted || !completedIntroOnce) {
             startActivity(new Intent(this, OnboardingActivity.class));
             finish();
+            return;
         }
 
 
@@ -187,19 +197,7 @@ public class MainActivity extends AppCompatActivity
             startRemotesFragment();
         }
 
-        if(MAIN_ACTIVITY_START_LOG.equals(intent.getAction())){
-            startLogFragment();
-        }
-
-        //todo: Migrate import and export out of the main activity
-        if(MAIN_ACTIVITY_START_IMPORT.equals(intent.getAction())){
-            startConfigImportFlow();
-        }
-
-        //todo: Migrate import and export out of the main activity
-        if(MAIN_ACTIVITY_START_EXPORT.equals(intent.getAction())){
-            startConfigExportFlow();
-        }
+        handleIntentAction(intent);
 
         findViewById(R.id.navAbout).setOnClickListener(v -> {
             Intent aboutIntent = new Intent(this, AboutActivity.class);
@@ -216,17 +214,75 @@ public class MainActivity extends AppCompatActivity
         TriggerService triggerService = new TriggerService(context);
         triggerService.queueTrigger();
 
+        // Schedule Session Guardian Worker for proactive session health monitoring
+        ca.pkay.rcloneexplorer.workmanager.SessionGuardianScheduler.schedule(this);
+
         (new UpdateChecker(this)).schedule();
+    }
+
+    /**
+     * Dispatches intent actions handled outside the normal UI flow (log/import/
+     * export views, and the Session Guardian "re-authenticate" deep link).
+     * Called from both {@link #onCreate} and {@link #onNewIntent}: the activity
+     * uses {@code launchMode="singleTop"}, so a notification tap while the app
+     * is already foregrounded delivers to {@code onNewIntent}, not onCreate.
+     */
+    private void handleIntentAction(@Nullable Intent intent) {
+        if (intent == null || intent.getAction() == null) {
+            return;
+        }
+        String action = intent.getAction();
+        boolean hasInternalToken = INTERNAL_ACTION_TOKEN.equals(intent.getStringExtra(EXTRA_INTERNAL_ACTION_TOKEN));
+        if (MAIN_ACTIVITY_START_LOG.equals(action) && hasInternalToken) {
+            startLogFragment();
+            navigationView.setCheckedItem(R.id.nav_logs);
+        } else if (MAIN_ACTIVITY_START_IMPORT.equals(action) && hasInternalToken) {
+            //todo: Migrate import and export out of the main activity
+            startConfigImportFlow();
+        } else if (MAIN_ACTIVITY_START_EXPORT.equals(action) && hasInternalToken) {
+            //todo: Migrate import and export out of the main activity
+            startConfigExportFlow();
+        } else if (MAIN_ACTIVITY_START_REAUTH.equals(action) && hasInternalToken) {
+            handleReauthIntent(intent);
+        }
+    }
+
+    /**
+     * Deep-link handler for the "Session expired" notification: opens the
+     * remotes view and, if the named remote still exists and is an Internxt
+     * remote, kicks off {@link InternxtReauth} directly so the user does not
+     * have to find and long-press the remote themselves.
+     */
+    private void handleReauthIntent(@NonNull Intent intent) {
+        String remoteName = intent.getStringExtra(AppShortcutsHelper.APP_SHORTCUT_REMOTE_NAME);
+        if (remoteName == null) {
+            startRemotesFragment();
+            return;
+        }
+        startRemotesFragment();
+        RemoteItem remoteItem = rclone.getRemoteItemFromName(remoteName);
+        if (remoteItem == null) {
+            Toasty.error(this, getString(R.string.remote_not_found), Toast.LENGTH_SHORT, true).show();
+            return;
+        }
+        if (remoteItem.isRemoteType(RemoteItem.INTERNXT)) {
+            // Run on the UI thread: InternxtReauth is an AsyncTask whose dialogs
+            // and ProgressDialog require an Activity context.
+            new InternxtReauth(this, rclone, remoteItem.getName()).executeOnExecutor(AsyncTask.SERIAL_EXECUTOR);
+        }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleIntentAction(intent);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         updatePermissionFragmentVisibility();
-        if(MAIN_ACTIVITY_START_LOG.equals(getIntent().getAction())){
-            startLogFragment();
-            navigationView.setCheckedItem(R.id.nav_logs);
-        }
     }
 
     @Override
@@ -263,10 +319,12 @@ public class MainActivity extends AppCompatActivity
             Uri uri;
             if (data != null) {
                 uri = data.getData();
-                new CopyConfigFile().execute(uri);
+                if (uri != null) {
+                    new CopyConfigFile().execute(uri);
+                }
             }
         } else if (requestCode == SETTINGS_CODE && resultCode == RESULT_OK) {
-            boolean themeChanged = data.getBooleanExtra(SettingsActivity.THEME_CHANGED, false);
+            boolean themeChanged = data != null && data.getBooleanExtra(SettingsActivity.THEME_CHANGED, false);
             if (themeChanged) {
                 recreate();
             }
@@ -274,11 +332,13 @@ public class MainActivity extends AppCompatActivity
             Uri uri;
             if (data != null) {
                 uri = data.getData();
-                try {
-                    rclone.exportConfigFile(uri);
-                } catch (IOException e) {
-                    FLog.e(TAG, "Could not export config file to %s", e, uri);
-                    Toasty.error(this, getString(R.string.error_exporting_config_file), Toast.LENGTH_SHORT, true).show();
+                if (uri != null) {
+                    try {
+                        rclone.exportConfigFile(uri);
+                    } catch (IOException e) {
+                        FLog.e(TAG, "Could not export config file to %s", e, uri);
+                        Toasty.error(this, getString(R.string.error_exporting_config_file), Toast.LENGTH_SHORT, true).show();
+                    }
                 }
             }
         } else if (requestCode == FileExplorerFragment.STREAMING_INTENT_RESULT) {
@@ -305,12 +365,19 @@ public class MainActivity extends AppCompatActivity
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // TODO: document deletion on exit
-        File dir = getExternalCacheDir();
-        if (dir != null && dir.isDirectory()) {
-            String[] children = dir.list();
-            for (String aChildren : children) {
-                new File(dir, aChildren).delete();
+        // Clean external cache and internal preview caches on exit
+        File[] cacheDirs = new File[]{
+                getExternalCacheDir(),
+                new File(getCacheDir(), "preview")
+        };
+        for (File dir : cacheDirs) {
+            if (dir != null && dir.isDirectory()) {
+                String[] children = dir.list();
+                if (children != null) {
+                    for (String aChildren : children) {
+                        new File(dir, aChildren).delete();
+                    }
+                }
             }
         }
     }
@@ -677,8 +744,6 @@ public class MainActivity extends AppCompatActivity
         }
 
         //todo: Check shared preferences if they will be overridden by the onPostExecute
-        //todo: This assumes that zip-files are uncorrupted. That means that if the rclone.conf is valid,
-        //todo: but the jsons are not, we import half a configuration package.
 
         @Override
         protected Boolean doInBackground(Uri... uris) {
@@ -686,31 +751,65 @@ public class MainActivity extends AppCompatActivity
             ContentResolver resolver = context.getContentResolver();
             String mime = resolver.getType(uris[0]);
 
-            if(mime.equals("application/zip")) {
+            if("application/zip".equals(mime)) {
+                final String databaseJson;
+                final String preferencesJson;
+                try {
+                    databaseJson = rclone.readDatabaseJson(uris[0]);
+                    preferencesJson = rclone.readSharedPrefs(uris[0]);
+                    Importer.validateJson(databaseJson);
+                    SharedPreferencesBackup.validateJson(preferencesJson);
+                } catch (Exception e) {
+                    statusCode = FAILURE_ZIP_INVALID_JSON;
+                    return false;
+                }
+                File config = new File(context.getFilesDir(), "rclone.conf");
+                File previousConfig = null;
+                boolean hadConfig = config.exists();
+                try {
+                    if (hadConfig) {
+                        previousConfig = File.createTempFile("rclone-restore-", ".conf", context.getFilesDir());
+                        try (java.io.InputStream in = new java.io.FileInputStream(config);
+                             java.io.OutputStream out = new java.io.FileOutputStream(previousConfig)) {
+                            byte[] buffer = new byte[8192];
+                            int count;
+                            while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
+                        }
+                    }
+                } catch (IOException e) {
+                    if (previousConfig != null) previousConfig.delete();
+                    statusCode = FAILURE_ZIP_MISSING_CONF;
+                    return false;
+                }
                 try {
                     boolean validRclone = rclone.copyConfigFileFromZip(uris[0]);
                     if(!validRclone) {
+                        if (previousConfig != null) previousConfig.delete();
                         statusCode = FAILURE_ZIP_INVALID_CONF;
                         return false;
                     }
                     statusCode = SUCCESS_IMPORT;
                 } catch (Exception e) {
+                    if (previousConfig != null) previousConfig.delete();
                     statusCode = FAILURE_ZIP_MISSING_CONF;
                     return false;
                 }
 
                 try {
-                    String json = rclone.readDatabaseJson(uris[0]);
-                    Importer.importJson(json, context);
-                    json = rclone.readSharedPrefs(uris[0]);
-                    SharedPreferencesBackup.importJson(json, context);
-                } catch (JSONException e) {
+                    Importer.importJson(databaseJson, context);
+                    SharedPreferencesBackup.importJson(preferencesJson, context);
+                } catch (Exception e) {
+                    if (hadConfig) {
+                        if (!previousConfig.renameTo(config)) {
+                            android.util.Log.e("MainActivity", "Failed to restore rclone config after import failure");
+                        }
+                    } else if (!config.delete()) {
+                        android.util.Log.e("MainActivity", "Failed to remove rclone config after import failure");
+                    }
                     statusCode = FAILURE_ZIP_INVALID_JSON;
                     return false;
-                } catch (Exception e) {
-                    statusCode = FAILURE_ZIP_NO_JSON;
-                    return false;
                 }
+                if (previousConfig != null) previousConfig.delete();
                 return true;
             }
 

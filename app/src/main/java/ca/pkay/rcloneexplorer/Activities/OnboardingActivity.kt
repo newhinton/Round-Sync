@@ -15,11 +15,11 @@ import androidx.preference.PreferenceManager
 import ca.pkay.rcloneexplorer.R
 import ca.pkay.rcloneexplorer.util.PermissionManager
 import com.github.appintro.AppIntro2
-import de.felixnuesse.extract.onboarding.IdentifiableAppIntroFragment
-import de.felixnuesse.extract.onboarding.IdentifiableSwitchAppIntroFragment
-import de.felixnuesse.extract.onboarding.SlideLeaveInterface
-import de.felixnuesse.extract.onboarding.SlideSwitchCallback
-import de.felixnuesse.extract.updates.UpdateChecker
+import de.schuelken.cloudbridge.onboarding.IdentifiableAppIntroFragment
+import de.schuelken.cloudbridge.onboarding.IdentifiableSwitchAppIntroFragment
+import de.schuelken.cloudbridge.onboarding.SlideLeaveInterface
+import de.schuelken.cloudbridge.onboarding.SlideSwitchCallback
+import de.schuelken.cloudbridge.updates.UpdateChecker
 
 
 class OnboardingActivity : AppIntro2(), SlideLeaveInterface, SlideSwitchCallback {
@@ -27,12 +27,12 @@ class OnboardingActivity : AppIntro2(), SlideLeaveInterface, SlideSwitchCallback
     companion object {
         private const val intro_v1_12_0_completed = "intro_v1_12_0_completed"
         private const val intro_v2_5_2_completed = "intro_v2_5_2_completed"
+        private const val intro_cloudbridge_v1_completed = "intro_cloudbridge_v1_completed"
 
-        // please add all intro versions to onDonePressed.
-        private const val latest_intro = intro_v2_5_2_completed
+        private const val latest_intro = intro_cloudbridge_v1_completed
 
         private const val SLIDE_ID_WELCOME = "SLIDE_ID_WELCOME"
-        private const val SLIDE_ID_COMMUNITY = "SLIDE_ID_COMMUNITY"
+        private const val SLIDE_ID_THANKYOU = "SLIDE_ID_THANKYOU"
         private const val SLIDE_ID_PERMCHANGE = "SLIDE_ID_PERMCHANGE"
         private const val SLIDE_ID_STORAGE = "SLIDE_ID_STORAGE"
         private const val SLIDE_ID_NOTIFICATIONS = "SLIDE_ID_NOTIFICATIONS"
@@ -43,7 +43,6 @@ class OnboardingActivity : AppIntro2(), SlideLeaveInterface, SlideSwitchCallback
 
         fun completedIntro(context: Context): Boolean {
             val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-            // if it is a managed installation, dont show the intro screen for updates.
             return prefs.getBoolean(latest_intro, UpdateChecker(context).isManagedInstallation())
         }
     }
@@ -78,16 +77,13 @@ class OnboardingActivity : AppIntro2(), SlideLeaveInterface, SlideSwitchCallback
 
         val v1_12_0 = mPreferences.getBoolean(intro_v1_12_0_completed, false)
         val v2_5_2 = mPreferences.getBoolean(intro_v2_5_2_completed, false)
-        // fix Opt-In updatecheck in 2.5.1
-        // i forcefully reset the appupdate check, so that it will be off, going forward.
-        // later we ask for permission again.
+        val cb_v1 = mPreferences.getBoolean(intro_cloudbridge_v1_completed, false)
 
         if(v1_12_0 && !v2_5_2) {
-            // only if the app has been set up, and before v2.5.2.
             mPreferences.edit().putBoolean(getString(R.string.pref_key_app_updates), false).apply()
         }
 
-        if (!v1_12_0) {
+        if (!cb_v1) {
             addSlide(
                 IdentifiableAppIntroFragment.createInstance(
                     title = getString(R.string.intro_welcome_title),
@@ -100,13 +96,13 @@ class OnboardingActivity : AppIntro2(), SlideLeaveInterface, SlideSwitchCallback
             switchColor()
             addSlide(
                 IdentifiableAppIntroFragment.createInstance(
-                    title = getString(R.string.intro_community_title),
-                    description = getString(R.string.intro_community_description),
+                    title = getString(R.string.intro_thankyou_title),
+                    description = getString(R.string.intro_thankyou_description),
                     imageDrawable = R.drawable.undraw_the_world_is_mine,
                     backgroundColorRes = color,
-                    id = SLIDE_ID_COMMUNITY,
+                    id = SLIDE_ID_THANKYOU,
                     callback = this
-                    ))
+                ))
             switchColor()
         } else {
             addSlide(
@@ -211,6 +207,7 @@ class OnboardingActivity : AppIntro2(), SlideLeaveInterface, SlideSwitchCallback
             .edit()
             .putBoolean(intro_v1_12_0_completed, true)
             .putBoolean(intro_v2_5_2_completed, true)
+            .putBoolean(intro_cloudbridge_v1_completed, true)
             .apply()
         startActivity(Intent(this, MainActivity::class.java))
         finish()

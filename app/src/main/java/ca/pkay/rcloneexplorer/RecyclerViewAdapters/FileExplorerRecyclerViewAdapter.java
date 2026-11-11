@@ -2,6 +2,7 @@ package ca.pkay.rcloneexplorer.RecyclerViewAdapters;
 
 import android.content.Context;
 import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
@@ -17,8 +18,13 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.load.DataSource;
+import com.bumptech.glide.load.engine.GlideException;
 import com.bumptech.glide.load.model.GlideUrl;
+import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.RequestOptions;
+import com.bumptech.glide.request.target.Target;
+import androidx.annotation.Nullable;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -89,6 +95,9 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
         final FileItem item = files.get(position);
 
         holder.fileItem = item;
+        Glide.with(context).clear(holder.fileIcon);
+        holder.fileIcon.setImageTintList(holder.fileIconTint);
+        holder.fileIcon.setImageResource(R.drawable.ic_file);
         if (item.isDir()) {
             holder.dirIcon.setVisibility(View.VISIBLE);
             holder.fileIcon.setVisibility(View.GONE);
@@ -107,6 +116,7 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
             boolean localLoad = item.getRemote().getType() == RemoteItem.SAFW;
             String mimeType = item.getMimeType();
             if ((mimeType.startsWith("image/") || mimeType.startsWith("video/")) && item.getSize() <= sizeLimit) {
+                holder.fileIcon.setImageTintList(null);
                 RequestOptions glideOption = new RequestOptions()
                         .centerCrop()
                         .diskCacheStrategy(DiskCacheStrategy.ALL)
@@ -122,6 +132,7 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
                             .with(context)
                             .load(new PersistentGlideUrl(url))
                             .apply(glideOption)
+                            .listener(thumbnailTintListener(holder))
                             .thumbnail(0.1f)
                             .into(holder.fileIcon);
                 }
@@ -207,12 +218,30 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
                     .with(context)
                     .load(contentUri)
                     .apply(glideOption)
+                    .listener(thumbnailTintListener(holder))
                     .thumbnail(0.1f)
                     .into(holder.fileIcon);
         } catch (FileAccessError e) {
             FLog.e(TAG, "onBindViewHolder: SAF error", e);
+            holder.fileIcon.setImageTintList(holder.fileIconTint);
             holder.fileIcon.setImageResource(R.drawable.ic_file);
         }
+    }
+
+    private RequestListener<Drawable> thumbnailTintListener(ViewHolder holder) {
+        return new RequestListener<Drawable>() {
+            @Override
+            public boolean onLoadFailed(@Nullable GlideException error, Object model, Target<Drawable> target, boolean first) {
+                holder.fileIcon.setImageTintList(holder.fileIconTint);
+                return false;
+            }
+
+            @Override
+            public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, DataSource source, boolean first) {
+                holder.fileIcon.setImageTintList(null);
+                return false;
+            }
+        };
     }
 
     private static class PersistentGlideUrl extends GlideUrl {
@@ -454,6 +483,7 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
         public final View view;
         public final View icons;
         public final ImageView fileIcon;
+        public final android.content.res.ColorStateList fileIconTint;
         public final ImageView dirIcon;
         public final TextView fileName;
         public final TextView fileModTime;
@@ -467,6 +497,7 @@ public class FileExplorerRecyclerViewAdapter extends RecyclerView.Adapter<FileEx
             this.view = itemView;
             this.icons = view.findViewById(R.id.icons);
             this.fileIcon = view.findViewById(R.id.file_icon);
+            this.fileIconTint = fileIcon.getImageTintList();
             this.dirIcon = view.findViewById(R.id.dir_icon);
             this.fileName = view.findViewById(R.id.file_name);
             this.fileModTime = view.findViewById(R.id.file_modtime);

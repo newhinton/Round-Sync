@@ -4,7 +4,6 @@ import android.content.Context;
 import android.content.UriPermission;
 import android.net.Uri;
 import android.os.Environment;
-import android.util.Log;
 
 import androidx.annotation.Nullable;
 
@@ -15,21 +14,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.zip.CRC32;
-import java.util.zip.Checksum;
 
 public class ProviderPaths {
 
-    private static final String TAG = "ProviderPaths";
     private static volatile ConcurrentHashMap<String, Uri> urisById;
     private static volatile ConcurrentHashMap<Uri, String> idsByUri;
-    private static final String ANDROID_EXTERNAL_STORAGE_PREFIX = "content://com.android.externalstorage.documents/tree/";
 
     public static final String ANDROID_PROVIDER_AUTHORITY = "com.android.externalstorage.documents";
 
     private final Context context;
     // stores permissions by their name
-    private static HashMap<String, Uri> permissionsByPath = new HashMap<>();
+    private static final HashMap<String, Uri> permissionsByPath = new HashMap<>();
 
     public ProviderPaths(Context context) {
         this.context = context;
@@ -55,29 +50,22 @@ public class ProviderPaths {
         if (!ANDROID_PROVIDER_AUTHORITY.equals(uri.getAuthority())) {
             return mapUriThirdParty(uri);
         }
+        return Uri.encode(getAndroidPermissionName(uri)) + "/";
+    }
+
+    private static synchronized String getAndroidPermissionName(Uri uri) {
         String path = getNormalizedPath(uri);
-        path = path.substring(0, path.length()-1);
-        if("primary".equals(path) && ANDROID_PROVIDER_AUTHORITY.equals(uri.getAuthority())) {
-            if(Environment.isExternalStorageRemovable()) {
-                path = "SD Card";
-            } else {
-                path = "Internal Storage";
-            }
+        path = path.substring(0, path.length() - 1).replace("/", " - ");
+        if ("primary".equals(path)) {
+            path = Environment.isExternalStorageRemovable() ? "SD Card" : "Internal Storage";
         }
-        Uri storedUri = permissionsByPath.get(path);
-        if(null == storedUri || storedUri.equals(uri)) {
-            permissionsByPath.put(path, uri);
-        } else {
-            // if the name is not unique, we need to generate a counter
-            int counter = 2;
-            String nameInternal = path;
-            while(null != storedUri) {
-                path =  nameInternal + " (" + counter++ +")";
-                storedUri = permissionsByPath.get(path);
-            }
-            permissionsByPath.put(path, uri);
+        String name = path;
+        int suffix = 2;
+        while (permissionsByPath.containsKey(name) && !uri.equals(permissionsByPath.get(name))) {
+            name = path + " (" + suffix++ + ")";
         }
-        return path + "/";
+        permissionsByPath.put(name, uri);
+        return name;
     }
 
     /**
@@ -90,70 +78,57 @@ public class ProviderPaths {
      * @return an {@link Uri} representing the path as tree uri, e.g. {@code content://com.android.externalstorage.documents/tree/primary:DCIM}
      */
     public Uri getUriByMappedPath(String requestUri) {
-        if(null == requestUri || '/' != requestUri.charAt(0)){
-            throw new IllegalArgumentException("You must request an actual path permission, not " + requestUri);
+        if (requestUri == null || requestUri.length() < 2 || requestUri.charAt(0) != '/'
+                || requestUri.indexOf('\\') >= 0 || requestUri.indexOf('\0') >= 0) {
+            throw new ItemNotFoundException();
         }
-        Uri thirdParty = getUriThirdParty(requestUri);
-        if (null != thirdParty) {
-            return thirdParty;
-        }
-        // the first path segment is the id to resolve to the underlying permission uri
         String path = requestUri.substring(1);
-        int idx = requestUri.indexOf('/', 1);
-        String pathExtra = "";
-        // cut trailing slash
-        if(idx != 1 && idx == path.length()) {
-            path = requestUri.substring(1, idx);
-        }
-        if(idx != -1 && idx < path.length()-1) {
-            path = requestUri.substring(1, idx);
-            pathExtra = requestUri.substring(idx);
-        }
-        // try to retrieve by map
-        Uri storedUri = permissionsByPath.get(path);
-        if(null != storedUri) {
-            Uri.Builder builder = new Uri.Builder();
-            return builder
-                    .scheme("content")
-                    .authority(storedUri.getAuthority())
-                    .path(storedUri.getPath() + pathExtra)
-                    .build();
-        }
-
-        Log.v(TAG, "Rewriting URI: " + requestUri);
-        int trailingSlashPos = requestUri.lastIndexOf("/");
-        int secondSlash = requestUri.indexOf("/", 1);
-        // special handling for android document urls - they are normalized by using a slash instead of the internal ':'
-        if(0 == trailingSlashPos) {
-            requestUri = requestUri + ":";
-            trailingSlashPos = requestUri.length();
-        } else if(-1 != secondSlash){
-            requestUri = requestUri.substring(0, secondSlash) + ':' + requestUri.substring(secondSlash+1);
-            trailingSlashPos = requestUri.length();
-        }
-        String subPath = requestUri.substring(1, trailingSlashPos);
-
-        // compare to existing android storage rights
-        List<UriPermission> permissions = context.getContentResolver().getPersistedUriPermissions();
-        for(UriPermission permission : permissions){
-
-            // provider specific logic - must be adapted for other content providers
-            String pathPrefix = ANDROID_EXTERNAL_STORAGE_PREFIX + subPath;
-            String permissionPath = permission.getUri().toString().replace("%3A", ":");
-            if(pathPrefix.contains(permissionPath)){
-                // all ok, we this is a android ext doc path provider and the app has been granted access
-                Log.v(TAG, "Rewrote URI to " + pathPrefix);
-                Uri.Builder builder = new Uri.Builder();
-                return builder
-                        .scheme("content")
-                        .authority("com.android.externalstorage.documents")
-                        .path("/tree/" + subPath)
-                        .build();
+        for (String segment : path.split("/")) {
+            if (segment.isEmpty() || ".".equals(segment) || "..".equals(segment)) {
+                throw new ItemNotFoundException();
             }
         }
+        List<UriPermission> grants = context.getContentResolver().getPersistedUriPermissions();
+        Uri legacyGrant = null;
+        String legacyPath = "";
+        for (UriPermission grant : grants) {
+            if (!grant.isReadPermission() && !grant.isWritePermission()) continue;
+            Uri uri = grant.getUri();
+            if (!ANDROID_PROVIDER_AUTHORITY.equals(uri.getAuthority())) continue;
+            String alias = getAndroidPermissionName(uri);
+            if (path.equals(alias) || path.startsWith(alias + "/")) {
+                return appendDescendants(uri, path.substring(alias.length()));
+            }
+            // Accept the old volume/subdirectory path for existing bookmarks and tasks.
+            String normalized = getNormalizedPath(uri);
+            if ((path.equals(normalized.substring(0, normalized.length() - 1))
+                    || path.startsWith(normalized)) && normalized.length() > legacyPath.length()) {
+                legacyGrant = uri;
+                legacyPath = normalized;
+            }
+        }
+        if (legacyGrant != null) {
+            return appendDescendants(legacyGrant, path.substring(legacyPath.length() - 1));
+        }
 
-        Log.w(TAG, "User has no (longer) access to the specfied URI");
+        Uri thirdParty = getUriThirdParty(requestUri);
+        if (thirdParty != null) {
+            for (UriPermission grant : grants) {
+                Uri uri = grant.getUri();
+                if (thirdParty.equals(uri) || thirdParty.toString().startsWith(uri.toString() + "/")) {
+                    return thirdParty;
+                }
+            }
+        }
         throw new ItemNotFoundException();
+    }
+
+    private static Uri appendDescendants(Uri root, String descendants) {
+        Uri.Builder builder = root.buildUpon();
+        for (String segment : descendants.split("/")) {
+            if (!segment.isEmpty()) builder.appendPath(segment);
+        }
+        return builder.build();
     }
 
     /**
@@ -195,7 +170,7 @@ public class ProviderPaths {
                 idsByUri.put(uri, uriId);
                 urisById.put(uriId, uri);
             }
-            return idsByUri.get(uri) + "/";
+            return Uri.encode(idsByUri.get(uri)) + "/";
         }
     }
 
@@ -210,7 +185,7 @@ public class ProviderPaths {
             if(urisById.containsKey(permissionId)) {
                 Uri uri = urisById.get(permissionId);
                 if (requestUri.length() >= segmentEnd + 1) {
-                    return uri.buildUpon().appendEncodedPath(requestUri.substring(segmentEnd+1)).build();
+                    return appendDescendants(uri, requestUri.substring(segmentEnd + 1));
                 } else {
                     return uri;
                 }

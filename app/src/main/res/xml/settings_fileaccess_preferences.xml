@@ -1,26 +1,26 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
-    <SwitchPreference
+    <SwitchPreferenceCompat
         android:defaultValue="false"
         android:key="@string/pref_key_enable_saf"
         android:title="@string/pref_saf_enable"
         app:summary="@string/pref_saf_summary" />
-    <SwitchPreference
+    <SwitchPreferenceCompat
         android:defaultValue="false"
         android:key="@string/pref_key_refresh_local_aliases"
         android:title="@string/pref_enable_local_alias_title"
         app:summary="@string/pref_enable_local_alias_summary" />
-    <SwitchPreference
+    <SwitchPreferenceCompat
         android:defaultValue="false"
         android:key="@string/pref_key_enable_vcp"
         android:title="@string/pref_saf_virtual_content_provider_enable"
         app:summary="@string/pref_saf_virtual_content_provider_summary" />
-    <SwitchPreference
+    <SwitchPreferenceCompat
         android:defaultValue="false"
         android:key="@string/pref_key_vcp_declare_local"
         android:title="@string/pref_saf_vcp_local_pretend_enable"
         app:summary="@string/pref_saf_vcp_local_pretend_summary" />
-    <SwitchPreference
+    <SwitchPreferenceCompat
         android:defaultValue="false"
         android:key="@string/pref_key_vcp_grant_all"
         android:title="@string/pref_saf_vcp_grant_all_enable"

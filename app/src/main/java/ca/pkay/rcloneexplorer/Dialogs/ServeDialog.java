@@ -4,6 +4,8 @@ import android.app.Dialog;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.CheckBox;
@@ -32,6 +34,7 @@ public class ServeDialog extends DialogFragment {
     private CheckBox allowRemoteAccess;
     private EditText user;
     private EditText password;
+    private AlertDialog dialog;
 
     public interface Callback {
         void onServeOptionsSelected(int protocol, boolean allowRemoteAccess, String user, String password);
@@ -76,9 +79,39 @@ public class ServeDialog extends DialogFragment {
                 Snackbar.make(btn, R.string.serve_dialog_remote_notice_disabled, Snackbar.LENGTH_LONG)
                         .show();
             }
+            updateOkButtonState();
         });
 
-        return builder.show();
+        TextWatcher credentialsWatcher = new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                updateOkButtonState();
+            }
+        };
+        user.addTextChangedListener(credentialsWatcher);
+        password.addTextChangedListener(credentialsWatcher);
+
+        dialog = builder.show();
+        updateOkButtonState();
+        return dialog;
+    }
+
+    private void updateOkButtonState() {
+        if (dialog == null) {
+            return;
+        }
+        boolean canProceed = !allowRemoteAccess.isChecked()
+                || (!user.getText().toString().trim().isEmpty()
+                && !password.getText().toString().trim().isEmpty());
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(canProceed);
     }
 
     @Override

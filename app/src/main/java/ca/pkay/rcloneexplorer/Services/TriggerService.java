@@ -19,8 +19,9 @@ import androidx.core.app.NotificationCompat;
 import androidx.preference.PreferenceManager;
 
 import java.util.Calendar;
+import java.util.TimeZone;
 
-import ca.pkay.rcloneexplorer.BroadcastReceivers.TriggerReciever;
+import ca.pkay.rcloneexplorer.BroadcastReceivers.TriggerReceiver;
 import ca.pkay.rcloneexplorer.Database.DatabaseHandler;
 import ca.pkay.rcloneexplorer.Items.Trigger;
 import ca.pkay.rcloneexplorer.R;
@@ -65,26 +66,7 @@ public class TriggerService extends Service {
     @SuppressLint("ScheduleExactAlarm") // this is caught by the PermissionManager itself
     private void queueSingleScheduleTrigger(Trigger trigger){
         if(trigger.isEnabled()){
-            Calendar calendar = Calendar.getInstance();
-            calendar.setTimeInMillis(System.currentTimeMillis());
-
-            int seconds = trigger.getTime();
-            calendar.set(Calendar.HOUR_OF_DAY, seconds/60);
-            calendar.set(Calendar.MINUTE, seconds%60);
-
-            long difference = calendar.getTimeInMillis()-System.currentTimeMillis();
-            //Properly schedule past events
-            if(difference<0){
-                difference = (24*60*60*1000) + difference;
-            }
-
-            // If a triggered event schedules the next occurence, we need to make sure that it does not create an endless loop for 60 seconds.
-            // If it is "now", do it in 24h
-            if(Calendar.getInstance().get(Calendar.MINUTE) == seconds%60){
-                difference = (24*60*60*1000);
-            }
-
-            long timeToTrigger = System.currentTimeMillis() + difference;
+            long timeToTrigger = nextScheduleTime(System.currentTimeMillis(), trigger.getTime(), TimeZone.getDefault());
 
             AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
             PendingIntent pi = getIntent(trigger.getId());
@@ -111,6 +93,29 @@ public class TriggerService extends Service {
                 new AppErrorNotificationManager(context).showNotification();
             }
         }
+    }
+
+    static long nextScheduleTime(long now, int minuteOfDay, TimeZone zone) {
+        Calendar day = Calendar.getInstance(zone);
+        day.setTimeInMillis(now);
+        Calendar today = (Calendar) day.clone();
+        setScheduleTime(today, minuteOfDay);
+        if (today.getTimeInMillis() > now) {
+            return today.getTimeInMillis();
+        }
+
+        // Advance the calendar date, then set the requested time again. A civil day can be
+        // 23 or 25 hours, and a time skipped by DST today can exist normally tomorrow.
+        day.add(Calendar.DAY_OF_MONTH, 1);
+        setScheduleTime(day, minuteOfDay);
+        return day.getTimeInMillis();
+    }
+
+    private static void setScheduleTime(Calendar day, int minuteOfDay) {
+        day.set(Calendar.HOUR_OF_DAY, minuteOfDay / 60);
+        day.set(Calendar.MINUTE, minuteOfDay % 60);
+        day.set(Calendar.SECOND, 0);
+        day.set(Calendar.MILLISECOND, 0);
     }
 
     private void queueSingleIntervalTrigger(Trigger trigger){
@@ -152,22 +157,18 @@ public class TriggerService extends Service {
             return;
         }
 
-        //Intent i = SyncService.createInternalStartIntent(this, trigger.getWhatToTrigger());
-        //context.startService(i);
-
-
         SyncManager sm = new SyncManager(this.context);
         sm.queue(trigger);
     }
 
     private PendingIntent getIntent(long triggerId){
-        Intent i = new Intent(context, TriggerReciever.class);
+        Intent i = new Intent(context, TriggerReceiver.class);
         i.setAction(TRIGGER_RECIEVE);
         i.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
         i.putExtra(TRIGGER_ID, triggerId);
 
         // Todo: Beacause of the long to int cast, this may fail when the user has more than Integer.MAX tasks.
-        return PendingIntent.getBroadcast(context, (int) triggerId, i, PendingIntent.FLAG_UPDATE_CURRENT ^ PendingIntent.FLAG_IMMUTABLE);
+        return PendingIntent.getBroadcast(context, (int) triggerId, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
     @Override

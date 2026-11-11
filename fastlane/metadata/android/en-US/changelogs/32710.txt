@@ -1,0 +1,1 @@
+Included the F-Droid build preparation helper in the CloudBridge source so the release can be packaged without an external patch.

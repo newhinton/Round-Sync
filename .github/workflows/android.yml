@@ -1,60 +1,483 @@
-name: Android CI
+name: Android Release Build
 
 on:
-  workflow_dispatch:
   push:
-    tags:
-      - '*'
+    branches: [master]
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish the selected master commit or valid version tag'
+        required: false
+        default: false
+        type: boolean
+      inspect_signing:
+        description: 'Inspect the public signing certificate only (no build or publication)'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+# Publication and asset replacement are not safe to cancel partway through. Keep
+# every invocation of this workflow in one serialized queue.
+concurrency:
+  group: cloudbridge-release-channel
+  cancel-in-progress: false
 
 jobs:
-  createArtifacts:
+  inspect-signing:
+    if: github.event_name == 'workflow_dispatch' && inputs.inspect_signing
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-    - uses: actions/checkout@v4
-    - name: Read Go version from project
-      run: echo "GO_VERSION=$(grep -E "^de\.felixnuesse\.extract\.goVersion=" gradle.properties | cut -d'=' -f2)"
-    - name: Set up JDK 17
-      uses: actions/setup-java@v3
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: gradle
-    - name: Set up Go from gradle.properties
-      uses: actions/setup-go@v4
-      with:
-        go-version: '${{env.GO_VERSION}}'
-      id: go
-    - name: Setup Android SDK/NDK
-      uses: android-actions/setup-android@v3
-    - name: Install NDK from gradle.properties
-      run: |
-        NDK_VERSION="$(grep -E "^de\.felixnuesse\.extract\.ndkVersion=" gradle.properties | cut -d'=' -f2)"
-        sdkmanager "ndk;${NDK_VERSION}"
-    - name: Build app
-      run: ./gradlew assembleOssDebug
-    - name: Upload APK (arm)
-      uses: actions/upload-artifact@v4
-      with:
-        name: nightly-armeabi.apk
-        path: ${{ github.workspace }}/app/build/outputs/apk/oss/debug/*-oss-armeabi-v7a-debug.apk
-    - name: Upload APK (arm64)
-      uses: actions/upload-artifact@v4
-      with:
-        name: nightly-arm64.apk
-        path: ${{ github.workspace }}/app/build/outputs/apk/oss/debug/*-oss-arm64-v8a-debug.apk
-    - name: Upload APK (x86)
-      uses: actions/upload-artifact@v4
-      with:
-        name: nightly-x86.apk
-        path: ${{ github.workspace }}/app/build/outputs/apk/oss/debug/*-oss-x86-debug.apk
-    - name: Upload APK (arm)
-      uses: actions/upload-artifact@v4
-      with:
-        name: nightly-x64.apk
-        path: ${{ github.workspace }}/app/build/outputs/apk/oss/debug/*-oss-x86_64-debug.apk
-    - name: Upload APK (universal)
-      uses: actions/upload-artifact@v4
-      with:
-        name: nightly-universal.apk
-        path: ${{ github.workspace }}/app/build/outputs/apk/oss/debug/*-oss-universal-debug.apk
-        retention-days: 14
+      - name: Inspect public release certificate
+        env:
+          CB_KEYSTORE_BASE64: ${{ secrets.CB_KEYSTORE_BASE64 }}
+          CB_STORE_PASSWORD: ${{ secrets.CB_STORE_PASSWORD }}
+          CB_KEY_ALIAS: ${{ secrets.CB_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          keystore="$RUNNER_TEMP/release-signing.keystore"
+          trap 'rm -f "$keystore"' EXIT
+          printf '%s' "$CB_KEYSTORE_BASE64" | base64 -d > "$keystore"
+          echo "Configured CI certificate SHA-256:"
+          keytool -exportcert -keystore "$keystore" -storepass:env CB_STORE_PASSWORD -alias "$CB_KEY_ALIAS" | sha256sum
+          echo "Checking the same SDK verifier against the last published APK:"
+          curl --fail --location --silent --show-error \
+            https://github.com/thies2005/CloudBridge/releases/download/v1.0.2/cloudbridge_v1.0.2-oss-arm64-v8a-release.apk \
+            --output "$RUNNER_TEMP/known-release.apk" || \
+          curl --fail --location --silent --show-error \
+            https://github.com/thies2005/CloudBridge/releases/download/v1.0.1-beta.c4928762/cloudbridge_v1.0.1-beta.c4928762-oss-arm64-v8a-release.apk \
+            --output "$RUNNER_TEMP/known-release.apk"
+          signer=$(command -v apksigner || true)
+          if [[ -z "$signer" ]]; then
+            signer=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n1)
+          fi
+          echo "APK verifier: $signer"
+          certificate=$("$signer" verify --print-certs "$RUNNER_TEMP/known-release.apk" | sed -n 's/^.*certificate SHA-256 digest: //p' | tr -d '\r' | sort -u)
+          echo "Published APK certificate SHA-256: $certificate"
+          [[ "$certificate" == a352eceb86e3d2fdd6a68ff68ab0637e978b843c8d885fa79e87e16b0cd06993 ]]
+
+  build-and-release:
+    if: '!inputs.inspect_signing'
+    name: Build & Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          # Always build the exact SHA that triggered this run. Full history is
+          # required because version allocation uses git rev-list --count.
+          ref: ${{ github.sha }}
+          fetch-depth: '0'
+
+      - name: Read tool versions from gradle.properties
+        run: |
+          set -euo pipefail
+          GO_VERSION=$(grep '^de\.schuelken\.cloudbridge\.goVersion=' gradle.properties | cut -d'=' -f2)
+          NDK_VERSION=$(grep '^de\.schuelken\.cloudbridge\.ndkVersion=' gradle.properties | cut -d'=' -f2)
+          {
+            echo "GO_VERSION=$GO_VERSION"
+            echo "NDK_VERSION=$NDK_VERSION"
+          } >> "$GITHUB_ENV"
+
+      - name: Determine build version and channel
+        id: channel
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          TRIGGER_SHA: ${{ github.sha }}
+          MANUAL_PUBLISH: ${{ inputs.publish }}
+        run: |
+          set -euo pipefail
+
+          BASE_NAME=$(sed -nE "s/^[[:space:]]*versionName .*'([0-9]+\.[0-9]+\.[0-9]+)'.*$/\1/p" app/build.gradle | head -n1)
+          DEFAULT_CODE=$(sed -nE "s/^[[:space:]]*versionCode .*: *([0-9]+).*$/\1/p" app/build.gradle | head -n1)
+          if [[ -z "$BASE_NAME" || -z "$DEFAULT_CODE" ]]; then
+            echo "Could not read the default versionName/versionCode from app/build.gradle" >&2
+            exit 1
+          fi
+
+          COMMIT_COUNT=$(git rev-list --count "$TRIGGER_SHA")
+          SHORT_SHA=$(git rev-parse --short "$TRIGGER_SHA")
+          PUBLISH=false
+          TAG_NAME=''
+          STABLE_TAG_REGEX='^v([0-9]+\.[0-9]+\.[0-9]+)$'
+
+          if [[ "$REF_TYPE" == 'tag' ]]; then
+            RELEASE_KIND=stable
+            TAG_NAME="$REF_NAME"
+            if [[ ! "$TAG_NAME" =~ $STABLE_TAG_REGEX ]]; then
+              echo "Refusing invalid stable tag: $TAG_NAME" >&2
+              exit 1
+            fi
+            TAG_VERSION="${BASH_REMATCH[1]}"
+            if [[ "$TAG_VERSION" != "$BASE_NAME" ]]; then
+              echo "Stable tag $TAG_NAME does not match app version $BASE_NAME" >&2
+              exit 1
+            fi
+            VERSION_CODE=$((COMMIT_COUNT * 20 + 10))
+            if [[ "$VERSION_CODE" != "$DEFAULT_CODE" ]]; then
+              echo "Stable versionCode mismatch: rule gives $VERSION_CODE, app default is $DEFAULT_CODE" >&2
+              exit 1
+            fi
+            VERSION_NAME="$BASE_NAME"
+            git fetch origin master
+            git merge-base --is-ancestor "$TRIGGER_SHA" origin/master || {
+              echo "Stable releases must come from master history" >&2; exit 1;
+            }
+            RELEASE_TITLE=$(sed -n '1s/^# //p' "docs/releases/${VERSION_NAME}.md")
+            test -n "$RELEASE_TITLE"
+          else
+            RELEASE_KIND=development
+            VERSION_CODE=$((COMMIT_COUNT * 20))
+            VERSION_NAME="${BASE_NAME}-beta.${SHORT_SHA}"
+            RELEASE_TITLE='Development build — automatic'
+            if [[ "$EVENT_NAME" == 'push' || "$MANUAL_PUBLISH" == 'true' ]]; then
+              TAG_NAME=development
+            fi
+          fi
+
+          if [[ "$EVENT_NAME" == 'push' ]]; then
+            PUBLISH=true
+          elif [[ "$EVENT_NAME" == 'workflow_dispatch' && "$MANUAL_PUBLISH" == 'true' ]]; then
+            PUBLISH=true
+            if [[ "$REF_TYPE" == 'branch' && "$REF_NAME" != 'master' ]]; then
+              echo "Manual publication is only supported for master or a valid version tag" >&2
+              exit 1
+            fi
+          fi
+
+          {
+            echo "release_kind=$RELEASE_KIND"
+            echo "version_name=$VERSION_NAME"
+            echo "version_code=$VERSION_CODE"
+            echo "base_version=$BASE_NAME"
+            echo "release_title=$RELEASE_TITLE"
+            echo "tag=$TAG_NAME"
+            echo "publish=$PUBLISH"
+            echo "CB_VERSION_CODE=$VERSION_CODE"
+            echo "CB_VERSION_NAME=$VERSION_NAME"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "CB_VERSION_CODE=$VERSION_CODE"
+            echo "CB_VERSION_NAME=$VERSION_NAME"
+          } >> "$GITHUB_ENV"
+          echo "Building CloudBridge $VERSION_NAME (versionCode $VERSION_CODE)"
+          echo "Release kind: $RELEASE_KIND; publish: $PUBLISH"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@17f84c3641ba7b8f6deff6309fc4c864478f5d62 # v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Install Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: '${{ env.GO_VERSION }}'
+          cache: true
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+
+      - name: Install NDK
+        run: |
+          set -euo pipefail
+          echo "Installing NDK version: $NDK_VERSION"
+          sdkmanager "ndk;${NDK_VERSION}"
+
+      - name: Run unit tests
+        run: |
+          set -euo pipefail
+          ./gradlew testOssDebugUnitTest
+
+      - name: Run lint
+        run: |
+          set -euo pipefail
+          ./gradlew lint -x :rclone:buildAll
+
+      - name: Configure release signing
+        env:
+          CB_KEYSTORE_BASE64: ${{ secrets.CB_KEYSTORE_BASE64 }}
+          CB_STORE_PASSWORD: ${{ secrets.CB_STORE_PASSWORD }}
+          CB_KEY_ALIAS: ${{ secrets.CB_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          if [ -z "$CB_KEYSTORE_BASE64" ] || [ -z "$CB_STORE_PASSWORD" ] || [ -z "$CB_KEY_ALIAS" ]; then
+            echo "ERROR: Release signing secrets (CB_KEYSTORE_BASE64, CB_STORE_PASSWORD, CB_KEY_ALIAS) must be set in CI." >&2
+            exit 1
+          fi
+          mkdir -p app/.config/android
+          printf '%s' "$CB_KEYSTORE_BASE64" | base64 -d > app/.config/android/cloudbridge-release.keystore
+          keytool -list -keystore app/.config/android/cloudbridge-release.keystore -storepass "$CB_STORE_PASSWORD" -alias "$CB_KEY_ALIAS" >/dev/null
+
+      - name: Build release APKs
+        env:
+          # Resolved by app/build.gradle's file() against the app module dir,
+          # so it must be relative to app/, not to the repo root.
+          CB_STORE_FILE: .config/android/cloudbridge-release.keystore
+          CB_STORE_PASSWORD: ${{ secrets.CB_STORE_PASSWORD }}
+          CB_KEY_ALIAS: ${{ secrets.CB_KEY_ALIAS }}
+          CB_KEY_PASSWORD: ${{ secrets.CB_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          ./gradlew assembleOssRelease
+
+      - name: Build release AAB
+        env:
+          CB_STORE_FILE: .config/android/cloudbridge-release.keystore
+          CB_STORE_PASSWORD: ${{ secrets.CB_STORE_PASSWORD }}
+          CB_KEY_ALIAS: ${{ secrets.CB_KEY_ALIAS }}
+          CB_KEY_PASSWORD: ${{ secrets.CB_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          ./gradlew bundleOssRelease -PnoAbiSplits
+
+      - name: Stage artifacts, checksums, and verify signatures
+        env:
+          TRIGGER_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          STAGING_DIR=app/build/outputs/release
+          rm -rf "$STAGING_DIR"
+          mkdir -p "$STAGING_DIR"
+
+          apk_count=0
+          while IFS= read -r -d '' artifact; do
+            cp "$artifact" "$STAGING_DIR/"
+            apk_count=$((apk_count + 1))
+          done < <(find app/build/outputs/apk/oss/release -maxdepth 1 -type f -name '*.apk' -print0)
+
+          aab_count=0
+          while IFS= read -r -d '' artifact; do
+            cp "$artifact" "$STAGING_DIR/"
+            aab_count=$((aab_count + 1))
+          done < <(find app/build/outputs/bundle/ossRelease -maxdepth 1 -type f -name '*.aab' -print0)
+
+          if [[ "$apk_count" -ne 5 || "$aab_count" -ne 1 ]]; then
+            echo "Expected 5 ABI APKs and 1 AAB, found $apk_count APKs and $aab_count AABs." >&2
+            exit 1
+          fi
+
+          APKSIGNER=$(command -v apksigner || true)
+          if [[ -z "$APKSIGNER" && -n "${ANDROID_HOME:-}" ]]; then
+            APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n1)
+          fi
+          if [[ -z "$APKSIGNER" ]]; then
+            echo "apksigner was not found after the release build." >&2
+            exit 1
+          fi
+
+          # Pin the public certificate used by the existing signed releases.
+          EXPECTED_SIGNER=a352eceb86e3d2fdd6a68ff68ab0637e978b843c8d885fa79e87e16b0cd06993
+          AAPT="$(dirname "$APKSIGNER")/aapt"
+          for artifact in "$STAGING_DIR"/*.apk; do
+            certificate_details=$("$APKSIGNER" verify --print-certs "$artifact")
+            # SDK 37 uses "V2 Signer:"; older tools use "Signer #1".
+            certificate=$(printf '%s\n' "$certificate_details" | sed -n 's/^.*certificate SHA-256 digest: //p' | tr -d '\r' | sort -u)
+            [[ "$certificate" == "$EXPECTED_SIGNER" ]] || { echo "Unexpected APK certificate: $certificate (expected $EXPECTED_SIGNER)" >&2; exit 1; }
+            case "$artifact" in
+              *-armeabi-v7a-release.apk) offset=6 ;;
+              *-arm64-v8a-release.apk) offset=7 ;;
+              *-x86-release.apk) offset=8 ;;
+              *-x86_64-release.apk) offset=9 ;;
+              *-universal-release.apk) offset=0 ;;
+              *) echo "Unexpected APK name: $artifact" >&2; exit 1 ;;
+            esac
+            package=$("$AAPT" dump badging "$artifact" | sed -n '1p')
+            [[ "$package" == *"name='de.schuelken.cloudbridge'"* ]]
+            [[ "$package" == *"versionCode='$((CB_VERSION_CODE + offset))'"* ]]
+            [[ "$package" == *"versionName='$CB_VERSION_NAME'"* ]]
+          done
+          for artifact in "$STAGING_DIR"/*.aab; do
+            # Android release certificates are intentionally self-signed. Verify
+            # the JAR signature and pin its certificate rather than requiring a CA.
+            jarsigner -verify "$artifact" > "$RUNNER_TEMP/aab-verification.txt"
+            grep -q '^jar verified\.' "$RUNNER_TEMP/aab-verification.txt"
+            certificate=$(keytool -printcert -jarfile "$artifact" | sed -n 's/^[[:space:]]*SHA256: //p' | tr -d ':' | tr '[:upper:]' '[:lower:]')
+            [[ "$certificate" == "$EXPECTED_SIGNER" ]] || { echo "Unexpected AAB signing certificate" >&2; exit 1; }
+          done
+
+          (
+            cd "$STAGING_DIR"
+            CHECKSUM_NAME=SHA256SUMS
+            if [[ "$CB_VERSION_NAME" == *-beta.* ]]; then
+              CHECKSUM_NAME="SHA256SUMS-${CB_VERSION_NAME}.txt"
+            fi
+            find . -maxdepth 1 -type f \( -name '*.apk' -o -name '*.aab' \) -printf '%f\n' | sort | xargs sha256sum > "$CHECKSUM_NAME"
+            sha256sum -c "$CHECKSUM_NAME"
+          )
+
+          echo "Staged artifacts for $TRIGGER_SHA:"
+          ls -lh "$STAGING_DIR"
+
+      - name: Retain verified build artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: cloudbridge-${{ steps.channel.outputs.version_name }}
+          path: app/build/outputs/release/*
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Check publication preconditions
+        id: publication
+        if: steps.channel.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          TRIGGER_SHA: ${{ github.sha }}
+          RELEASE_KIND: ${{ steps.channel.outputs.release_kind }}
+          STABLE_TAG: ${{ steps.channel.outputs.tag }}
+          STAGING_DIR: app/build/outputs/release
+        run: |
+          set -euo pipefail
+          master_is_current=true
+          upload=true
+
+          if [[ "$RELEASE_KIND" == 'development' ]]; then
+            latest_master_sha=$(gh api "repos/$REPOSITORY/branches/master" --jq '.commit.sha')
+            if [[ "$latest_master_sha" != "$TRIGGER_SHA" ]]; then
+              echo "Built master commit $TRIGGER_SHA is stale; latest is $latest_master_sha. Skipping publication."
+              master_is_current=false
+              upload=false
+            fi
+          else
+            test -s "docs/releases/${CB_VERSION_NAME}.md" || { echo "Missing stable release notes" >&2; exit 1; }
+            if gh api "repos/$REPOSITORY/releases/tags/$STABLE_TAG" >/dev/null 2>&1; then
+              draft=$(gh api "repos/$REPOSITORY/releases/tags/$STABLE_TAG" --jq '.draft')
+              if [[ "$draft" != 'true' ]]; then
+                expected_assets=$(find "$STAGING_DIR" -maxdepth 1 -type f -printf '%f\n' | sort)
+                actual_assets=$(gh api "repos/$REPOSITORY/releases/tags/$STABLE_TAG" --jq '.assets[].name' | sort)
+                [[ "$expected_assets" == "$actual_assets" ]] || { echo "Published stable asset set is incomplete or unexpected" >&2; exit 1; }
+                remote_sha=$(gh api "repos/$REPOSITORY/commits/$STABLE_TAG" --jq '.sha')
+                [[ "$remote_sha" == "$(git rev-parse HEAD)" ]] || { echo "Stable tag moved from the built commit" >&2; exit 1; }
+                published_body=$(gh api "repos/$REPOSITORY/releases/tags/$STABLE_TAG" --jq '.body')
+                [[ "$published_body" == *"$(git rev-parse HEAD)"* ]] || { echo "Published stable provenance does not match the built commit" >&2; exit 1; }
+                echo "Stable release $STABLE_TAG is already published and complete; leaving its assets unchanged."
+                upload=false
+              fi
+            fi
+          fi
+
+          {
+            echo "master_is_current=$master_is_current"
+            echo "upload=$upload"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Publish development release
+        if: >-
+          steps.channel.outputs.publish == 'true' &&
+          steps.channel.outputs.release_kind == 'development' &&
+          steps.publication.outputs.master_is_current == 'true'
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          tag_name: development
+          target_commitish: ${{ github.sha }}
+          name: 'Development build — automatic'
+          prerelease: true
+          make_latest: false
+          body: |
+            ## CloudBridge Development Build
+
+            **Version:** ${{ steps.channel.outputs.version_name }}
+            **Commit:** ${{ github.sha }}
+            **Checksums:** See `SHA256SUMS-${{ steps.channel.outputs.version_name }}.txt`
+
+            Automatic build from the verified latest `master` commit.
+            This prerelease and its `development` tag move with master. Use the
+            commit above for reproducible source; source archives at this tag change.
+
+            ### Downloads
+            - **arm64-v8a** — most modern phones
+            - **universal** — all supported architectures and the safest fallback
+            - Other ABI APKs and the signed AAB are included for completeness.
+          files: app/build/outputs/release/*
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Remove superseded development assets
+        if: >-
+          steps.channel.outputs.publish == 'true' &&
+          steps.channel.outputs.release_kind == 'development' &&
+          steps.publication.outputs.master_is_current == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          STAGING_DIR: app/build/outputs/release
+        run: |
+          set -euo pipefail
+          mapfile -t current_assets < <(find "$STAGING_DIR" -maxdepth 1 -type f -printf '%f\n' | sort)
+          while IFS=$'\t' read -r asset_id asset_name; do
+            keep=false
+            for current_asset in "${current_assets[@]}"; do
+              if [[ "$asset_name" == "$current_asset" ]]; then
+                keep=true
+                break
+              fi
+            done
+            if [[ "$keep" == 'false' ]]; then
+              gh api -X DELETE "repos/$REPOSITORY/releases/assets/$asset_id"
+            fi
+          done < <(gh api "repos/$REPOSITORY/releases/tags/development" --jq '.assets[] | [.id, .name] | @tsv')
+
+      - name: Move development tag after successful upload
+        if: >-
+          steps.channel.outputs.publish == 'true' &&
+          steps.channel.outputs.release_kind == 'development' &&
+          steps.publication.outputs.master_is_current == 'true'
+        env:
+          TRIGGER_SHA: ${{ github.sha }}
+        run: git push --force origin "$TRIGGER_SHA:refs/tags/development"
+
+      - name: Prepare stable notes with provenance
+        if: steps.channel.outputs.release_kind == 'stable'
+        env:
+          TRIGGER_SHA: ${{ github.sha }}
+        run: |
+          cp "docs/releases/${CB_VERSION_NAME}.md" "$RUNNER_TEMP/stable-notes.md"
+          printf '\n**Commit:** %s\n' "$TRIGGER_SHA" >> "$RUNNER_TEMP/stable-notes.md"
+
+      - name: Upload stable release draft
+        id: stable-release
+        if: >-
+          steps.channel.outputs.publish == 'true' &&
+          steps.channel.outputs.release_kind == 'stable' &&
+          steps.publication.outputs.upload == 'true'
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          tag_name: ${{ steps.channel.outputs.tag }}
+          name: ${{ steps.channel.outputs.release_title }}
+          draft: true
+          prerelease: false
+          body_path: ${{ runner.temp }}/stable-notes.md
+          files: app/build/outputs/release/*
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Publish completed stable release
+        if: >-
+          steps.channel.outputs.publish == 'true' &&
+          steps.channel.outputs.release_kind == 'stable' &&
+          steps.publication.outputs.upload == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          STABLE_TAG: ${{ steps.channel.outputs.tag }}
+          RELEASE_ID: ${{ steps.stable-release.outputs.id }}
+        run: |
+          set -euo pipefail
+          expected=$(find app/build/outputs/release -maxdepth 1 -type f -printf '%f\n' | sort)
+          actual=$(gh api "repos/$REPOSITORY/releases/$RELEASE_ID" --jq '.assets[].name' | sort)
+          [[ "$expected" == "$actual" ]] || { echo "Incomplete stable upload" >&2; exit 1; }
+          remote_sha=$(gh api "repos/$REPOSITORY/commits/$STABLE_TAG" --jq '.sha')
+          [[ "$remote_sha" == "$(git rev-parse HEAD)" ]] || { echo "Stable tag moved during the build" >&2; exit 1; }
+          gh api -X PATCH "repos/$REPOSITORY/releases/$RELEASE_ID" -F draft=false -f make_latest=true

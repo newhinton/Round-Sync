@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.content.res.Configuration;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.util.AttributeSet;
 import android.webkit.WebView;
@@ -12,15 +11,24 @@ import android.widget.Toast;
 
 import org.markdownj.MarkdownProcessor;
 
+import ca.pkay.rcloneexplorer.R;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import es.dmoral.toasty.Toasty;
 
 public class MarkdownView extends WebView {
 
     private static final String TAG = "MarkdownView";
+    private final Executor ioExecutor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "MarkdownView-io");
+        t.setDaemon(true);
+        return t;
+    });
 
     public MarkdownView(Context context) {
         super(patchContext(context));
@@ -33,7 +41,7 @@ public class MarkdownView extends WebView {
     public static void closeOnMissingWebView(Activity host, Exception exception) {
         if (exception.getMessage() != null && exception.getMessage().contains("Failed to load WebView provider: No WebView installed")) {
             FLog.e(TAG, "onCreate: Failed to load WebView (Appcenter PUB #49494606u)", exception);
-            Toasty.error(host.getApplicationContext(), "Install WebView and try again", Toast.LENGTH_LONG, true).show();
+            Toasty.error(host.getApplicationContext(), host.getString(R.string.install_webview_retry), Toast.LENGTH_LONG, true).show();
             host.finish();
         } else {
             throw new RuntimeException(exception);
@@ -50,46 +58,33 @@ public class MarkdownView extends WebView {
     }
 
     public void loadAsset(String path) {
-        new LoadMarkdownAsset(path, this).execute();
-    }
-
-    private static class LoadMarkdownAsset extends AsyncTask<Void, Void, String> {
-
-        private static final String TAG = "LoadMarkdownAsset";
-        private final String assetName;
-        private final WebView webView;
-
-        public LoadMarkdownAsset(String assetName, WebView webView) {
-            this.assetName = assetName;
-            this.webView = webView;
-        }
-
-        @Override
-        protected String doInBackground(Void... voids) {
+        // RC-39: migrated off AsyncTask to a background executor; the WebView is updated on the
+        // UI thread via View.post(). LoadMarkdownAsset used to be a static nested AsyncTask.
+        final String assetName = path;
+        final WebView webView = this;
+        ioExecutor.execute(() -> {
             Context context = webView.getContext();
             AssetManager assetManager = context.getAssets();
+            String html;
             try (BufferedReader br = new BufferedReader(new InputStreamReader(assetManager.open(assetName)))) {
                 StringBuilder markdown = new StringBuilder(4096);
                 String line;
                 while ((line = br.readLine()) != null) {
-                    // Use \n as line seperator so that the processor does not
-                    // have to replace this.
                     markdown.append(line).append('\n');
                 }
-                return new MarkdownProcessor().markdown(markdown.toString());
+                html = new MarkdownProcessor().markdown(markdown.toString());
             } catch (IOException e) {
                 FLog.e(TAG, "Could not load asset ", e);
+                html = null;
             }
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(String html) {
-            if (null == html) {
-                webView.loadUrl("about:blank");
-            } else {
-                webView.loadDataWithBaseURL("local://", html, "text/html", "UTF-8", null);
-            }
-        }
+            final String result = html;
+            webView.post(() -> {
+                if (null == result) {
+                    webView.loadUrl("about:blank");
+                } else {
+                    webView.loadDataWithBaseURL("local://", result, "text/html", "UTF-8", null);
+                }
+            });
+        });
     }
 }

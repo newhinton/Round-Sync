@@ -63,6 +63,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="50dp"
                             android:gravity="center_vertical"
+                            android:labelFor="@id/remote_name"
                             android:paddingBottom="@dimen/cardPadding"
                             android:text="@string/remote_properties_remote_name"
                             android:textStyle="bold" />

@@ -32,7 +32,7 @@ class WifiConnectivitiyUtil {
                     mContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
                 (!cm.isActiveNetworkMetered)
             } else {
-                FLog.e("SyncService.TAG", "Wifi not turned on.")
+                FLog.e("WifiConnectivitiyUtil", "Wifi not turned on.")
                 false // Wi-Fi adapter is OFF
             }
         }

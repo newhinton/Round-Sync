@@ -60,5 +60,12 @@ public class LogFragment extends Fragment {
 
         LogRecyclerViewAdapter recyclerViewAdapter = new LogRecyclerViewAdapter(SyncLog.getLog(c));
         recyclerView.setAdapter(recyclerViewAdapter);
+
+        View emptyState = v.findViewById(R.id.logs_empty_state);
+        int itemCount = recyclerViewAdapter.getItemCount();
+        recyclerView.setVisibility(itemCount == 0 ? View.GONE : View.VISIBLE);
+        if (emptyState != null) {
+            emptyState.setVisibility(itemCount == 0 ? View.VISIBLE : View.GONE);
+        }
     }
 }

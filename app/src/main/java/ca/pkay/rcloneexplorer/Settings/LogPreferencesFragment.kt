@@ -9,8 +9,8 @@ import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceManager
 import ca.pkay.rcloneexplorer.R
 import ca.pkay.rcloneexplorer.util.FLog
-import de.felixnuesse.extract.extensions.tag
-import de.felixnuesse.extract.settings.preferences.ButtonPreference
+import de.schuelken.cloudbridge.extensions.tag
+import de.schuelken.cloudbridge.settings.preferences.ButtonPreference
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStreamReader
@@ -36,7 +36,7 @@ class LogPreferencesFragment : PreferenceFragmentCompat() {
 
 
     private fun sigquitAll() {
-        Toast.makeText(context, "Round Sync: Stopping everything", Toast.LENGTH_LONG).show()
+        Toast.makeText(context, getString(R.string.stopping_everything), Toast.LENGTH_LONG).show()
         try {
             val runtime = Runtime.getRuntime()
             val process = runtime.exec("ps")

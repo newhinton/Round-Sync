@@ -3,6 +3,7 @@ package ca.pkay.rcloneexplorer.notifications.support
 import android.content.Context
 import android.text.format.Formatter
 import android.util.Log
+import ca.pkay.rcloneexplorer.Items.SyncDirectionObject
 import ca.pkay.rcloneexplorer.R
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
@@ -19,9 +20,26 @@ class StatusObject(var mContext: Context){
 
     var estimatedAverageSpeed = 0L
     var lastItemAverageSpeed = 0L
+    var syncDirection: Int = 0
 
     fun getSpeed(): String {
         return Formatter.formatFileSize(mContext, mStats.optLong("speed", 0)) + "/s"
+    }
+
+    /**
+     * Check if the sync direction is uploading (local to remote)
+     */
+    fun isUploadDirection(): Boolean {
+        return syncDirection == SyncDirectionObject.SYNC_LOCAL_TO_REMOTE ||
+               syncDirection == SyncDirectionObject.COPY_LOCAL_TO_REMOTE
+    }
+
+    /**
+     * Check if the sync direction is downloading (remote to local)
+     */
+    fun isDownloadDirection(): Boolean {
+        return syncDirection == SyncDirectionObject.SYNC_REMOTE_TO_LOCAL ||
+               syncDirection == SyncDirectionObject.COPY_REMOTE_TO_LOCAL
     }
 
     /**
@@ -59,8 +77,21 @@ class StatusObject(var mContext: Context){
         return mStats.optInt("totalTransfers", 0)
     }
 
+    /**
+     * Deletions reported by the current rclone process plus the totals folded in from earlier
+     * processes of the same batch job (a multi-item delete runs several rclone processes and
+     * each process only reports its own counts).
+     */
+    private var accumulatedDeletions = 0
+
+    /** Folds the current process's counts into the total and resets them. */
+    fun accumulateDeletions() {
+        accumulatedDeletions += mStats.optInt("deletes", 0) + mStats.optInt("deletedDirs", 0)
+        mStats = JSONObject()
+    }
+
     fun getDeletions(): Int {
-        return mStats.optInt("deletes", 0) + mStats.optInt("deletedDirs", 0)
+        return accumulatedDeletions + mStats.optInt("deletes", 0) + mStats.optInt("deletedDirs", 0)
     }
 
     fun getErrorMessage(): String {
@@ -164,12 +195,33 @@ class StatusObject(var mContext: Context){
                 )
             }
 
+            // Show direction-aware speed label
+            val speedStringRes = when {
+                isUploadDirection() -> R.string.sync_notification_upload_speed
+                isDownloadDirection() -> R.string.sync_notification_download_speed
+                else -> R.string.sync_notification_speed
+            }
             notificationBigText.add(
                 String.format(
-                    mContext.getString(R.string.sync_notification_speed),
+                    mContext.getString(speedStringRes),
                     speed
                 )
             )
+
+            // Show session total transferred
+            val sessionTotalStringRes = when {
+                isUploadDirection() -> R.string.sync_notification_session_uploaded
+                isDownloadDirection() -> R.string.sync_notification_session_downloaded
+                else -> null
+            }
+            if (sessionTotalStringRes != null) {
+                notificationBigText.add(
+                    String.format(
+                        mContext.getString(sessionTotalStringRes),
+                        size
+                    )
+                )
+            }
 
             var eta = mStats.get("eta")
             if(eta == null) {

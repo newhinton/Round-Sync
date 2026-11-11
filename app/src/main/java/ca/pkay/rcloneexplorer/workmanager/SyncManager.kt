@@ -1,17 +1,23 @@
 package ca.pkay.rcloneexplorer.workmanager
 
 import android.content.Context
-import android.util.Log
 import androidx.work.Data
+import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkRequest
+import androidx.work.BackoffPolicy
+import androidx.work.WorkInfo
 import ca.pkay.rcloneexplorer.Items.Task
 import ca.pkay.rcloneexplorer.Items.Trigger
 import java.util.Random
+import java.util.concurrent.TimeUnit
 
 class SyncManager(private var mContext: Context) {
 
+    companion object {
+        internal const val SYNC_WORK_TAG = "sync_work"
+    }
 
     fun queue(trigger: Trigger) {
         queue(trigger.triggerTarget)
@@ -21,7 +27,26 @@ class SyncManager(private var mContext: Context) {
         queue(task.id)
     }
 
-    fun queue(taskID: Long) {
+    fun queue(taskID: Long) = queueTask(taskID, ExistingWorkPolicy.KEEP)
+
+    fun queueFollowup(taskID: Long) {
+        // Called by a worker: record the current generation so duplicate requests can be
+        // coalesced even when another run starts before their dispatchers execute.
+        val manager = WorkManager.getInstance(mContext)
+        val current = manager.getWorkInfosForUniqueWork("task-$taskID").get()
+        if (current.any { it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.BLOCKED }) return
+        val request = OneTimeWorkRequestBuilder<FollowupWorker>()
+            .setInputData(Data.Builder().putLong(SyncWorker.TASK_ID, taskID)
+                .putStringArray(FollowupWorker.KNOWN_WORK_IDS, current.map { it.id.toString() }.toTypedArray())
+                .build())
+            .addTag(taskID.toString())
+            .addTag(SYNC_WORK_TAG)
+            .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
+            .build()
+        manager.enqueueUniqueWork("task-followup-$taskID", ExistingWorkPolicy.APPEND_OR_REPLACE, request).result.get()
+    }
+
+    private fun queueTask(taskID: Long, policy: ExistingWorkPolicy): androidx.work.Operation {
         val uploadWorkRequest = OneTimeWorkRequestBuilder<SyncWorker>()
 
         val data = Data.Builder()
@@ -29,7 +54,8 @@ class SyncManager(private var mContext: Context) {
 
         uploadWorkRequest.setInputData(data.build())
         uploadWorkRequest.addTag(taskID.toString())
-        work(uploadWorkRequest.build())
+        uploadWorkRequest.addTag(SYNC_WORK_TAG)
+        return WorkManager.getInstance(mContext).enqueueUniqueWork("task-$taskID", policy, uploadWorkRequest.build())
     }
 
     fun queueEphemeral(task: Task) {
@@ -42,6 +68,7 @@ class SyncManager(private var mContext: Context) {
 
         uploadWorkRequest.setInputData(data.build())
         uploadWorkRequest.addTag(task.id.toString())
+        uploadWorkRequest.addTag(SYNC_WORK_TAG)
         work(uploadWorkRequest.build())
     }
 
@@ -52,15 +79,9 @@ class SyncManager(private var mContext: Context) {
 
     fun cancel() {
         WorkManager.getInstance(mContext)
-            .cancelAllWork()
+            .cancelAllWorkByTag(SYNC_WORK_TAG)
     }
     fun cancel(tag: String) {
-
-        //Intent syncIntent = new Intent(context, SyncService.class);
-        //syncIntent.setAction(TASK_CANCEL_ACTION);
-        //syncIntent.putExtra(EXTRA_TASK_ID, intent.getLongExtra(EXTRA_TASK_ID, -1));
-        //context.startService(syncIntent);
-        Log.e("TAG", "CANCEL"+tag)
         WorkManager
             .getInstance(mContext)
             .cancelAllWorkByTag(tag)

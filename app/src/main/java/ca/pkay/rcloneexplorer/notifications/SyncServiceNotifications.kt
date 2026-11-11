@@ -60,20 +60,23 @@ class SyncServiceNotifications(var mContext: Context) {
             showFailedNotification(content, notificationId, taskid)
             return
         }
-        if(mReportManager.getFailures()<=1) {
-            showFailedNotification(content, notificationId, taskid)
-            mReportManager.lastFailedNotification(notificationId)
-            mReportManager.addToFailureReport(title, content)
-        } else {
-            mReportManager.cancelLastFailedNotification()
-            mReportManager.showFailReport(title, content)
+        synchronized(ReportNotifications.lock) {
+            if (mReportManager.getFailures() == 0) {
+                mReportManager.addToFailureReport(title, content)
+                mReportManager.lastFailedNotification(notificationId)
+                showFailedNotification(content, notificationId, taskid, mReportManager.deleteIntent(false))
+            } else {
+                mReportManager.cancelLastFailedNotification()
+                mReportManager.showFailReport(title, content)
+            }
         }
     }
 
     fun showFailedNotification(
         content: String,
         notificationId: Int,
-        taskid: Long
+        taskid: Long,
+        deleteIntent: PendingIntent? = null
     ) {
         val i = Intent(mContext, SyncRestartAction::class.java)
         i.putExtra(EXTRA_TASK_ID, taskid)
@@ -88,6 +91,7 @@ class SyncServiceNotifications(var mContext: Context) {
             )
             .setGroup(OPERATION_FAILED_GROUP)
             .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setDeleteIntent(deleteIntent)
             .addAction(
                 R.drawable.ic_refresh,
                 mContext.getString(R.string.retry_failed_sync),
@@ -105,20 +109,23 @@ class SyncServiceNotifications(var mContext: Context) {
             return
         }
         var title = mContext.getString(R.string.operation_failed_cancelled)
-        if(mReportManager.getFailures()<=1) {
-            showCancelledNotification(content, notificationId, taskid)
-            mReportManager.lastFailedNotification(notificationId)
-            mReportManager.addToFailureReport(title, content)
-        } else {
-            mReportManager.cancelLastFailedNotification()
-            mReportManager.showFailReport(title, content)
+        synchronized(ReportNotifications.lock) {
+            if (mReportManager.getFailures() == 0) {
+                mReportManager.addToFailureReport(title, content)
+                mReportManager.lastFailedNotification(notificationId)
+                showCancelledNotification(content, notificationId, taskid, mReportManager.deleteIntent(false))
+            } else {
+                mReportManager.cancelLastFailedNotification()
+                mReportManager.showFailReport(title, content)
+            }
         }
     }
 
     fun showCancelledNotification(
         content: String,
         notificationId: Int,
-        taskid: Long
+        taskid: Long,
+        deleteIntent: PendingIntent? = null
     ) {
         val i = Intent(mContext, SyncRestartAction::class.java)
         i.putExtra(EXTRA_TASK_ID, taskid)
@@ -133,6 +140,7 @@ class SyncServiceNotifications(var mContext: Context) {
             )
             .setGroup(OPERATION_FAILED_GROUP)
             .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setDeleteIntent(deleteIntent)
             .addAction(
                 R.drawable.ic_refresh,
                 mContext.getString(R.string.retry_failed_sync),
@@ -152,16 +160,18 @@ class SyncServiceNotifications(var mContext: Context) {
             return
         }
 
-        if(mReportManager.getSucesses()<=1) {
-            showSuccessNotification(title, content, notificationId)
-            mReportManager.lastSuccededNotification(notificationId)
-            mReportManager.addToSuccessReport(title, content)
-        } else {
-            mReportManager.cancelLastSuccededNotification()
-            mReportManager.showSuccessReport(title, content)
+        synchronized(ReportNotifications.lock) {
+            if (mReportManager.getSucesses() == 0) {
+                mReportManager.addToSuccessReport(title, content)
+                mReportManager.lastSuccededNotification(notificationId)
+                showSuccessNotification(title, content, notificationId, mReportManager.deleteIntent(true))
+            } else {
+                mReportManager.cancelLastSuccededNotification()
+                mReportManager.showSuccessReport(title, content)
+            }
         }
     }
-    fun showSuccessNotification(title: String, content: String, notificationId: Int) {
+    fun showSuccessNotification(title: String, content: String, notificationId: Int, deleteIntent: PendingIntent? = null) {
         val builder = NotificationCompat.Builder(mContext, CHANNEL_SUCCESS_ID)
             .setSmallIcon(R.drawable.ic_twotone_cloud_done_24)
             .setContentTitle(mContext.getString(R.string.operation_success, title))
@@ -173,6 +183,7 @@ class SyncServiceNotifications(var mContext: Context) {
             )
             .setGroup(OPERATION_SUCCESS_GROUP)
             .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setDeleteIntent(deleteIntent)
         NotificationUtils.createNotification(mContext, notificationId, builder.build())
     }
 

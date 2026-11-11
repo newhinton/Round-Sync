@@ -1,7 +1,7 @@
 <resources>
-    <string name="app_name">Round Sync</string>
+    <string name="app_name">CloudBridge</string>
     <string name="app_description">Rclone 为 Android</string>
-    <string name="app_short_name">Round Sync</string>
+    <string name="app_short_name">CloudBridge</string>
 
     <string name="title_activity_about">关于</string>
     <string name="title_activity_changelog">更新日志</string>
@@ -110,11 +110,11 @@
     <string name="app_icon_made_by">应用图标制作者</string>
     <string name="from">从</string>
     <string name="intro_welcome_title">欢迎！</string>
-    <string name="intro_welcome_description">Round Sync 是一个文件管理工具，可以处理存储在设备或远端的文件。了解更多信息，请访问 github.com/newhinton/Round-Sync</string>
+    <string name="intro_welcome_description">CloudBridge 是一个文件管理工具，可以处理存储在设备或远端的文件。了解更多信息，请访问 github.com/thies2005/CloudBridge</string>
     <string name="intro_storage_title">存储访问</string>
-    <string name="intro_storage_description">Round Sync 依赖于 Rclone，需要您的授权才能访问设备上的文件。请在出现提示时授予存储访问权限，否则应用可能无法正常工作。</string>
+    <string name="intro_storage_description">CloudBridge 依赖于 Rclone，需要您的授权才能访问设备上的文件。请在出现提示时授予存储访问权限，否则应用可能无法正常工作。</string>
     <string name="intro_community_title">社区</string>
-    <string name="intro_community_description">Round Sync 是一个社区驱动的项目。为了贡献和改进应用，您可以启用匿名错误报告。了解更多信息，请访问 felixnuesse.de/privacy-roundsync</string>
+    <string name="intro_community_description">CloudBridge 是一个社区驱动的项目。为了贡献和改进应用，您可以启用匿名错误报告。了解更多信息，请访问 cloudbridge.schuelken.uk</string>
     <string name="file_access">文件访问</string>
     <string name="look_and_feel">界面外观</string>
     <string name="dark_theme">深色主题</string>
@@ -132,11 +132,11 @@
     <string name="pref_locale_dlg_title">选择语言</string>
     <string name="pref_locale_restart_notice">语言更改将在重新启动应用后生效</string>
     <string name="use_logs">记录 Rclone 错误</string>
-    <string name="use_logs_summary">错误日志将会保存到本地文件夹 (Android/data/de.felixnuesse.extract/files/logs)</string>
+    <string name="use_logs_summary">错误日志将会保存到本地文件夹 (Android/data/de.schuelken.cloudbridge/files/logs)</string>
     <string name="notifications_pref_title">消息通知</string>
     <string name="content_description_circle">圈</string>
     <string name="loading">加载中</string>
-    <string name="app_not_configured">Round Sync 尚未配置</string>
+    <string name="app_not_configured">CloudBridge 尚未配置</string>
     <string name="open_app_to_configure">请先打开应用进行设置</string>
     <string name="error_retrieving_files">检索文件时出错</string>
     <string name="sync_service_notification_channel_description">用于同步服务</string>
@@ -266,7 +266,7 @@
     <string name="virtual_content_provider_exception_error">支持信息: \n%1$s</string>
     <string name="virtual_content_provider_null_content">检索远端或目录内容失败。有关详细信息，请查看日志文件。</string>
     <string name="virtual_content_provider_service_error">未能连接到 Rclone 服务。强制停止应用，然后重试。</string>
-    <string name="virtual_content_provider_no_remotes">未配置远端。打开 Round Sync 以添加存储位置。</string>
+    <string name="virtual_content_provider_no_remotes">未配置远端。打开 CloudBridge 以添加存储位置。</string>
     <string name="remote_properties_remote_name">远端名称</string>
     <string name="remote_properties_storage_usage">存储使用情况</string>
     <string name="remote_properties_storage_stats">已用 %1$s / %2$s (%3$s 可用)</string>
@@ -337,7 +337,7 @@
     <string name="pref_bugreport_start_summary">点击按钮开始数据收集，然后尝试重新创建问题。完成后停止数据收集。</string>
     <string name="pref_send_sigquit_title">调试：使用 SIGQUIT 停止</string>
     <string name="pref_send_sigquit_summary">使用 kill-SIGQUIT 停止所有 Rclone 进程。需要启用日志记录。</string>
-    <string name="sync_notification_transferred">已转移 %s 共 %s</string>
+    <string name="sync_notification_transferred">已转移 %1$s 共 %2$s</string>
     <string name="sync_notification_speed">速度: %s</string>
     <string name="sync_notification_remaining">剩余: %s</string>
     <string name="sync_notification_errors">错误: %d</string>
@@ -363,8 +363,8 @@
     </plurals>
 
     <string name="sync_notification_short">%s 共 %s ，剩余 %s</string>
-    <string name="abi_not_supported_arm_downgrade">不幸的是，此 Round Sync 版本与您的设备不兼容。试试 armeabi-v7a 的 APK， 从 github.com/newhinton/Round-Sync/releases/latest 下载。</string>
-    <string name="abi_not_supported">您的设备不支持此版本的 Round Sync。</string>
+    <string name="abi_not_supported_arm_downgrade">不幸的是，此 CloudBridge 版本与您的设备不兼容。试试 armeabi-v7a 的 APK， 从 github.com/thies2005/CloudBridge/releases/latest 下载。</string>
+    <string name="abi_not_supported">您的设备不支持此版本的 CloudBridge。</string>
     <string name="trigger">触发器</string>
     <string name="title_activity_trigger">触发器</string>
     <string name="enabled">启用</string>

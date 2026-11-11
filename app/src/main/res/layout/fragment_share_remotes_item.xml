@@ -43,6 +43,7 @@
             android:id="@+id/pin_icon"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:contentDescription="@string/pinned_content_description"
             android:paddingStart="16dp"
             android:paddingEnd="0dp"
             android:rotation="40"

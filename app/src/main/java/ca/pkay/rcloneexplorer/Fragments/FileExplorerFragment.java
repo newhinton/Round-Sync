@@ -61,6 +61,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Stack;
 
@@ -94,6 +95,7 @@ import ca.pkay.rcloneexplorer.workmanager.EphemeralTaskManager;
 import ca.pkay.rcloneexplorer.workmanager.SyncManager;
 import de.felixnuesse.ui.BreadcrumbView;
 import es.dmoral.toasty.Toasty;
+import com.google.android.material.snackbar.Snackbar;
 import java9.util.stream.Collectors;
 import java9.util.stream.StreamSupport;
 import jp.wasabeef.recyclerview.animators.LandingAnimator;
@@ -798,7 +800,7 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
      */
     @Override
     public void onClickText(FileItem fileItem) {
-        new DownloadAndOpen(DownloadAndOpen.OPEN_AS_TEXT).execute(fileItem);
+        new DownloadAndOpen(DownloadAndOpen.OPEN_AS_TEXT).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, fileItem);
     }
 
     @Override
@@ -813,7 +815,7 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
 
     @Override
     public void onClickImage(FileItem fileItem) {
-        new DownloadAndOpen(DownloadAndOpen.OPEN_AS_IMAGE).execute(fileItem);
+        new DownloadAndOpen(DownloadAndOpen.OPEN_AS_IMAGE).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, fileItem);
     }
 
     private void showFileProperties(FileItem fileItem) {
@@ -880,8 +882,8 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
         }
 
         for (FileItem item : content) {
-            String fileName = item.getName().toLowerCase();
-            if (fileName.contains(search.toLowerCase())) {
+            String fileName = item.getName().toLowerCase(Locale.ROOT);
+            if (fileName.contains(search.toLowerCase(Locale.ROOT))) {
                 results.add(item);
             }
         }
@@ -1181,7 +1183,7 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
             new StreamTask().execute(fileItem);
         } else {
             // download and open
-            new DownloadAndOpen().execute(fileItem);
+            new DownloadAndOpen().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, fileItem);
         }
     }
 
@@ -1463,15 +1465,42 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
                 .setNegativeButton(getResources().getString(R.string.cancel), null)
                 .setPositiveButton(getResources().getString(R.string.delete), (dialog, which) -> {
                     recyclerViewAdapter.cancelSelection();
-                    for (FileItem deleteItem : deleteList) {
-                        EphemeralTaskManager.Companion.queueDelete(this.context, remote, deleteItem, directoryObject.getCurrentPath());
+                    View view = getView();
+                    if (view == null) {
+                        enqueueDeletes(deleteList);
+                        return;
                     }
-                    Toasty.info(context, getString(R.string.deleting_info), Toast.LENGTH_SHORT, true).show();
+                    // RC-37: defer the destructive enqueue until the Snackbar undo window elapses.
+                    // Once a delete worker has started it cannot be reliably cancelled, so we only
+                    // enqueue when the user lets the Snackbar time out (no Undo tap).
+                    final List<FileItem> pendingDeletes = new ArrayList<>(deleteList);
+                    Snackbar snackbar = Snackbar.make(view, getString(R.string.deleting_info), Snackbar.LENGTH_LONG);
+                    snackbar.setAction(R.string.undo, v -> {
+                        pendingDeletes.clear();
+                        Toasty.info(context, getString(R.string.cancel), Toast.LENGTH_SHORT, true).show();
+                    });
+                    snackbar.addCallback(new Snackbar.Callback() {
+                        @Override
+                        public void onDismissed(Snackbar transientBottomBar, int event) {
+                            super.onDismissed(transientBottomBar, event);
+                            if (event != DISMISS_EVENT_ACTION && !pendingDeletes.isEmpty()) {
+                                enqueueDeletes(pendingDeletes);
+                            }
+                        }
+                    });
+                    snackbar.show();
                 });
         if(deleteList.size() == 1) {
             builder.setMessage(getString(R.string.name_will_be_deleted, deleteList.get(0).getName()));
         }
         builder.create().show();
+    }
+
+    private void enqueueDeletes(List<FileItem> deleteList) {
+        if (context == null) {
+            return;
+        }
+        EphemeralTaskManager.Companion.queueDelete(this.context, remote, deleteList, directoryObject.getCurrentPath());
     }
 
     private void renameFiles() {
@@ -1656,8 +1685,10 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
                 if (silentFetch) {
                     return;
                 }
+                // UI-021: keep the currently-displayed content rather than blanking the list on a
+                // transient rclone error; the user can pull-to-refresh to retry.
                 Toasty.error(context, getString(R.string.error_getting_dir_content), Toast.LENGTH_SHORT, true).show();
-                fileItems = new ArrayList<>();
+                return;
             }
 
             directoryObject.setContent(fileItems);
@@ -1819,13 +1850,24 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
         protected Boolean doInBackground(FileItem... fileItems) {
             FileItem fileItem = fileItems[0];
             mimeType = fileItem.getMimeType();
-            File[] extCacheDirs = ContextCompat.getExternalCacheDirs(context);
-            if (extCacheDirs.length < 1) {
+            File previewCacheDir = new File(context.getCacheDir(), "preview");
+            if (!previewCacheDir.exists() && !previewCacheDir.mkdirs()) {
                 return false;
             }
-            String saveLocation = extCacheDirs[0].getAbsolutePath();
-
-            fileLocation = saveLocation + "/" + fileItem.getName();
+            String safeFileName = new File(fileItem.getName().replace('\\', '/')).getName().trim();
+            if (safeFileName.isEmpty() || ".".equals(safeFileName) || "..".equals(safeFileName)) {
+                return false;
+            }
+            String saveLocation = previewCacheDir.getAbsolutePath();
+            File targetFile = new File(previewCacheDir, safeFileName);
+            try {
+                if (!targetFile.getCanonicalPath().startsWith(previewCacheDir.getCanonicalPath() + File.separator)) {
+                    return false;
+                }
+            } catch (IOException e) {
+                return false;
+            }
+            fileLocation = targetFile.getAbsolutePath();
 
             process = rclone.downloadFile(remote, fileItem, saveLocation);
 
@@ -1922,17 +1964,23 @@ public class FileExplorerFragment extends Fragment implements   FileExplorerRecy
             }
             fileItem = fileItems[0];
             int port = allocatePort(8080, true);
+            byte[] tokenBytes = new byte[16];
+            new java.security.SecureRandom().nextBytes(tokenBytes);
+            String streamToken = android.util.Base64.encodeToString(
+                    tokenBytes, android.util.Base64.NO_WRAP | android.util.Base64.NO_PADDING | android.util.Base64.URL_SAFE);
             serveIntent = new Intent(context, StreamingService.class);
             serveIntent.putExtra(StreamingService.SERVE_PATH_ARG, fileItem.getPath());
             serveIntent.putExtra(StreamingService.REMOTE_ARG, remote);
             serveIntent.putExtra(StreamingService.SHOW_NOTIFICATION_TEXT, false);
             serveIntent.putExtra(StreamingService.SERVE_PORT, port);
+            serveIntent.putExtra(StreamingService.SERVE_BASE_URL, streamToken);
             // GH-87: Release old stream
             context.stopService(new Intent(context, StreamingService.class));
             tryStartService(context, serveIntent);
 
             Uri uri = Uri.parse("http://127.0.0.1:" + port)
                     .buildUpon()
+                    .appendPath(streamToken)
                     .appendPath(fileItem.getName())
                     .build();
 

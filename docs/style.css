@@ -1,0 +1,66 @@
+:root {
+  --accent: #0b57d0;
+  --accent-dark: #0842a0;
+  --bg: #ffffff;
+  --bg-soft: #f3f6fc;
+  --text: #1f2430;
+  --text-soft: #5a6273;
+  --border: #dde3ee;
+  --code-bg: #f0f3f9;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  line-height: 1.65;
+}
+
+header.site {
+  background: var(--accent-dark);
+  color: #fff;
+  padding: 1.1rem 1.5rem;
+}
+
+header.site .inner, main, footer .inner { max-width: 960px; margin: 0 auto; }
+
+header.site h1 { margin: 0; font-size: 1.35rem; }
+header.site p { margin: .2rem 0 0; opacity: .85; font-size: .95rem; }
+
+nav.site { margin-top: .7rem; }
+nav.site a {
+  color: #fff; text-decoration: none; font-size: .95rem;
+  margin-right: 1.2rem; opacity: .9;
+}
+nav.site a:hover, nav.site a[aria-current] { opacity: 1; text-decoration: underline; }
+
+main { padding: 1.5rem 1.5rem 3rem; }
+
+h2 { border-bottom: 2px solid var(--border); padding-bottom: .3rem; margin-top: 2.2rem; }
+h3 { margin-top: 1.6rem; }
+a { color: var(--accent); }
+
+code, pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .92em;
+}
+code { background: var(--code-bg); padding: .1rem .35rem; border-radius: 4px; }
+pre {
+  background: var(--code-bg); border: 1px solid var(--border);
+  padding: .8rem 1rem; border-radius: 8px; overflow-x: auto;
+}
+pre code { background: none; padding: 0; }
+
+table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+th, td { border: 1px solid var(--border); padding: .45rem .7rem; text-align: left; vertical-align: top; }
+th { background: var(--bg-soft); }
+
+.note {
+  background: var(--bg-soft); border-left: 4px solid var(--accent);
+  padding: .8rem 1rem; border-radius: 0 8px 8px 0; margin: 1rem 0;
+}
+
+footer.site { border-top: 1px solid var(--border); padding: 1rem 1.5rem 2rem; color: var(--text-soft); font-size: .9rem; }

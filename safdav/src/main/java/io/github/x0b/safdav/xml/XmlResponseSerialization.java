@@ -24,7 +24,7 @@ public class XmlResponseSerialization {
      * @param item - the {@link SafItem} to serialize
      * @return XML as String
      */
-    public String propFindSerialize(SafItem item, String baseUrl) {
+    public String propFindSerialize(SafItem item, String baseUrl, int requestedDepth) {
         timings = new TimingLogger(TAG, "propSerializer");
         StringBuilder b = new StringBuilder("<?xml version=\"1.0\" encoding=\"utf-8\"?><D:multistatus xmlns:D=\"DAV:\">");
         timings.addSplit("onBeforeWriteCollection");
@@ -32,7 +32,7 @@ public class XmlResponseSerialization {
             Log.w(TAG, "Base Url was: " + baseUrl +", appended '/'");
             baseUrl += "/";
         }
-        writeResponseElement(b, item, 1, baseUrl, item.isCollection());
+        writeResponseElement(b, item, requestedDepth == 0 ? 0 : 1, baseUrl, true);
         timings.addSplit("onAfterWriteCollection");
         b.append("</D:multistatus>");
         timings.dumpToLog();
@@ -43,7 +43,7 @@ public class XmlResponseSerialization {
         if(child.isCollection()){
             writeCollection(sb, child, depth, baseUrl, flattenUrl);
         } else {
-            writeElement(sb, child, baseUrl);
+            writeElement(sb, child, baseUrl, flattenUrl);
         }
     }
 
@@ -51,7 +51,7 @@ public class XmlResponseSerialization {
         timings.addSplit("writing collection");
         sb.append("<D:response><D:href>")
                 .append(baseUrl)
-                .append(flattenUrl && depth == 1 ? "" : child.getLink())
+                .append(flattenUrl ? "" : child.getLink())
                 .append("</D:href><D:propstat><D:status>")
                 .append(child.getStatus())
                 .append("</D:status><D:prop><D:getcontenttype/><D:getlastmodified>")
@@ -68,16 +68,16 @@ public class XmlResponseSerialization {
         if(depth >= 1 && child.isCollection()){
             timings.addSplit("writing child");
             for(SafItem grandChild : child.getChildren()){
-                writeResponseElement(sb, grandChild, depth-1, baseUrl, flattenUrl);
+                writeResponseElement(sb, grandChild, depth-1, baseUrl, false);
             }
         }
     }
 
-    private void writeElement(StringBuilder sb, SafItem child, String baseUrl){
+    private void writeElement(StringBuilder sb, SafItem child, String baseUrl, boolean flattenUrl){
         timings.addSplit("start:child");
         sb.append("<D:response><D:href>")
                 .append(baseUrl)
-                .append(timed(child.getLink()))
+                .append(flattenUrl ? "" : timed(child.getLink()))
                 .append("</D:href><D:propstat><D:status>")
                 .append(timed(child.getStatus()))
                 .append("</D:status><D:prop><D:getcontenttype>")

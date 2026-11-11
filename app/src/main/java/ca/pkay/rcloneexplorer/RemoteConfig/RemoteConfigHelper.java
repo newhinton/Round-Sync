@@ -50,6 +50,22 @@ public class RemoteConfigHelper {
             Toasty.error(context, context.getString(R.string.error_creating_remote), Toast.LENGTH_SHORT, true).show();
             return;
         }
+        
+        // Capture stderr in background thread for debugging
+        final StringBuilder errorOutput = new StringBuilder();
+        Thread errorReader = new Thread(() -> {
+            try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(process.getErrorStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    errorOutput.append(line).append("\n");
+                }
+            } catch (java.io.IOException e) {
+                Log.e("RemoteConfigHelper", "Error reading stderr", e);
+            }
+        });
+        errorReader.start();
+        
         int exitCode;
         while (true) {
             try {
@@ -62,7 +78,15 @@ public class RemoteConfigHelper {
                 } catch (IllegalStateException ignored) {}
             }
         }
+        
+        // Wait for error reader to finish
+        try {
+            errorReader.join(1000);
+        } catch (InterruptedException ignored) {}
+        
         if (0 != exitCode) {
+            Log.e("RemoteConfigHelper", "rclone config create failed with exit code: " + exitCode);
+            Log.e("RemoteConfigHelper", "rclone stderr: " + errorOutput.toString());
             Toasty.error(context, context.getString(R.string.error_creating_remote), Toast.LENGTH_SHORT, true).show();
         } else {
             Toasty.success(context, context.getString(R.string.remote_creation_success), Toast.LENGTH_SHORT, true).show();

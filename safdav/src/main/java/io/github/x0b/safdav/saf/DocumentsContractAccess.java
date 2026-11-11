@@ -15,9 +15,9 @@ import io.github.x0b.safdav.file.ItemNotFoundException;
 import io.github.x0b.safdav.file.SafException;
 
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -225,8 +225,30 @@ public class DocumentsContractAccess implements ItemAccess<SafFastItem> {
     }
 
     @Override
-    public void writeFile(Uri documentUri, InputStream outputStream, long len) {
-        sfa.writeFile(documentUri, outputStream, len);
+    public void writeFile(Uri documentUri, InputStream stream, long len) {
+        // Write directly through the ContentResolver with a 64 KB buffer instead of delegating
+        // to SafFileAccess, avoiding an extra indirection and a much smaller copy buffer.
+        try (OutputStream os = context.getContentResolver().openOutputStream(documentUri)) {
+            if (os == null) {
+                throw new FileAccessError();
+            }
+            byte[] buffer = new byte[64 * 1024];
+            int blen = stream.read(buffer);
+            long remaining = len;
+            while (blen != -1) {
+                os.write(buffer, 0, blen);
+                remaining -= blen;
+                if (remaining < 1) {
+                    break;
+                }
+                blen = stream.read(buffer);
+            }
+            os.flush();
+        } catch (FileNotFoundException e) {
+            throw new ItemNotFoundException(e);
+        } catch (IOException e) {
+            throw new FileAccessError(e);
+        }
     }
 
     private Uri getParent(Uri uri) {
@@ -249,37 +271,21 @@ public class DocumentsContractAccess implements ItemAccess<SafFastItem> {
                 return treeWalkCompat(uri);
             }
         }
-        String path = uri.getPath();
-        int treeIndex = path.indexOf("/tree/");
-        if (0 != treeIndex) {
-            throw new SafException("Unsupported DocumentsProvider: " + uri.toString());
+        List<String> segments = uri.getPathSegments();
+        if (segments.size() < 2 || !"tree".equals(segments.get(0))) {
+            throw new ItemNotFoundException();
         }
-        int sep;
-        if (-1 != (sep = path.indexOf(':', 6)) || -1 != (sep = path.indexOf('/', 6))) {
-            try {
-                String volume = URLEncoder.encode(path.substring(6, sep + 1), "UTF-8");
-                String pathRaw = path.substring(sep + 1);
-                String mediaPath = pathRaw.replaceAll("/", "%2F");
-
-                if (buildParent) {
-                    int parentSep = pathRaw.lastIndexOf('/');
-                    // Check: format assumption - for collections, adjust path
-                    if (parentSep == pathRaw.length() - 1) {
-                        parentSep = pathRaw.lastIndexOf('/', parentSep - 1);
-                    }
-                    // Check: is there at least one subfolder?
-                    if (parentSep != -1) {
-                        mediaPath = pathRaw.substring(0, parentSep).replaceAll("/", "%2F");
-                    } else {
-                        mediaPath = "";
-                    }
-                }
-                return Uri.parse(uri.getScheme() + "://" + uri.getAuthority() + "/tree/" + volume + "/document/" + volume + mediaPath);
-            } catch (UnsupportedEncodingException e) {
-                throw new RuntimeException("UTF-8 not available");
-            }
+        String rootId = segments.get(1);
+        if (buildParent && segments.size() == 2) {
+            throw new ItemNotFoundException();
         }
-        throw new SafException("Unsupported DocumentsProvider: " + uri.toString());
+        int end = segments.size() - (buildParent ? 1 : 0);
+        StringBuilder documentId = new StringBuilder(rootId);
+        for (int i = 2; i < end; i++) {
+            if (i > 2 || !rootId.endsWith(":")) documentId.append('/');
+            documentId.append(segments.get(i));
+        }
+        return DocumentsContract.buildDocumentUriUsingTree(uri, documentId.toString());
     }
 
     // /tree/primary:DCIM
@@ -312,7 +318,7 @@ public class DocumentsContractAccess implements ItemAccess<SafFastItem> {
     private String getDisplayNameCompat(Uri uri) {
         String[] projection = new String[]{DocumentsContract.Document.COLUMN_DISPLAY_NAME};
         try (Cursor cursor = context.getContentResolver().query(uri, projection, null, null, null)) {
-            if (cursor.moveToFirst() && cursor.isNull(0)) {
+            if (cursor.moveToFirst() && !cursor.isNull(0)) {
                 return cursor.getString(0);
             } else {
                 return null;

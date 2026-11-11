@@ -10,6 +10,7 @@ import androidx.preference.PreferenceManager;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 
@@ -61,6 +62,8 @@ public class RemoteItem implements Comparable<RemoteItem>, Parcelable {
     public static final int YANDEX = 32;
     public static final int HTTP = 33;
     public static final int PREMIUMIZEME = 34;
+    public static final int INTERNXT = 35;
+    public static final int DRIME = 36;
 
     private String name;
     @Deprecated
@@ -349,6 +352,10 @@ public class RemoteItem implements Comparable<RemoteItem>, Parcelable {
                 return PUTIO;
             case "premiumizeme":
                 return PREMIUMIZEME;
+            case "internxt":
+                return INTERNXT;
+            case "drime":
+                return DRIME;
             default:
                 return -1;
         }
@@ -416,7 +423,7 @@ public class RemoteItem implements Comparable<RemoteItem>, Parcelable {
         } else if (!this.isPinned && remoteItem.isPinned) {
             return 1;
         }
-        return getDisplayName().toLowerCase().compareTo(remoteItem.getDisplayName().toLowerCase());
+        return getDisplayName().toLowerCase(Locale.ROOT).compareTo(remoteItem.getDisplayName().toLowerCase(Locale.ROOT));
     }
 
     @Override

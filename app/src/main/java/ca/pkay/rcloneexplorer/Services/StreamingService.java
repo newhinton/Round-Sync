@@ -26,6 +26,7 @@ public class StreamingService extends IntentService {
     public static final String REMOTE_ARG = "ca.pkay.rcexplorer.streaming_service.arg2";
     public static final String SHOW_NOTIFICATION_TEXT = "ca.pkay.rcexplorer.streaming_service.arg3";
     public static final String SERVE_PORT = "ca.pkay.rcexplorer.streaming_service.arg4";
+    public static final String SERVE_BASE_URL = "ca.pkay.rcexplorer.streaming_service.serve_base_url";
     public static final String SERVE_PROTOCOL = "ca.pkay.rcexplorer.serve_protocol";
     public static final String ALLOW_REMOTE_ACCESS = "ca.pkay.rcexplorer.allow_remote_access";
     public static final String AUTHENTICATION_USERNAME = "ca.pkay.rcexplorer.username";
@@ -67,12 +68,24 @@ public class StreamingService extends IntentService {
         final Boolean allowRemoteAccess = intent.getBooleanExtra(ALLOW_REMOTE_ACCESS, false);
         final String authenticationUsername = intent.getStringExtra(AUTHENTICATION_USERNAME);
         final String authenticationPassword = intent.getStringExtra(AUTHENTICATION_PASSWORD);
+        String resolvedBaseUrl = intent.getStringExtra(SERVE_BASE_URL);
+        boolean hasCredentials = authenticationUsername != null && !authenticationUsername.isEmpty()
+                && authenticationPassword != null && !authenticationPassword.isEmpty();
+        if ((resolvedBaseUrl == null || resolvedBaseUrl.isEmpty())
+                && !hasCredentials
+                && (protocol == SERVE_HTTP || protocol == SERVE_WEBDAV)) {
+            byte[] tokenBytes = new byte[16];
+            new java.security.SecureRandom().nextBytes(tokenBytes);
+            resolvedBaseUrl = android.util.Base64.encodeToString(
+                    tokenBytes, android.util.Base64.NO_WRAP | android.util.Base64.NO_PADDING | android.util.Base64.URL_SAFE);
+        }
+        final String baseUrl = resolvedBaseUrl;
 
         int flags = 0;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             flags = PendingIntent.FLAG_IMMUTABLE;
         }
-        Intent foregroundIntent = new Intent(this, StreamingService.class);
+        Intent foregroundIntent = new Intent(this, ca.pkay.rcloneexplorer.Activities.MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, foregroundIntent, flags);
 
         Intent cancelIntent = new Intent(this, ServeCancelAction.class);
@@ -86,7 +99,11 @@ public class StreamingService extends IntentService {
                 .addAction(R.drawable.ic_cancel_download, getString(R.string.cancel), cancelPendingIntent);
 
         if (showNotificationText) {
-            Uri uri = Uri.parse("http://127.0.0.1:" + port);
+            Uri.Builder uriBuilder = Uri.parse("http://127.0.0.1:" + port).buildUpon();
+            if (baseUrl != null && !baseUrl.isEmpty()) {
+                uriBuilder.appendPath(baseUrl);
+            }
+            Uri uri = uriBuilder.build();
             Intent webPageIntent = new Intent(Intent.ACTION_VIEW, uri);
             webPageIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             PendingIntent webPagePendingIntent = PendingIntent.getActivity(this, 0, webPageIntent, flags);
@@ -98,29 +115,31 @@ public class StreamingService extends IntentService {
 
         switch (protocol) {
             case SERVE_FTP:
-                runningProcess = rclone.serve(Rclone.SERVE_PROTOCOL_FTP, port, allowRemoteAccess, authenticationUsername, authenticationPassword, remote, servePath);
+                runningProcess = rclone.serve(Rclone.SERVE_PROTOCOL_FTP, port, allowRemoteAccess, authenticationUsername, authenticationPassword, remote, servePath, baseUrl);
                 break;
             case SERVE_WEBDAV:
-                runningProcess = rclone.serve(Rclone.SERVE_PROTOCOL_WEBDAV, port, allowRemoteAccess, authenticationUsername, authenticationPassword, remote, servePath);
+                runningProcess = rclone.serve(Rclone.SERVE_PROTOCOL_WEBDAV, port, allowRemoteAccess, authenticationUsername, authenticationPassword, remote, servePath, baseUrl);
                 break;
             case SERVE_DLNA:
-                runningProcess = rclone.serve(Rclone.SERVE_PROTOCOL_DLNA, port, allowRemoteAccess, authenticationUsername, authenticationPassword, remote, servePath);
+                runningProcess = rclone.serve(Rclone.SERVE_PROTOCOL_DLNA, port, allowRemoteAccess, authenticationUsername, authenticationPassword, remote, servePath, baseUrl);
                 break;
             case SERVE_HTTP:
             default:
-                runningProcess = rclone.serve(Rclone.SERVE_PROTOCOL_HTTP, port, allowRemoteAccess, authenticationUsername, authenticationPassword, remote, servePath);
+                runningProcess = rclone.serve(Rclone.SERVE_PROTOCOL_HTTP, port, allowRemoteAccess, authenticationUsername, authenticationPassword, remote, servePath, baseUrl);
                 break;
         }
 
+        boolean exitedNormally = false;
         if (runningProcess != null) {
             try {
                 runningProcess.waitFor();
+                exitedNormally = true;
             } catch (InterruptedException e) {
                 FLog.e(TAG, "onHandleIntent: error waiting for process", e);
             }
         }
 
-        if (runningProcess != null && runningProcess.exitValue() != 0) {
+        if (exitedNormally && runningProcess.exitValue() != 0) {
             rclone.logErrorOutput(runningProcess);
         }
 

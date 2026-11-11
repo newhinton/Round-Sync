@@ -10,6 +10,7 @@ import android.widget.SearchView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
+import androidx.core.view.WindowCompat
 import androidx.fragment.app.Fragment
 import ca.pkay.rcloneexplorer.R
 import ca.pkay.rcloneexplorer.Rclone
@@ -40,6 +41,7 @@ class RemoteConfig : AppCompatActivity(), ProviderSelectedListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, true)
         applyTheme()
         setContentView(R.layout.activity_remote_config)
         val toolbar = findViewById<Toolbar>(R.id.toolbar)

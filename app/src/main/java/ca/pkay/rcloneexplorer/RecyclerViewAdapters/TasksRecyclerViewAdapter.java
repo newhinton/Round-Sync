@@ -73,15 +73,21 @@ public class TasksRecyclerViewAdapter extends RecyclerView.Adapter<TasksRecycler
 
         int direction = selectedTask.getDirection();
 
+        // Reset to/from labels each bind; the bisync branch overrides them, and RecyclerView recycles views.
+        holder.to.setText(this.context.getString(R.string.task_item_label_to));
+        holder.from.setText(this.context.getString(R.string.task_item_label_from));
+
         if(direction == SyncDirectionObject.SYNC_LOCAL_TO_REMOTE || direction == SyncDirectionObject.COPY_LOCAL_TO_REMOTE){
             holder.fromID.setVisibility(View.GONE);
             holder.fromPath.setText(selectedTask.getLocalPath());
 
+            holder.toID.setVisibility(View.VISIBLE);
             holder.toID.setText(String.format("%s:", selectedTask.getRemoteId()));
             holder.toPath.setText(selectedTask.getRemotePath());
         }
 
         if(direction == SyncDirectionObject.SYNC_REMOTE_TO_LOCAL || direction == SyncDirectionObject.COPY_REMOTE_TO_LOCAL){
+            holder.fromID.setVisibility(View.VISIBLE);
             holder.fromID.setText(String.format("%s:", selectedTask.getRemoteId()));
             holder.fromPath.setText(selectedTask.getRemotePath());
 
@@ -89,7 +95,18 @@ public class TasksRecyclerViewAdapter extends RecyclerView.Adapter<TasksRecycler
             holder.toPath.setText(selectedTask.getLocalPath());
         }
 
+        if(direction == SyncDirectionObject.SYNC_REMOTE_TO_REMOTE || direction == SyncDirectionObject.COPY_REMOTE_TO_REMOTE){
+            holder.fromID.setVisibility(View.VISIBLE);
+            holder.fromID.setText(String.format("%s:", selectedTask.getRemoteId()));
+            holder.fromPath.setText(selectedTask.getRemotePath());
+
+            holder.toID.setVisibility(View.VISIBLE);
+            holder.toID.setText(String.format("%s:", selectedTask.getRemoteId2()));
+            holder.toPath.setText(selectedTask.getRemotePath2());
+        }
+
         if(direction == SyncDirectionObject.SYNC_BIDIRECTIONAL || direction == SyncDirectionObject.SYNC_BIDIRECTIONAL_INITIAL){
+            holder.fromID.setVisibility(View.VISIBLE);
             holder.fromID.setText(String.format("%s:", selectedTask.getRemoteId()));
             holder.fromPath.setText(selectedTask.getRemotePath());
 

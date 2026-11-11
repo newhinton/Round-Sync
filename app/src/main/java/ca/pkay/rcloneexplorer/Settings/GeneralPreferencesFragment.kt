@@ -17,9 +17,11 @@ import ca.pkay.rcloneexplorer.Items.RemoteItem
 import ca.pkay.rcloneexplorer.R
 import ca.pkay.rcloneexplorer.Rclone
 import ca.pkay.rcloneexplorer.util.FLog
-import de.felixnuesse.extract.extensions.TAG
-import de.felixnuesse.extract.settings.language.LanguagePicker
-import de.felixnuesse.extract.settings.preferences.FilesizePreference
+import ca.pkay.rcloneexplorer.workmanager.EphemeralTaskManager
+import ca.pkay.rcloneexplorer.workmanager.SyncManager
+import de.schuelken.cloudbridge.extensions.TAG
+import de.schuelken.cloudbridge.settings.language.LanguagePicker
+import de.schuelken.cloudbridge.settings.preferences.FilesizePreference
 import es.dmoral.toasty.Toasty
 
 class GeneralPreferencesFragment : PreferenceFragmentCompat() {
@@ -57,6 +59,30 @@ class GeneralPreferencesFragment : PreferenceFragmentCompat() {
             true
         }
 
+        val cancelTransfersPreference = findPreference(getString(R.string.pref_key_cancel_transfers)) as Preference?
+        cancelTransfersPreference?.setOnPreferenceClickListener {
+            showCancelTransfersConfirmation()
+            true
+        }
+
+    }
+
+    private fun showCancelTransfersConfirmation() {
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.cancel_all_transfers_confirm_title)
+            .setMessage(R.string.cancel_all_transfers_confirm_message)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.cancel_all_transfers_action) { _, _ ->
+                EphemeralTaskManager(requireContext()).cancel()
+                SyncManager(requireContext()).cancel()
+                Toasty.info(
+                    requireContext(),
+                    getString(R.string.cancel_all_transfers_done),
+                    Toast.LENGTH_SHORT,
+                    true
+                ).show()
+            }
+            .show()
     }
 
     private fun showThumbnailSizeDialog(preference: Preference) {

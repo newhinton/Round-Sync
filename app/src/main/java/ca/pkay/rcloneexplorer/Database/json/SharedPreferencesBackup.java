@@ -28,6 +28,7 @@ public class SharedPreferencesBackup {
         String proxyHost = sharedPreferences.getString(context.getString(R.string.pref_key_proxy_host), "localhost");
         int proxyPort = sharedPreferences.getInt(context.getString(R.string.pref_key_proxy_port), 8080);
         String proxyUser = sharedPreferences.getString(context.getString(R.string.pref_key_proxy_username), "");
+        String transfers = sharedPreferences.getString(context.getString(R.string.pref_key_transfers), "4");
 
         // File Access
         boolean safEnabled = sharedPreferences.getBoolean(context.getString(R.string.pref_key_enable_saf), false);
@@ -58,6 +59,7 @@ public class SharedPreferencesBackup {
         main.put("proxyHost", proxyHost);
         main.put("proxyPort", proxyPort);
         main.put("proxyUser", proxyUser);
+        main.put("transfers", transfers);
         main.put("safEnabled", safEnabled);
         main.put("refreshLaEnabled", refreshLaEnabled);
         main.put("vcpEnabled", vcpEnabled);
@@ -71,7 +73,27 @@ public class SharedPreferencesBackup {
         return main.toString();
     }
 
+    /** Check everything that can fail during parsing before replacing a ZIP's configuration. */
+    public static void validateJson(String json) throws JSONException {
+        JSONObject object = new JSONObject(json);
+        for (String key : new String[]{"showThumbnails", "isWifiOnly", "safEnabled", "refreshLaEnabled",
+                "vcpEnabled", "vcpDeclareLocal", "isWrapFilenames", "appUpdates", "useLogs"}) {
+            object.getBoolean(key);
+        }
+        Object theme = object.get("isDarkTheme");
+        if (theme instanceof String) {
+            try {
+                Integer.parseInt((String) theme);
+            } catch (NumberFormatException e) {
+                throw new JSONException("Invalid theme");
+            }
+        } else if (!(theme instanceof Boolean)) {
+            throw new JSONException("Invalid theme");
+        }
+    }
+
     public static void importJson(String json, Context context) throws JSONException {
+        validateJson(json);
         JSONObject jsonObject = new JSONObject(json);
 
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
@@ -80,19 +102,30 @@ public class SharedPreferencesBackup {
         //General Settings
         editor.putBoolean(context.getString(R.string.pref_key_show_thumbnails), jsonObject.getBoolean("showThumbnails"));
         editor.putBoolean(context.getString(R.string.pref_key_wifi_only_transfers), jsonObject.getBoolean("isWifiOnly"));
-        editor.putBoolean(context.getString(R.string.pref_key_use_proxy), jsonObject.getBoolean("useProxy"));
+        // Never silently enable outbound proxy interception from an imported backup
+        editor.putBoolean(context.getString(R.string.pref_key_use_proxy), false);
         editor.putBoolean(context.getString(R.string.shared_preferences_allow_sync_trigger_while_idle), jsonObject.optBoolean("allowWhileIdle", false));
-        editor.putString(context.getString(R.string.pref_key_proxy_protocol), jsonObject.getString("proxyProtocol"));
-        editor.putString(context.getString(R.string.pref_key_proxy_host), jsonObject.getString("proxyHost"));
-        editor.putInt(context.getString(R.string.pref_key_proxy_port), jsonObject.getInt("proxyPort"));
-        editor.putString(context.getString(R.string.pref_key_proxy_username), jsonObject.getString("proxyUser"));
+        String importedProtocol = jsonObject.optString("proxyProtocol", "http");
+        if (!"http".equals(importedProtocol) && !"https".equals(importedProtocol) && !"socks5".equals(importedProtocol)) {
+            importedProtocol = "http";
+        }
+        int importedPort = jsonObject.optInt("proxyPort", 8080);
+        if (importedPort < 1 || importedPort > 65535) {
+            importedPort = 8080;
+        }
+        editor.putString(context.getString(R.string.pref_key_proxy_protocol), importedProtocol);
+        editor.putString(context.getString(R.string.pref_key_proxy_host), jsonObject.optString("proxyHost", "localhost"));
+        editor.putInt(context.getString(R.string.pref_key_proxy_port), importedPort);
+        editor.putString(context.getString(R.string.pref_key_proxy_username), jsonObject.optString("proxyUser", ""));
+        editor.putString(context.getString(R.string.pref_key_transfers), jsonObject.optString("transfers", "4"));
 
         // File Access
         editor.putBoolean(context.getString(R.string.pref_key_enable_saf), jsonObject.getBoolean("safEnabled"));
         editor.putBoolean(context.getString(R.string.pref_key_refresh_local_aliases), jsonObject.getBoolean("refreshLaEnabled"));
         editor.putBoolean(context.getString(R.string.pref_key_enable_vcp), jsonObject.getBoolean("vcpEnabled"));
         editor.putBoolean(context.getString(R.string.pref_key_vcp_declare_local), jsonObject.getBoolean("vcpDeclareLocal"));
-        editor.putBoolean(context.getString(R.string.pref_key_vcp_grant_all), jsonObject.getBoolean("vcpGrantAll"));
+        // Never silently enable grant-all URI permissions from an imported backup
+        editor.putBoolean(context.getString(R.string.pref_key_vcp_grant_all), false);
 
         // Look and Feel
         // The type changed. So we try to use boolean first, and if it fails we use the proper int

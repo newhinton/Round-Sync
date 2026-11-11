@@ -36,6 +36,7 @@
                         android:id="@+id/label_name"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:labelFor="@id/task_title_textfield"
                         android:layout_marginBottom="8dp"
                         android:text="@string/task_edit_label_name"
                         android:textAppearance="@style/TextAppearance.AppCompat.Display1"
@@ -125,10 +126,34 @@
                         android:minHeight="48dp"
                         android:text="@string/description_sync_direction_sync_toremote" />
 
+                    <TextView
+                        android:id="@+id/label_transfers"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_margin="8dp"
+                        android:labelFor="@id/task_transfers_spinner"
+                        android:text="@string/task_edit_label_transfers"
+                        android:textAppearance="@style/TextAppearance.AppCompat.Body1" />
+
+                    <Spinner
+                        android:id="@+id/task_transfers_spinner"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_margin="8dp"
+                        android:minHeight="48dp" />
+
+                    <TextView
+                        android:id="@+id/descriptionTransfers"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_margin="8dp"
+                        android:text="@string/task_edit_transfers_hint" />
+
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
             <androidx.cardview.widget.CardView
+                android:id="@+id/task_local_card"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:layout_margin="8dp"
@@ -145,6 +170,7 @@
                         android:id="@+id/label_local"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:labelFor="@id/task_local_path_textfield"
                         android:layout_margin="8dp"
                         android:text="@string/task_edit_label_local"
                         android:textAppearance="@style/TextAppearance.AppCompat.Display1"
@@ -164,6 +190,7 @@
             </androidx.cardview.widget.CardView>
 
             <androidx.cardview.widget.CardView
+                android:id="@+id/task_remote_card"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:layout_margin="8dp"
@@ -180,6 +207,7 @@
                         android:id="@+id/label_remote"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:labelFor="@id/task_remote_path_textfield"
                         android:layout_margin="8dp"
                         android:text="@string/task_edit_label_remote"
                         android:textAppearance="@style/TextAppearance.AppCompat.Display1"
@@ -195,6 +223,51 @@
 
                     <EditText
                         android:id="@+id/task_remote_path_textfield"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_margin="8dp"
+                        android:autofillHints=""
+                        android:hint="@string/task_edit_hint_remote"
+                        android:inputType=""
+                        android:minHeight="48dp" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <androidx.cardview.widget.CardView
+                android:id="@+id/task_remote2_card"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_margin="8dp"
+                style="@style/SecondaryCardStyle"
+                android:visibility="gone"
+                app:cardCornerRadius="@dimen/cardCornerRadius"
+                app:contentPadding="@dimen/cardPadding">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/label_remote2"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:labelFor="@id/task_remote_path_textfield2"
+                        android:layout_margin="8dp"
+                        android:text="@string/task_edit_label_remote_destination"
+                        android:textAppearance="@style/TextAppearance.AppCompat.Display1"
+                        android:textSize="24sp" />
+
+                    <Spinner
+                        android:id="@+id/task_remote_spinner2"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_margin="8dp"
+                        android:contentDescription="@string/description_sync_direction"
+                        android:minHeight="48dp" />
+
+                    <EditText
+                        android:id="@+id/task_remote_path_textfield2"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_margin="8dp"
@@ -304,7 +377,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_margin="8dp"
-                        android:text="Run on Failure"
+                        android:text="@string/task_run_on_failure"
                         android:textAppearance="@style/TextAppearance.AppCompat.Display1"
                         android:textSize="24sp" />
 
@@ -336,7 +409,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_margin="8dp"
-                        android:text="Run on Success"
+                        android:text="@string/task_run_on_success"
                         android:textAppearance="@style/TextAppearance.AppCompat.Display1"
                         android:textSize="24sp" />
 

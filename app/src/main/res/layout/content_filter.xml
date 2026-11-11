@@ -36,6 +36,7 @@
                         android:id="@+id/label_name"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:labelFor="@id/filter_title_textfield"
                         android:layout_marginBottom="8dp"
                         android:text="@string/filter_edit_label_name"
                         android:textAppearance="@style/TextAppearance.AppCompat.Display1"

@@ -36,11 +36,19 @@ public class ThumbnailsLoadingService extends IntentService {
         }
 
         RemoteItem remote = intent.getParcelableExtra(REMOTE_ARG);
-        String hiddenPath = "/" + intent.getStringExtra(HIDDEN_PATH) + '/' + remote.getName();
+        if (remote == null) {
+            return;
+        }
+        String hiddenPathExtra = intent.getStringExtra(HIDDEN_PATH);
+        if (hiddenPathExtra == null) {
+            hiddenPathExtra = "";
+        }
+        String hiddenPath = "/" + hiddenPathExtra + '/' + remote.getName();
         int serverPort = intent.getIntExtra(SERVER_PORT, 29179);
         FLog.d(TAG, "onHandleIntent: hiddenPath=%s", hiddenPath);
         process = rclone.serve(Rclone.SERVE_PROTOCOL_HTTP, serverPort, false, null, null, remote, "", hiddenPath);
         if (process != null) {
+            boolean exited = false;
             try {
                 if(PreferenceManager.getDefaultSharedPreferences(this).
                         getBoolean(getString(R.string.pref_key_logs), false)) {
@@ -52,8 +60,13 @@ public class ThumbnailsLoadingService extends IntentService {
                     }.start();
                 }
                 process.waitFor();
+                exited = true;
             } catch (InterruptedException e) {
                 FLog.e(TAG, "onHandleIntent: error waiting for process", e);
+                Thread.currentThread().interrupt();
+            }
+            if (exited && process.exitValue() != 0) {
+                rclone.logErrorOutput(process);
             }
         }
     }

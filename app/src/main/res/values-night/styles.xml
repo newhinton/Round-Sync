@@ -1,7 +1,7 @@
 <resources>
 
     <style name="SecondaryCardStyle">
-        <item name="cardBackgroundColor">?attr/colorSurfaceBright</item>
+        <item name="cardBackgroundColor">?attr/colorSurfaceVariant</item>
         <item name="android:textColor">?attr/colorOnSecondaryContainer</item>
         <item name="android:tint">?attr/colorOnSecondaryContainer</item>
     </style>

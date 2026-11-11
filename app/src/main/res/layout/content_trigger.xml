@@ -36,6 +36,7 @@
                         android:id="@+id/trigger_name_label"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:labelFor="@id/trigger_name_edit"
                         android:layout_margin="8dp"
                         android:text="@string/trigger_name"
                         android:textAppearance="@style/TextAppearance.AppCompat.Display1"

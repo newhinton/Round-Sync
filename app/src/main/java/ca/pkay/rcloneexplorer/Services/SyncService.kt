@@ -5,7 +5,7 @@ import android.content.Intent
 import android.util.Log
 import ca.pkay.rcloneexplorer.Database.DatabaseHandler
 import ca.pkay.rcloneexplorer.workmanager.SyncManager
-import de.felixnuesse.extract.extensions.tag
+import de.schuelken.cloudbridge.extensions.tag
 
 
 /**
@@ -13,7 +13,7 @@ import de.felixnuesse.extract.extensions.tag
  * the ability to start a task.
  * Do not actually implement any sync changes, they only belong in the SyncManager/Worker!
  */
-class SyncService: IntentService("ca.pkay.rcexplorer.SYNC_SERCVICE"){
+class SyncService: IntentService("ca.pkay.rcexplorer.SYNC_SERVICE"){
     override fun onHandleIntent(intent: Intent?) {
         if(intent == null){
             return

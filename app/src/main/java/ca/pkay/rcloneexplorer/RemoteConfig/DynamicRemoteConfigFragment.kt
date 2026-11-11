@@ -96,7 +96,8 @@ class DynamicRemoteConfigFragment(private val mProviderTitle: String, private va
             "yandex",
             "drive",
             "google photos",
-            "onedrive"
+            "onedrive",
+            "internxt"  // Internxt uses interactive multi-step auth with optional 2FA
             -> true
             else -> false
         }
@@ -342,7 +343,7 @@ class DynamicRemoteConfigFragment(private val mProviderTitle: String, private va
         )
 
         input.setAdapter(adapter)
-        input.isEnabled = false
+        if (option.exclusive) input.keyListener = null
 
         textinput.addView(input)
 
@@ -509,7 +510,11 @@ class DynamicRemoteConfigFragment(private val mProviderTitle: String, private va
     private fun setUpRemote() {
 
         val options = java.util.ArrayList<String>()
-        val name: String = mRemoteName?.text.toString()
+        val name: String = mRemoteName?.text.toString().trim()
+        if (name.isEmpty() || name.startsWith("-") || !name.matches(Regex("^[A-Za-z0-9_][A-Za-z0-9_. -]*$"))) {
+            es.dmoral.toasty.Toasty.error(mContext, "Invalid remote name", android.widget.Toast.LENGTH_SHORT, true).show()
+            return
+        }
         options.add(name)
         options.add(mProviderTitle)
 
@@ -521,7 +526,6 @@ class DynamicRemoteConfigFragment(private val mProviderTitle: String, private va
             }
         }
         for ((key, value) in mOptionMap) {
-            //Log.e("TAG", "key: $key value: $value (${value.length})")
             options.add(key)
             options.add(value)
         }
@@ -534,7 +538,7 @@ class DynamicRemoteConfigFragment(private val mProviderTitle: String, private va
         if(mUseOauth){
             mAuthTask = ConfigCreate(
                 options, mFormView!!, mAuthView!!,
-                requireContext(), rclone!!
+                requireContext(), rclone!!, mProvider?.name ?: ""
             ).execute()
         } else {
             RemoteConfigHelper.setupAndWait(context, options)

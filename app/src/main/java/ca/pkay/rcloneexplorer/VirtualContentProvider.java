@@ -30,6 +30,7 @@ import android.provider.DocumentsContract.Root;
 import android.system.ErrnoException;
 import android.system.OsConstants;
 import android.util.LruCache;
+import android.webkit.MimeTypeMap;
 
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
@@ -50,6 +51,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -174,7 +176,7 @@ public class VirtualContentProvider extends SingleRootProvider {
 
     private void awaitRcdService() {
         long waitTime = 500;
-        while (waitTime > 0 && null != rcdService) {
+        while (waitTime > 0 && null == rcdService) {
             FLog.d(TAG, "acquireRcd: waiting for service");
             long waitStart = System.nanoTime();
             try {
@@ -219,10 +221,44 @@ public class VirtualContentProvider extends SingleRootProvider {
 
     }
 
+    static boolean isSafeDocumentPath(@Nullable String docId) {
+        if (docId == null || docId.isEmpty() || docId.indexOf('\\') >= 0 || docId.indexOf('\0') >= 0) {
+            return false;
+        }
+        String afterColon = docId;
+        int colonIdx = docId.indexOf(':');
+        if (colonIdx >= 0) {
+            afterColon = docId.substring(colonIdx + 1);
+        }
+        for (String segment : afterColon.split("/")) {
+            if (".".equals(segment) || "..".equals(segment)) {
+                return false;
+            }
+        }
+        for (String segment : docId.split("/")) {
+            if (".".equals(segment) || "..".equals(segment)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     // Required for OPEN_DOCUMENT_TREE
     @Override
     public boolean isChildDocument(String parentDocumentId, @NonNull String documentId) {
-        return documentId.startsWith(parentDocumentId);
+        if (!isSafeDocumentPath(parentDocumentId) || !isSafeDocumentPath(documentId)) {
+            return false;
+        }
+        String normParent = parentDocumentId.endsWith("/")
+                ? parentDocumentId.substring(0, parentDocumentId.length() - 1)
+                : parentDocumentId;
+        if (documentId.equals(normParent) || documentId.startsWith(normParent + "/")) {
+            return true;
+        }
+        if (normParent.endsWith(":") && documentId.startsWith(normParent)) {
+            return true;
+        }
+        return false;
     }
 
     @Override
@@ -421,8 +457,10 @@ public class VirtualContentProvider extends SingleRootProvider {
             String originalParentDocId = parentDocumentId;
             parentDocumentId = parentDocumentId.substring(ROOT_DOC_ID.length() + 1);
             String remoteName = getRemoteName(getShortId(originalParentDocId));
-            // TODO: missing guard if remote name is garbage => IllegalArgumentException
             RemoteItem remoteItem = getRemoteItem(remoteName);
+            if (remoteItem == null) {
+                throw new FileNotFoundException("Remote not found: " + remoteName);
+            }
             int idx = parentDocumentId.indexOf("/");
             String dirPath = -1 != idx ? parentDocumentId.substring(idx + 1) : "";
 
@@ -700,7 +738,9 @@ public class VirtualContentProvider extends SingleRootProvider {
         };
         try {
             rcd.moveFile(remoteName, srcPath, remoteName, dstPath, listener);
-            lock.await();
+            if (!lock.await()) {
+                FLog.w(TAG, "renameDocument: timed out waiting for rcd job (still running)");
+            }
             return targetDocId;
         } catch (RcloneRcd.RcdOpException e) {
             FLog.e(TAG, "RCD move failure", e);
@@ -713,18 +753,17 @@ public class VirtualContentProvider extends SingleRootProvider {
      */
     private static class OnJobFinishListener implements RcloneRcd.JobStatusHandler {
 
-        private final Object lock;
+        private final MaxWait lock;
 
-        public OnJobFinishListener(Object lock) {
+        public OnJobFinishListener(MaxWait lock) {
             this.lock = lock;
         }
 
         @Override
         public final void handleJobStatus(RcloneRcd.JobStatusResponse jobStatusResponse) {
             if (null != lock) {
-                synchronized (lock) {
-                    lock.notify();
-                }
+                // markCompleted() sets the done flag and notifies any thread blocked in await().
+                lock.markCompleted();
             }
             onFinish(jobStatusResponse);
         }
@@ -741,6 +780,7 @@ public class VirtualContentProvider extends SingleRootProvider {
 
         private final long timeout;
         private final Object lock;
+        private volatile boolean completed;
 
         MaxWait(long timeout) {
             this.timeout = timeout;
@@ -749,21 +789,37 @@ public class VirtualContentProvider extends SingleRootProvider {
 
         /**
          * Await release of
+         * @return {@code true} if the rcd job signalled completion, {@code false} if the
+         *         timeout elapsed first (the job may still be running).
          */
-        public void await() {
+        public boolean await() {
             synchronized (lock) {
-                try {
-                    lock.wait(timeout);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
+                if (!completed) {
+                    try {
+                        lock.wait(timeout);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
                 }
+                return completed;
             }
         }
 
-        public void release() {
-            if(Thread.holdsLock(lock)) {
+        /** Marks the awaited job as completed and releases a blocked await(). */
+        public void markCompleted() {
+            synchronized (lock) {
+                completed = true;
                 lock.notify();
             }
+        }
+
+        /** Equivalent to {@link #markCompleted()}; kept for call-site compatibility. */
+        public void release() {
+            markCompleted();
+        }
+
+        public boolean isCompleted() {
+            return completed;
         }
     }
 
@@ -771,13 +827,7 @@ public class VirtualContentProvider extends SingleRootProvider {
     public void deleteDocument(String rawDocumentId) throws FileNotFoundException {
         FLog.v(TAG, "deleteDocument: %s", rawDocumentId);
 
-        // TODO: bug: remotes/remotes/... instead of remotes/...
-        final String rootedDocumentId;
-        if (getNoRootId(rawDocumentId).startsWith(ROOT_DOC_PREFIX)) {
-            rootedDocumentId = getNoRootId(rawDocumentId);
-        } else {
-            rootedDocumentId = rawDocumentId;
-        }
+        final String rootedDocumentId = getRootedDocumentId(getShortId(rawDocumentId));
 
         if (isRemoteDocument(rootedDocumentId)) {
             FLog.e(TAG, "deleteDocument: deleting remotes not supported");
@@ -790,7 +840,7 @@ public class VirtualContentProvider extends SingleRootProvider {
             throw new FileNotFoundException();
         }
 
-        MaxWait lock = new MaxWait(5000);
+        MaxWait lock = new MaxWait(10000);
         OnJobFinishListener listener = new OnJobFinishListener(lock) {
             @Override
             void onFinish(RcloneRcd.JobStatusResponse jobStatusResponse) {
@@ -814,7 +864,9 @@ public class VirtualContentProvider extends SingleRootProvider {
             } else {
                 rcd.deleteFile(remoteName, document.path, listener);
             }
-            lock.await();
+            if (!lock.await()) {
+                FLog.w(TAG, "deleteDocument: timed out waiting for rcd job (still running)");
+            }
         } catch (RcloneRcd.RcdOpException e) {
             FLog.e(TAG, "deleteDocument() failed", e);
         }
@@ -840,7 +892,9 @@ public class VirtualContentProvider extends SingleRootProvider {
         final String dstPath = getRclonePath(targetDocumentId);
         final String dstRemoteName = getRemoteName(targetDocumentId);
 
-        final MaxWait lock = new MaxWait(5000);
+        // copyDocument is a data-transfer operation; allow up to 30s for the rcd job so we don't
+        // report success to the client while bytes are still moving.
+        final MaxWait lock = new MaxWait(30000);
         OnJobFinishListener listener = new OnJobFinishListener(lock) {
             @Override
             void onFinish(RcloneRcd.JobStatusResponse jobStatusResponse) {
@@ -861,7 +915,9 @@ public class VirtualContentProvider extends SingleRootProvider {
             } else {
                 rcd.copyFile(srcRemoteName, document.path, dstRemoteName, dstPath, listener);
             }
-            lock.await();
+            if (!lock.await()) {
+                FLog.w(TAG, "copyDocument: timed out waiting for rcd job; client may see success before completion");
+            }
             return getRootedDocumentId(targetDocumentId);
         } catch (RcloneRcd.RcdOpException e) {
             FLog.e(TAG, "copyDocument() failed", e);
@@ -885,7 +941,8 @@ public class VirtualContentProvider extends SingleRootProvider {
         }
 
         final String targetDocumentId = getTargetDocumentId(sourceDocumentId, targetParentDocumentId);
-        MaxWait lock = new MaxWait(5000);
+        // moveDocument is a data-transfer operation; allow up to 30s for the rcd job.
+        MaxWait lock = new MaxWait(30000);
         OnJobFinishListener listener = new OnJobFinishListener(lock) {
             @Override
             void onFinish(RcloneRcd.JobStatusResponse status) {
@@ -917,7 +974,9 @@ public class VirtualContentProvider extends SingleRootProvider {
                 rcd.moveFile(srcRemote, srcPath, dstRemote, dstPath, listener);
             }
 
-            lock.await();
+            if (!lock.await()) {
+                FLog.w(TAG, "moveDocument: timed out waiting for rcd job; client may see success before completion");
+            }
             return getRootedDocumentId(targetDocumentId);
         } catch (RcloneRcd.RcdOpException e) {
             FLog.e(TAG, "moveDocument() failed", e);
@@ -932,11 +991,17 @@ public class VirtualContentProvider extends SingleRootProvider {
 
     @Override
     public String getDocumentType(String documentId) throws FileNotFoundException {
-        // TODO: NetworkOnMainThreadException in case of cache miss, e.g. when the directory
-        //          not browsed previously
-        ListItem item = getFileItem(getNoRootId(documentId));
+        ListItem item = remoteState.get(getNoRootId(documentId)).item;
         if (null == item) {
-            throw new FileNotFoundException();
+            int lastSlash = documentId.lastIndexOf('/');
+            String name = lastSlash >= 0 ? documentId.substring(lastSlash + 1) : documentId;
+            int lastDot = name.lastIndexOf('.');
+            if (lastDot < 0 || lastDot == name.length() - 1) {
+                return "application/octet-stream";
+            }
+            String extension = name.substring(lastDot + 1).toLowerCase(Locale.ROOT);
+            String mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
+            return mimeType != null ? mimeType : "application/octet-stream";
         }
         return item.mimeType;
     }
@@ -1084,7 +1149,7 @@ public class VirtualContentProvider extends SingleRootProvider {
      */
     @VisibleForTesting()
     static String getNoRootId(String rootedDocumentId) {
-        if (rootedDocumentId.length() < ROOT_DOC_ID.length() + 1) {
+        if (rootedDocumentId == null || rootedDocumentId.length() < ROOT_DOC_ID.length() + 1 || !isSafeDocumentPath(rootedDocumentId)) {
             throw new IllegalArgumentException("Invalid document id");
         }
         return rootedDocumentId.substring(ROOT_DOC_ID.length() + 1);
@@ -1180,8 +1245,9 @@ public class VirtualContentProvider extends SingleRootProvider {
         if (null == cachedItem) {
             FLog.v(TAG, "getFileItem: refresh meta for %s", documentId);
             String[] remote = documentId.split(":");
-            // TODO: missing guard if remote name is garbage => IllegalArgumentException
-            getRemoteItem(remote[0]);
+            if (remote.length == 0 || getRemoteItem(remote[0]) == null) {
+                return null;
+            }
             // retrieve parent dir path or root
             int idx = documentId.indexOf("/");
             int ldx = documentId.lastIndexOf("/");
@@ -1367,14 +1433,15 @@ public class VirtualContentProvider extends SingleRootProvider {
         return DocumentsContract.buildRootsUri(BuildConfig.VCP_AUTHORITY);
     }
 
+    @Nullable
     private RemoteItem getRemoteItem(String name) {
+        if (name == null) {
+            return null;
+        }
         RemoteItem item = remotes.get(name);
         if (null == item) {
             reloadRemotesIfRequired();
             item = remotes.get(name);
-            if (null == item) {
-                throw new IllegalArgumentException("Remote " + name + " does not exist");
-            }
         }
         return item;
     }
@@ -1454,7 +1521,7 @@ public class VirtualContentProvider extends SingleRootProvider {
             List<String> documentIds = new ArrayList<>();
             Map<String, ListItem> map = snapshot();
             Set<String> paths = map.keySet();
-            String[] terms = search.toLowerCase().split(" ");
+            String[] terms = search.toLowerCase(Locale.ROOT).split(" ");
             for (String path : paths) {
                 // filter by remote
                 if (!path.startsWith(remote)) {
@@ -1463,7 +1530,7 @@ public class VirtualContentProvider extends SingleRootProvider {
                 // filter by terms
                 for (int i = 0; i < terms.length; i++) {
                     // a path must contain all terms in the path, the order does not matter
-                    if (path.toLowerCase().contains(terms[i])) {
+                    if (path.toLowerCase(Locale.ROOT).contains(terms[i])) {
                         if (terms.length - 1 == i) {
                             results.add(map.get(path));
                             documentIds.add(path);
@@ -1518,7 +1585,7 @@ public class VirtualContentProvider extends SingleRootProvider {
 
         public Map<String, FsStateNode> search(String searchTerm) {
             FLog.v(TAG, "searching: %s", searchTerm);
-            String normalizedSearch = searchTerm.toLowerCase().trim();
+            String normalizedSearch = searchTerm.toLowerCase(Locale.ROOT).trim();
             Map<String, FsStateNode> results = new HashMap<>();
             for (Map.Entry<String, FsStateNode> entry : stickyMap.entrySet()) {
                 if (entry.getValue().item.name.contains(normalizedSearch)) {
@@ -1626,7 +1693,7 @@ public class VirtualContentProvider extends SingleRootProvider {
 
         @Override
         public void run() {
-            byte[] buf = new byte[4096];
+            byte[] buf = new byte[128 * 1024];
             int len;
             long lengthBarrier = this.streamLength;
             try {
